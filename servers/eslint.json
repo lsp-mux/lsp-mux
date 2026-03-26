@@ -1,0 +1,11 @@
+{
+  "command": "node",
+  "args": ["./node_modules/vscode-langservers-extracted/bin/vscode-eslint-language-server", "--stdio"],
+  "languages": {
+    "typescript": [".ts", ".mts", ".cts"],
+    "typescriptreact": [".tsx"],
+    "javascript": [".js", ".mjs", ".cjs"],
+    "javascriptreact": [".jsx"]
+  },
+  "transport": "stdio"
+}
