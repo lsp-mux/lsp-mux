@@ -37,7 +37,7 @@ export class ChildServer {
       windowsHide: true,
     });
 
-    proc.stderr?.on('data', (chunk: Buffer) => {
+    proc.stderr.on('data', (chunk: Buffer) => {
       for (const line of chunk.toString().split('\n').filter(Boolean)) {
         log.debug(`[${this.name}] ${line}`);
       }
@@ -53,20 +53,22 @@ export class ChildServer {
     });
 
     proc.on('exit', (code, signal) => {
-      log.warn(`${this.name} exited (code=${code}, signal=${signal})`);
+      log.warn(`${this.name} exited (code=${String(code)}, signal=${String(signal)})`);
       if (!this.exited && !this.disposed) {
         this.exited = true;
         this.events.onExit(code, signal);
       }
     });
 
-    const reader = new StreamMessageReader(proc.stdout!);
-    const writer = new StreamMessageWriter(proc.stdin!);
+    const reader = new StreamMessageReader(proc.stdout);
+    const writer = new StreamMessageWriter(proc.stdin);
 
     reader.listen((msg) => {
       if (!this.disposed) this.events.onMessage(msg);
     });
-    reader.onError((err) => log.error(`${this.name} reader error:`, err));
+    reader.onError((err) => {
+      log.error(`${this.name} reader error:`, err);
+    });
 
     this.proc = proc;
     this.reader = reader;

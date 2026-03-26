@@ -4,8 +4,12 @@
   "description": "Multiplexing LSP proxy for Claude Code",
   "type": "module",
   "main": "dist/main.js",
+  "engines": {
+    "node": ">=22.16"
+  },
   "scripts": {
-    "build": "tsc -b && vitest run",
+    "lint": "tsc -b && eslint --max-warnings=0 .",
+    "build": "pnpm lint && vitest run",
     "dev": "tsc -b --watch",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -18,10 +22,18 @@
     "vscode-langservers-extracted": "^4.10.0"
   },
   "devDependencies": {
+    "@stylistic/eslint-plugin": "^5.10.0",
     "@tsconfig/strictest": "^2.0.8",
     "@types/node": "^22.0.0",
+    "@vitest/eslint-plugin": "^1.6.13",
+    "eslint": "^10.1.0",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import-x": "^4.16.2",
+    "eslint-plugin-n": "^17.24.0",
+    "eslint-plugin-only-warn": "^1.2.1",
     "tsx": "^4.21.0",
     "typescript": "^5.7.0",
+    "typescript-eslint": "^8.57.2",
     "vitest": "^4.1.2"
   }
 }

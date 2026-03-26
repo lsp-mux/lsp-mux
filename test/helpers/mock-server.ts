@@ -13,7 +13,7 @@ import type { ResponseMessage } from 'vscode-jsonrpc';
 import { Message as Msg, createNotification } from '../../src/types.js';
 import { DidOpenParamsSchema, DidChangeParamsSchema, DidCloseParamsSchema } from '../../src/document-tracker.js';
 
-const serverName = process.argv.find((a) => a.startsWith('--name='))?.slice(7) ?? 'mock';
+const serverName = process.argv.find(a => a.startsWith('--name='))?.slice(7) ?? 'mock';
 
 const reader = new StreamMessageReader(process.stdin);
 const writer = new StreamMessageWriter(process.stdout);
@@ -22,11 +22,11 @@ const openDocuments = new Map<string, { uri: string; languageId: string; version
 
 const respond = (id: number | string | null, result: ResponseMessage['result']): void => {
   const response: ResponseMessage = { jsonrpc: '2.0', id, ...(result !== undefined && { result }) };
-  writer.write(response);
+  void writer.write(response);
 };
 
 const sendNotification = (method: string, params: object): void => {
-  writer.write(createNotification(method, params));
+  void writer.write(createNotification(method, params));
 };
 
 const publishDiagnostics = (uri: string): void => {
@@ -49,14 +49,22 @@ reader.listen((msg) => {
 
   if (Msg.isRequest(msg)) {
     switch (msg.method) {
-      case 'initialize':
-        return respond(msg.id, { capabilities: { textDocumentSync: 1, hoverProvider: true } });
-      case 'shutdown':
-        return respond(msg.id, null);
-      case '$/documents':
-        return respond(msg.id, [...openDocuments.values()]);
-      default:
-        return respond(msg.id, { echo: msg.method, params: msg.params, server: serverName });
+      case 'initialize': {
+        respond(msg.id, { capabilities: { textDocumentSync: 1, hoverProvider: true } });
+        return;
+      }
+      case 'shutdown': {
+        respond(msg.id, null);
+        return;
+      }
+      case '$/documents': {
+        respond(msg.id, [...openDocuments.values()]);
+        return;
+      }
+      default: {
+        respond(msg.id, { echo: msg.method, params: msg.params, server: serverName });
+        return;
+      }
     }
   }
 

@@ -108,11 +108,14 @@ const positionToOffset = (text: string, pos: Position): number => {
   for (let line = 0; line < pos.line; line++) {
     const cr = text.indexOf('\r', offset);
     const lf = text.indexOf('\n', offset);
-    const eol =
-      cr === -1 && lf === -1 ? -1
-      : cr === -1 ? lf
-      : lf === -1 ? cr
-      : Math.min(cr, lf);
+    const eol
+      = cr === -1 && lf === -1
+        ? -1
+        : cr === -1
+          ? lf
+          : lf === -1
+            ? cr
+            : Math.min(cr, lf);
     if (eol === -1) return text.length;
     // Skip \r\n as a single line terminator
     offset = text[eol] === '\r' && text[eol + 1] === '\n' ? eol + 2 : eol + 1;

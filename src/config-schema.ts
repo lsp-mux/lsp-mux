@@ -6,7 +6,7 @@ export const ServerConfigSchema = v.object({
   languages: v.pipe(
     v.record(v.string(), v.array(v.string())),
     v.check(
-      (langs) => Object.keys(langs).length > 0,
+      langs => Object.keys(langs).length > 0,
       'languages must define at least one language',
     ),
   ),

@@ -1,13 +1,15 @@
+import * as v from 'valibot';
 import { describe, it, expect, afterEach } from 'vitest';
 import { PassThrough } from 'node:stream';
 import { join } from 'node:path';
+import type { Message } from 'vscode-jsonrpc';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import { LspProxy } from '../src/proxy.js';
-import { createRequest } from '../src/types.js';
+import { Message as Msg, createRequest } from '../src/types.js';
 import type { ServerConfig } from '../src/types.js';
 import { collectMessages, request, notify, initializeProxy } from './helpers/test-client.js';
 
-const MOCK_SERVER = join(import.meta.dirname!, 'helpers', 'mock-server.ts');
+const MOCK_SERVER = join(import.meta.dirname, 'helpers', 'mock-server.ts');
 
 const makeConfig = (name: string): ServerConfig => ({
   command: process.execPath,
@@ -35,15 +37,37 @@ const createMultiProxy = (
   return { proxy, writer, reader };
 };
 
-const isDiagnosticForUri = (msg: any, uri: string): boolean =>
-  msg.method === 'textDocument/publishDiagnostics' && msg.params?.uri === uri;
+const DiagNotificationSchema = v.object({
+  params: v.object({
+    uri: v.string(),
+    diagnostics: v.array(v.object({ source: v.optional(v.string()) })),
+  }),
+});
+
+const parseDiag = (msg: Message | undefined) =>
+  v.safeParse(DiagNotificationSchema, msg);
+
+const isDiagnosticForUri = (msg: Message | undefined, uri: string): boolean => {
+  const result = parseDiag(msg);
+  return result.success && result.output.params.uri === uri;
+};
+
+const getDiagnostics = (msg: Message | undefined) => {
+  const result = parseDiag(msg);
+  return result.success ? result.output.params.diagnostics : [];
+};
+
+const isResponse = (msg: Message, id: number): boolean =>
+  Msg.isResponse(msg) && msg.id === id;
 
 describe('Multi-server proxy', () => {
   let proxy: LspProxy;
   let writer: StreamMessageWriter;
   let reader: StreamMessageReader;
 
-  afterEach(() => proxy.dispose());
+  afterEach(() => {
+    proxy.dispose();
+  });
 
   const twoServerConfigs = () => new Map([
     ['alpha', makeConfig('alpha')],
@@ -52,25 +76,26 @@ describe('Multi-server proxy', () => {
 
   it('initializes all servers and merges capabilities', async () => {
     ({ proxy, writer, reader } = createMultiProxy(twoServerConfigs()));
-    proxy.start();
+    void proxy.start();
 
     const res = await initializeProxy(writer, reader);
-    expect(res.result.capabilities.hoverProvider).toBe(true);
-    expect(res.result.capabilities.textDocumentSync).toBe(1);
+    expect(res).toMatchObject({
+      result: { capabilities: { hoverProvider: true, textDocumentSync: 1 } },
+    });
   });
 
   it('merges diagnostics from multiple servers on didOpen', async () => {
     ({ proxy, writer, reader } = createMultiProxy(twoServerConfigs()));
-    proxy.start();
+    void proxy.start();
     await initializeProxy(writer, reader);
 
     const diagPromise = collectMessages(
       reader,
-      (msg) => isDiagnosticForUri(msg, 'file:///multi.ts'),
+      msg => isDiagnosticForUri(msg, 'file:///multi.ts'),
       2,
     );
 
-    notify(writer, 'textDocument/didOpen', {
+    await notify(writer, 'textDocument/didOpen', {
       textDocument: {
         uri: 'file:///multi.ts',
         languageId: 'typescript',
@@ -80,14 +105,15 @@ describe('Multi-server proxy', () => {
     });
 
     const diagnosticMsgs = await diagPromise;
-    const lastDiag = diagnosticMsgs[1];
-    const sources = lastDiag.params.diagnostics.map((d: any) => d.source).sort();
-    expect(sources).toEqual(['alpha', 'beta']);
+    expect(getDiagnostics(diagnosticMsgs.at(-1))).toEqual(expect.arrayContaining([
+      expect.objectContaining({ source: 'alpha' }),
+      expect.objectContaining({ source: 'beta' }),
+    ]));
   });
 
   it('routes hover request to primary server only', async () => {
     ({ proxy, writer, reader } = createMultiProxy(twoServerConfigs()));
-    proxy.start();
+    void proxy.start();
     await initializeProxy(writer, reader);
 
     const hover = await request(writer, reader, 10, 'textDocument/hover', {
@@ -95,22 +121,21 @@ describe('Multi-server proxy', () => {
       position: { line: 0, character: 0 },
     });
 
-    expect(hover.result.echo).toBe('textDocument/hover');
-    expect(hover.result.server).toBe('alpha');
+    expect(hover).toMatchObject({ result: { echo: 'textDocument/hover', server: 'alpha' } });
   });
 
   it('fans out didOpen to all matching servers', async () => {
     ({ proxy, writer, reader } = createMultiProxy(twoServerConfigs()));
-    proxy.start();
+    void proxy.start();
     await initializeProxy(writer, reader);
 
     const diagPromise = collectMessages(
       reader,
-      (msg) => isDiagnosticForUri(msg, 'file:///fanout.ts'),
+      msg => isDiagnosticForUri(msg, 'file:///fanout.ts'),
       2,
     );
 
-    notify(writer, 'textDocument/didOpen', {
+    await notify(writer, 'textDocument/didOpen', {
       textDocument: {
         uri: 'file:///fanout.ts',
         languageId: 'typescript',
@@ -120,70 +145,71 @@ describe('Multi-server proxy', () => {
     });
 
     const msgs = await diagPromise;
-    const lastMsg = msgs[msgs.length - 1];
-    expect(lastMsg.params.diagnostics).toHaveLength(2);
+    expect(getDiagnostics(msgs.at(-1))).toEqual(expect.arrayContaining([
+      expect.objectContaining({ source: 'alpha' }),
+      expect.objectContaining({ source: 'beta' }),
+    ]));
   });
 
   it('clears crashed server diagnostics and re-publishes', async () => {
     ({ proxy, writer, reader } = createMultiProxy(twoServerConfigs()));
-    proxy.start();
+    void proxy.start();
     await initializeProxy(writer, reader);
 
     const uri = 'file:///crash-diag.ts';
 
     const bothDiags = collectMessages(
       reader,
-      (msg) => isDiagnosticForUri(msg, uri),
+      msg => isDiagnosticForUri(msg, uri),
       2,
     );
 
-    notify(writer, 'textDocument/didOpen', {
+    await notify(writer, 'textDocument/didOpen', {
       textDocument: { uri, languageId: 'typescript', version: 1, text: 'x' },
     });
 
     await bothDiags;
 
-    writer.write(createRequest(100, '$/crash', {}));
+    await writer.write(createRequest(100, '$/crash', {}));
 
     const msgs = await collectMessages(
       reader,
-      (msg) =>
-        (msg.id === 100 && !msg.method) ||
-        (isDiagnosticForUri(msg, uri) &&
-          msg.params?.diagnostics?.length === 1 &&
-          msg.params.diagnostics[0].source === 'beta'),
+      msg =>
+        isResponse(msg, 100)
+        || (isDiagnosticForUri(msg, uri)
+          && getDiagnostics(msg).length === 1
+          && getDiagnostics(msg)[0]?.source === 'beta'),
       2,
     );
 
-    const errorMsg = msgs.find((m: any) => m.id === 100);
-    const diagMsg = msgs.find((m: any) => isDiagnosticForUri(m, uri));
-    expect(errorMsg.error).toBeDefined();
-    expect(diagMsg.params.diagnostics).toHaveLength(1);
-    expect(diagMsg.params.diagnostics[0].source).toBe('beta');
+    expect(msgs.find(m => isResponse(m, 100))).toMatchObject({ error: expect.objectContaining({}) as unknown });
+    expect(getDiagnostics(msgs.find(m => isDiagnosticForUri(m, uri)))).toStrictEqual([
+      expect.objectContaining({ source: 'beta' }),
+    ]);
   });
 
   it('handles shutdown with multiple servers', async () => {
     ({ proxy, writer, reader } = createMultiProxy(twoServerConfigs()));
-    proxy.start();
+    void proxy.start();
     await initializeProxy(writer, reader);
 
     const res = await request(writer, reader, 200, 'shutdown');
-    expect(res.result).toBeNull();
+    expect(res).toMatchObject({ result: null });
   });
 
   it('continues operating when one server restarts', async () => {
     ({ proxy, writer, reader } = createMultiProxy(twoServerConfigs()));
-    proxy.start();
+    void proxy.start();
     await initializeProxy(writer, reader);
 
     const crashRes = await request(writer, reader, 300, '$/crash');
-    expect(crashRes.error).toBeDefined();
+    expect(crashRes).toMatchObject({ error: expect.objectContaining({}) as unknown });
 
     const hover = await request(writer, reader, 301, 'textDocument/hover', {
       textDocument: { uri: 'file:///test.ts' },
       position: { line: 0, character: 0 },
     });
 
-    expect(hover.result.echo).toBe('textDocument/hover');
+    expect(hover).toMatchObject({ result: { echo: 'textDocument/hover' } });
   });
 });

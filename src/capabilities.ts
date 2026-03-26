@@ -3,10 +3,12 @@ export type ServerCapabilities = Record<string, unknown>;
 const isPlainObject = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
 
+const isArray = (v: unknown): v is unknown[] => Array.isArray(v);
+
 const mergeValues = (a: unknown, b: unknown): unknown => {
   if (typeof a === 'boolean' && typeof b === 'boolean') return a || b;
   if (typeof a === 'number' && typeof b === 'number') return Math.max(a, b);
-  if (Array.isArray(a) && Array.isArray(b)) return [...a, ...b];
+  if (isArray(a) && isArray(b)) return [...a, ...b];
   if (isPlainObject(a) && isPlainObject(b)) return { ...a, ...b };
   return b;
 };

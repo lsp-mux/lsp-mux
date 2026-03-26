@@ -22,7 +22,7 @@ export const createMessageBuffer = (maxSize: number): MessageBuffer => {
     },
 
     cancel(targetId) {
-      const idx = items.findIndex((m) => Msg.isRequest(m) && m.id === targetId);
+      const idx = items.findIndex(m => Msg.isRequest(m) && m.id === targetId);
       if (idx === -1) return false;
       items.splice(idx, 1);
       return true;

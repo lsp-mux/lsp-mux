@@ -3,14 +3,13 @@ import type { Message, RequestMessage, ResponseMessage, ServerConfig } from './t
 import * as v from 'valibot';
 import { Message as Msg, createNotification, DOCUMENT_SYNC_METHODS, LSP_ERROR_CODES } from './types.js';
 import { createManagedServer } from './managed-server.js';
-import type { ServerState } from './managed-server.js';
+import type { ManagedServer, ServerState } from './managed-server.js';
 import { createRouter, extractUri } from './router.js';
 import type { Router } from './router.js';
 import { mergeCapabilities } from './capabilities.js';
 import * as diag from './diagnostics-store.js';
 import * as docs from './document-tracker.js';
 import type { RestartPolicy } from './restart-scheduler.js';
-import type { ManagedServer } from './managed-server.js';
 import { log } from './logger.js';
 
 const CancelParamsSchema = v.object({
@@ -66,9 +65,9 @@ export class LspProxy {
 
     for (const { name, config } of serverEntries) {
       this.servers.set(name, createManagedServer(name, config, {
-        onServerMessage: (msg) => this.handleServerMessage(name, msg),
-        onPendingErrors: (ids, message) => this.handlePendingErrors(name, ids, message),
-        onStateChange: (serverState) => this.handleServerStateChange(name, serverState),
+        onServerMessage: (msg) => { this.handleServerMessage(name, msg); },
+        onPendingErrors: (ids, message) => { this.handlePendingErrors(name, ids, message); },
+        onStateChange: (serverState) => { this.handleServerStateChange(name, serverState); },
         getDocuments: () => docs.toArray(this.documents),
       }, options?.restartPolicy));
     }
@@ -78,13 +77,19 @@ export class LspProxy {
 
   start(): Promise<void> {
     log.info('Proxy starting');
-    this.clientReader.listen((msg) => this.handleClientMessage(msg));
-    this.clientReader.onError((err) => log.error('Client reader error:', err));
+    this.clientReader.listen((msg) => {
+      this.handleClientMessage(msg);
+    });
+    this.clientReader.onError((err) => {
+      log.error('Client reader error:', err);
+    });
     this.clientReader.onClose(() => {
       log.info('Client connection closed');
       this.dispose();
     });
-    return new Promise((resolve) => { this.resolveDone = resolve; });
+    return new Promise((resolve) => {
+      this.resolveDone = resolve;
+    });
   }
 
   // ── Client → Server ──────────────────────────────────────────────────
@@ -95,10 +100,14 @@ export class LspProxy {
     }
 
     switch (this.state) {
-      case 'idle':
-        return this.handleIdleMessage(msg);
-      case 'running':
-        return this.handleRunningMessage(msg);
+      case 'idle': {
+        this.handleIdleMessage(msg);
+        return;
+      }
+      case 'running': {
+        this.handleRunningMessage(msg);
+        return;
+      }
       case 'stopped':
         if (Msg.isNotification(msg) && msg.method === 'exit') {
           this.clientReader.dispose();
@@ -203,7 +212,8 @@ export class LspProxy {
           this.sendErrorToClient(msg.id, LSP_ERROR_CODES.InternalError, 'Server unavailable');
           this.requestRouting.delete(msg.id);
         }
-      } else {
+      }
+      else {
         this.sendErrorToClient(msg.id, LSP_ERROR_CODES.InternalError, 'No servers available');
       }
       return;
@@ -252,7 +262,7 @@ export class LspProxy {
       for (const uri of affectedUris) this.publishMergedDiagnostics(uri);
     }
 
-    const allStopped = [...this.servers.values()].every((s) => s.state === 'stopped');
+    const allStopped = [...this.servers.values()].every(s => s.state === 'stopped');
     if (allStopped && this.state === 'running') {
       log.error('All servers stopped — proxy stopping');
       this.state = 'stopped';
@@ -280,7 +290,7 @@ export class LspProxy {
   }
 
   private writeToClient(msg: Message): void {
-    this.clientWriter.write(msg).catch((err) => {
+    this.clientWriter.write(msg).catch((err: unknown) => {
       log.warn('Client write failed:', err);
     });
   }

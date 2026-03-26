@@ -59,9 +59,9 @@ describe('RestartScheduler', () => {
     vi.useFakeTimers();
     const sched = createRestartScheduler(policy);
 
-    sched.schedule(() => {});
+    sched.schedule(() => { /* no-op */ });
     vi.advanceTimersByTime(100);
-    sched.schedule(() => {});
+    sched.schedule(() => { /* no-op */ });
     vi.advanceTimersByTime(200);
     expect(sched.attempt).toBe(2);
 

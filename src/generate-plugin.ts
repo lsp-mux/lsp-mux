@@ -7,12 +7,12 @@ import { log } from './logger.js';
 const baseDir = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 const buildExtensionToLanguage = (
-  servers: ReadonlyArray<{ languages: Readonly<Record<string, readonly string[]>> }>,
+  servers: readonly { languages: Readonly<Record<string, readonly string[]>> }[],
 ): Record<string, string> =>
   Object.fromEntries(
     servers.flatMap(({ languages }) =>
       Object.entries(languages).flatMap(([langId, exts]) =>
-        exts.map((ext) => [ext, langId]),
+        exts.map(ext => [ext, langId]),
       ),
     ),
   );
@@ -20,7 +20,7 @@ const buildExtensionToLanguage = (
 const main = async (): Promise<void> => {
   const proxyConfig = await loadProxyConfig();
   const serverConfigs = await Promise.all(
-    proxyConfig.servers.map((name) => loadServerConfig(name)),
+    proxyConfig.servers.map(name => loadServerConfig(name)),
   );
 
   const extensionToLanguage = buildExtensionToLanguage(serverConfigs);
@@ -51,11 +51,11 @@ const main = async (): Promise<void> => {
   );
 
   const extCount = Object.keys(extensionToLanguage).length;
-  log.info(`Generated .lsp.json (${extCount} extensions from ${proxyConfig.servers.join(', ')})`);
+  log.info(`Generated .lsp.json (${String(extCount)} extensions from ${proxyConfig.servers.join(', ')})`);
   log.info('Generated .claude-plugin/plugin.json');
 };
 
-main().catch((err) => {
+main().catch((err: unknown) => {
   log.error('Fatal:', err);
   process.exit(1);
 });

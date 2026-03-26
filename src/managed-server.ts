@@ -73,14 +73,14 @@ export const createManagedServer = (
     params: RequestMessage['params'],
     timeoutMs = 30_000,
   ): Promise<ResponseMessage> => {
-    const id = `__proxy:${name}:${proxySeq++}`;
+    const id = `__proxy:${name}:${String(proxySeq++)}`;
     return new Promise<ResponseMessage>((resolve) => {
       const timer = setTimeout(() => {
         proxyCallbacks.delete(id);
         resolve({
           jsonrpc: '2.0',
           id,
-          error: { code: -1, message: `Request ${method} timed out after ${timeoutMs}ms` },
+          error: { code: LSP_ERROR_CODES.InternalError, message: `Request ${method} timed out after ${String(timeoutMs)}ms` },
         });
       }, timeoutMs);
 
@@ -95,11 +95,11 @@ export const createManagedServer = (
 
   const spawnServer = (): ChildServer => {
     const child = new ChildServer(name, config, {
-      onMessage: (msg) => handleServerMessage(msg),
-      onExit: (code, signal) => handleServerExit(code, signal),
+      onMessage: (msg) => { handleServerMessage(msg); },
+      onExit: () => { handleServerExit(); },
       onError: (err) => {
         log.error(`${name} spawn error:`, err);
-        handleServerExit(1, null);
+        handleServerExit();
       },
     });
     child.start();
@@ -126,7 +126,7 @@ export const createManagedServer = (
     callbacks.onServerMessage(msg);
   };
 
-  const handleServerExit = (_code: number | null, _signal: string | null): void => {
+  const handleServerExit = (): void => {
     if (state === 'stopped') return;
 
     resolveProxyCallbacks('Server exited');
@@ -167,13 +167,13 @@ export const createManagedServer = (
 
     const scheduled = scheduler.schedule(() => void performRestart());
     if (!scheduled) {
-      log.error(`${name}: max restart attempts (${scheduler.maxRetries}) reached — stopping`);
+      log.error(`${name}: max restart attempts (${String(scheduler.maxRetries)}) reached — stopping`);
       state = 'stopped';
       callbacks.onStateChange(state);
       return;
     }
 
-    log.info(`${name}: scheduling restart (attempt ${scheduler.attempt}/${scheduler.maxRetries})`);
+    log.info(`${name}: scheduling restart (attempt ${String(scheduler.attempt)}/${String(scheduler.maxRetries)})`);
   };
 
   const performRestart = async (): Promise<void> => {
@@ -184,7 +184,9 @@ export const createManagedServer = (
 
       const initResponse = await sendProxyRequest(child, 'initialize', initParams);
 
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- state mutates across await via handleServerExit
       if (state !== 'restarting' || server !== child) {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- state mutates across await via handleServerExit
         if (state === 'restarting') scheduleRestart();
         return;
       }
@@ -211,7 +213,7 @@ export const createManagedServer = (
           },
         }));
       }
-      log.info(`${name}: replayed ${documents.length} document(s)`);
+      log.info(`${name}: replayed ${String(documents.length)} document(s)`);
 
       // Flush buffered messages
       const flushed = buffer.flush();
@@ -219,10 +221,11 @@ export const createManagedServer = (
         if (Msg.isRequest(msg)) pendingRequests.add(msg.id);
         child.write(msg);
       }
-      if (flushed.length > 0) log.info(`${name}: flushed ${flushed.length} buffered message(s)`);
+      if (flushed.length > 0) log.info(`${name}: flushed ${String(flushed.length)} buffered message(s)`);
 
-      // Final guard — server may have crashed during replay/flush
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- state mutates across await via handleServerExit
       if (state !== 'restarting' || server !== child) {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- state mutates across await via handleServerExit
         if (state === 'restarting') scheduleRestart();
         return;
       }
@@ -231,7 +234,8 @@ export const createManagedServer = (
       scheduler.reset();
       callbacks.onStateChange(state);
       log.info(`${name}: restarted successfully`);
-    } catch (err) {
+    }
+    catch (err) {
       log.error(`${name}: restart failed:`, err);
       server?.dispose();
       server = null;

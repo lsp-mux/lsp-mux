@@ -11,8 +11,8 @@ const openDoc = (uri: string, text: string, version = 1) =>
 /** Get first document or fail — avoids `noUncheckedIndexedAccess` noise in tests. */
 const first = (docs: DocumentMap): TrackedDocument => {
   const doc = toArray(docs)[0];
-  expect(doc).toBeDefined();
-  return doc!;
+  if (!doc) throw new Error('Expected document');
+  return doc;
 };
 
 describe('document-tracker', () => {
@@ -29,8 +29,7 @@ describe('document-tracker', () => {
       docs = trackOpen(docs, {
         textDocument: { uri: 'file:///a.ts', languageId: 'typescript', version: 2, text: 'new' },
       });
-      expect(toArray(docs)).toHaveLength(1);
-      expect(first(docs).content).toBe('new');
+      expect(toArray(docs)).toStrictEqual([expect.objectContaining({ content: 'new' })]);
     });
   });
 
@@ -41,9 +40,7 @@ describe('document-tracker', () => {
         textDocument: { uri: 'file:///test.ts', version: 2 },
         contentChanges: [{ text: 'new' }],
       });
-      const doc = first(docs);
-      expect(doc.content).toBe('new');
-      expect(doc.version).toBe(2);
+      expect(first(docs)).toMatchObject({ content: 'new', version: 2 });
     });
   });
 
@@ -149,12 +146,12 @@ describe('document-tracker', () => {
     it('removes document', () => {
       let docs = openDoc('file:///test.ts', 'x');
       docs = trackClose(docs, { textDocument: { uri: 'file:///test.ts' } });
-      expect(toArray(docs)).toHaveLength(0);
+      expect(toArray(docs)).toStrictEqual([]);
     });
 
     it('is a no-op for unknown URI', () => {
       const docs = trackClose(empty(), { textDocument: { uri: 'file:///unknown.ts' } });
-      expect(toArray(docs)).toHaveLength(0);
+      expect(toArray(docs)).toStrictEqual([]);
     });
   });
 
@@ -164,7 +161,7 @@ describe('document-tracker', () => {
         textDocument: { uri: 'file:///unknown.ts', version: 2 },
         contentChanges: [{ text: 'new' }],
       });
-      expect(toArray(docs)).toHaveLength(0);
+      expect(toArray(docs)).toStrictEqual([]);
     });
 
     it('tracks multiple documents independently', () => {
@@ -178,7 +175,7 @@ describe('document-tracker', () => {
     it('returns immutable state (original unchanged)', () => {
       const before = empty();
       const after = openDoc('file:///test.ts', 'x');
-      expect(toArray(before)).toHaveLength(0);
+      expect(toArray(before)).toStrictEqual([]);
       expect(toArray(after)).toHaveLength(1);
     });
   });

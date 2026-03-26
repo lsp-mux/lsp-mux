@@ -54,7 +54,8 @@ const extractExtension = (uri: string): string | undefined => {
     const filename = pathname.slice(pathname.lastIndexOf('/') + 1);
     const dotIdx = filename.lastIndexOf('.');
     return dotIdx >= 0 ? filename.slice(dotIdx) : undefined;
-  } catch {
+  }
+  catch {
     return undefined;
   }
 };
@@ -78,14 +79,14 @@ const resolveServers = (
 
 /** Create a router from server entries (in config order). */
 export const createRouter = (servers: readonly ServerEntry[]): Router => {
-  const allServers = servers.map((s) => s.name);
+  const allServers = servers.map(s => s.name);
   const extToLang = buildExtToLang(servers);
   const langToServers = buildLangToServers(servers);
 
   return {
     allServers,
-    serversForUri: (uri) => resolveServers(uri, extToLang, langToServers, allServers),
-    primaryForUri: (uri) => resolveServers(uri, extToLang, langToServers, allServers)[0],
+    serversForUri: uri => resolveServers(uri, extToLang, langToServers, allServers),
+    primaryForUri: uri => resolveServers(uri, extToLang, langToServers, allServers)[0],
   };
 };
 

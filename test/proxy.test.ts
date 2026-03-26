@@ -6,7 +6,7 @@ import { LspProxy } from '../src/proxy.js';
 import type { ServerConfig } from '../src/types.js';
 import { request, notify, initializeProxy } from './helpers/test-client.js';
 
-const MOCK_SERVER = join(import.meta.dirname!, 'helpers', 'mock-server.ts');
+const MOCK_SERVER = join(import.meta.dirname, 'helpers', 'mock-server.ts');
 
 const mockServerConfig: ServerConfig = {
   command: process.execPath,
@@ -15,7 +15,6 @@ const mockServerConfig: ServerConfig = {
   transport: 'stdio',
 };
 
-/** Create an in-process proxy wired to PassThrough streams. */
 const createTestProxy = (
   config: ServerConfig = mockServerConfig,
   restartPolicy?: Partial<{ maxRetries: number; baseDelayMs: number; maxDelayMs: number }>,
@@ -43,22 +42,24 @@ describe('LspProxy integration', () => {
   let writer: StreamMessageWriter;
   let reader: StreamMessageReader;
 
-  afterEach(() => proxy.dispose());
+  afterEach(() => {
+    proxy.dispose();
+  });
 
   it('completes initialize handshake', async () => {
     ({ proxy, writer, reader } = createTestProxy());
-    proxy.start();
+    void proxy.start();
 
     const res = await initializeProxy(writer, reader);
-    expect(res.result.capabilities.hoverProvider).toBe(true);
+    expect(res).toMatchObject({ result: { capabilities: { hoverProvider: true } } });
   });
 
   it('forwards requests to child server', async () => {
     ({ proxy, writer, reader } = createTestProxy());
-    proxy.start();
+    void proxy.start();
     await initializeProxy(writer, reader);
 
-    notify(writer, 'textDocument/didOpen', {
+    await notify(writer, 'textDocument/didOpen', {
       textDocument: {
         uri: 'file:///test.ts',
         languageId: 'typescript',
@@ -72,16 +73,16 @@ describe('LspProxy integration', () => {
       position: { line: 0, character: 6 },
     });
 
-    expect(hover.result.echo).toBe('textDocument/hover');
+    expect(hover).toMatchObject({ result: { echo: 'textDocument/hover' } });
   });
 
   it('handles shutdown/exit gracefully', async () => {
     ({ proxy, writer, reader } = createTestProxy());
-    proxy.start();
+    void proxy.start();
     await initializeProxy(writer, reader);
 
     const shutdownRes = await request(writer, reader, 99, 'shutdown');
-    expect(shutdownRes.result).toBeNull();
+    expect(shutdownRes).toMatchObject({ result: null });
   });
 
   describe('restart behavior', () => {
@@ -90,25 +91,25 @@ describe('LspProxy integration', () => {
 
     it('restarts after crash and flushes buffered requests', async () => {
       ({ proxy, writer, reader } = createTestProxy());
-      proxy.start();
+      void proxy.start();
       await initializeProxy(writer, reader);
 
       const crashRes = await crashAndWait(writer, reader, 19);
-      expect(crashRes.error).toBeDefined();
+      expect(crashRes).toMatchObject({ error: expect.objectContaining({}) as unknown });
 
       const hover = await request(writer, reader, 20, 'textDocument/hover', {
         textDocument: { uri: 'file:///test.ts' },
         position: { line: 0, character: 0 },
       });
-      expect(hover.result.echo).toBe('textDocument/hover');
+      expect(hover).toMatchObject({ result: { echo: 'textDocument/hover' } });
     });
 
     it('replays tracked documents to restarted server', async () => {
       ({ proxy, writer, reader } = createTestProxy());
-      proxy.start();
+      void proxy.start();
       await initializeProxy(writer, reader);
 
-      notify(writer, 'textDocument/didOpen', {
+      await notify(writer, 'textDocument/didOpen', {
         textDocument: {
           uri: 'file:///replayed.ts',
           languageId: 'typescript',
@@ -118,22 +119,21 @@ describe('LspProxy integration', () => {
       });
 
       const crashRes = await crashAndWait(writer, reader, 25);
-      expect(crashRes.error).toBeDefined();
+      expect(crashRes).toMatchObject({ error: expect.objectContaining({}) as unknown });
 
       const docsRes = await request(writer, reader, 26, '$/documents');
-      expect(docsRes.result).toEqual([
-        { uri: 'file:///replayed.ts', languageId: 'typescript', version: 1 },
-      ]);
+      expect(docsRes).toMatchObject({
+        result: [{ uri: 'file:///replayed.ts', languageId: 'typescript', version: 1 }],
+      });
     });
 
     it('errors pending requests on crash', async () => {
       ({ proxy, writer, reader } = createTestProxy());
-      proxy.start();
+      void proxy.start();
       await initializeProxy(writer, reader);
 
       const res = await crashAndWait(writer, reader, 30);
-      expect(res.error).toBeDefined();
-      expect(res.error.message).toContain('crashed');
+      expect(res).toMatchObject({ error: { message: expect.stringContaining('crashed') as unknown } });
     });
 
     it('stops if server crashes before initial handshake', async () => {
@@ -144,67 +144,64 @@ describe('LspProxy integration', () => {
         transport: 'stdio',
       };
       ({ proxy, writer, reader } = createTestProxy(exitingConfig));
-      proxy.start();
+      void proxy.start();
 
       const res = await request(writer, reader, 0, 'initialize', {
         processId: process.pid,
         rootUri: null,
         capabilities: {},
       });
-      expect(res.error).toBeDefined();
+      expect(res).toMatchObject({ error: expect.objectContaining({}) as unknown });
     });
 
     it('stops after max retries exhausted', async () => {
       ({ proxy, writer, reader } = createTestProxy(mockServerConfig, { maxRetries: 0 }));
-      proxy.start();
+      void proxy.start();
       await initializeProxy(writer, reader);
 
       const crashRes = await crashAndWait(writer, reader, 40);
-      expect(crashRes.error).toBeDefined();
+      expect(crashRes).toMatchObject({ error: expect.objectContaining({}) as unknown });
 
       const res = await request(writer, reader, 41, 'textDocument/hover', {
         textDocument: { uri: 'file:///test.ts' },
         position: { line: 0, character: 0 },
       });
-      expect(res.error).toBeDefined();
-      expect(res.error.code).toBe(-32002); // ServerNotInitialized
+      expect(res).toMatchObject({ error: { code: -32002 } });
     });
 
     it('handles shutdown during restart', async () => {
       ({ proxy, writer, reader } = createTestProxy(mockServerConfig, {
         baseDelayMs: 500,
       }));
-      proxy.start();
+      void proxy.start();
       await initializeProxy(writer, reader);
 
       const crashRes = await crashAndWait(writer, reader, 49);
-      expect(crashRes.error).toBeDefined();
+      expect(crashRes).toMatchObject({ error: expect.objectContaining({}) as unknown });
 
       const res = await request(writer, reader, 50, 'shutdown');
-      expect(res.result).toBeNull();
+      expect(res).toMatchObject({ result: null });
 
       const hover = await request(writer, reader, 51, 'textDocument/hover', {});
-      expect(hover.error).toBeDefined();
-      expect(hover.error.code).toBe(-32002);
+      expect(hover).toMatchObject({ error: { code: -32002 } });
     });
 
     it('cancels buffered request during restart', async () => {
       ({ proxy, writer, reader } = createTestProxy());
-      proxy.start();
+      void proxy.start();
       await initializeProxy(writer, reader);
 
       const crashRes = await crashAndWait(writer, reader, 59);
-      expect(crashRes.error).toBeDefined();
+      expect(crashRes).toMatchObject({ error: expect.objectContaining({}) as unknown });
 
       const hoverPromise = request(writer, reader, 60, 'textDocument/hover', {
         textDocument: { uri: 'file:///test.ts' },
         position: { line: 0, character: 0 },
       });
-      notify(writer, '$/cancelRequest', { id: 60 });
+      await notify(writer, '$/cancelRequest', { id: 60 });
 
       const res = await hoverPromise;
-      expect(res.error).toBeDefined();
-      expect(res.error.code).toBe(-32800); // RequestCancelled
+      expect(res).toMatchObject({ error: { code: -32800 } });
     });
   });
 });
