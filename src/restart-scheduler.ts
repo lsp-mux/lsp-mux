@@ -1,0 +1,56 @@
+export interface RestartPolicy {
+  readonly maxRetries: number;
+  readonly baseDelayMs: number;
+  readonly maxDelayMs: number;
+}
+
+export const DEFAULT_RESTART_POLICY: RestartPolicy = {
+  maxRetries: 5,
+  baseDelayMs: 1000,
+  maxDelayMs: 30_000,
+};
+
+export interface RestartScheduler {
+  /** Schedule a callback with exponential backoff. Returns false if max retries reached. */
+  schedule(callback: () => void): boolean;
+  /** Reset attempt counter (call after successful restart). */
+  reset(): void;
+  /** Cancel any pending timer. */
+  cancel(): void;
+  readonly attempt: number;
+  readonly maxRetries: number;
+}
+
+export const createRestartScheduler = (policy: RestartPolicy): RestartScheduler => {
+  let count = 0;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  return {
+    schedule(callback) {
+      if (count >= policy.maxRetries) return false;
+      const delay = Math.min(policy.baseDelayMs * 2 ** count, policy.maxDelayMs);
+      count++;
+      timer = setTimeout(callback, delay);
+      return true;
+    },
+
+    reset() {
+      count = 0;
+    },
+
+    cancel() {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    },
+
+    get attempt() {
+      return count;
+    },
+
+    get maxRetries() {
+      return policy.maxRetries;
+    },
+  };
+};
