@@ -10,15 +10,23 @@
 import * as v from 'valibot';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import type { ResponseMessage } from 'vscode-jsonrpc';
-import { Message as Msg, createNotification } from '../../src/types.js';
+import { Message as Msg, createNotification, createRequest } from '../../src/types.js';
 import { DidOpenParamsSchema, DidChangeParamsSchema, DidCloseParamsSchema } from '../../src/document-tracker.js';
 
 const serverName = process.argv.find(a => a.startsWith('--name='))?.slice(7) ?? 'mock';
+const registerWatchers = process.argv.includes('--register-watchers');
+const registerMixed = process.argv.includes('--register-mixed');
+const incrementalSync = process.argv.includes('--incremental-sync');
+const unregisterOnCommand = process.argv.includes('--unregister-on-command');
 
 const reader = new StreamMessageReader(process.stdin);
 const writer = new StreamMessageWriter(process.stdout);
 
-const openDocuments = new Map<string, { uri: string; languageId: string; version: number }>();
+let initializeParams: unknown = null;
+const openDocuments = new Map<string, { uri: string; languageId: string; version: number; text: string }>();
+const watcherEvents: unknown[] = [];
+const receivedResponses: unknown[] = [];
+let serverRequestSeq = 1000;
 
 const respond = (id: number | string | null, result: ResponseMessage['result']): void => {
   const response: ResponseMessage = { jsonrpc: '2.0', id, ...(result !== undefined && { result }) };
@@ -42,6 +50,12 @@ const publishDiagnostics = (uri: string): void => {
 };
 
 reader.listen((msg) => {
+  // Track response messages (for verifying server-to-client routing)
+  if (Msg.isResponse(msg)) {
+    receivedResponses.push(msg);
+    return;
+  }
+
   // Crash on either request or notification form
   if ((Msg.isNotification(msg) || Msg.isRequest(msg)) && msg.method === '$/crash') {
     process.exit(1);
@@ -50,7 +64,12 @@ reader.listen((msg) => {
   if (Msg.isRequest(msg)) {
     switch (msg.method) {
       case 'initialize': {
-        respond(msg.id, { capabilities: { textDocumentSync: 1, hoverProvider: true } });
+        initializeParams = msg.params;
+        respond(msg.id, { capabilities: { textDocumentSync: incrementalSync ? 2 : 1, hoverProvider: true } });
+        return;
+      }
+      case '$/initParams': {
+        respond(msg.id, initializeParams as object);
         return;
       }
       case 'shutdown': {
@@ -59,6 +78,26 @@ reader.listen((msg) => {
       }
       case '$/documents': {
         respond(msg.id, [...openDocuments.values()]);
+        return;
+      }
+      case '$/watcherEvents': {
+        respond(msg.id, watcherEvents);
+        return;
+      }
+      case '$/receivedResponses': {
+        respond(msg.id, receivedResponses);
+        return;
+      }
+      case '$/unregisterWatchers': {
+        if (unregisterOnCommand) {
+          void writer.write(createRequest(serverRequestSeq++, 'client/unregisterCapability', {
+            unregisterations: [{
+              id: `${serverName}-watcher-ts`,
+              method: 'workspace/didChangeWatchedFiles',
+            }],
+          }));
+        }
+        respond(msg.id, { ok: true });
         return;
       }
       default: {
@@ -72,16 +111,57 @@ reader.listen((msg) => {
     if (msg.method === 'exit') process.exit(0);
 
     switch (msg.method) {
+      case 'initialized': {
+        if (registerWatchers) {
+          void writer.write(createRequest(serverRequestSeq++, 'client/registerCapability', {
+            registrations: [{
+              id: `${serverName}-watcher-ts`,
+              method: 'workspace/didChangeWatchedFiles',
+              registerOptions: {
+                watchers: [{ globPattern: '**/*.ts', kind: 7 }],
+              },
+            }],
+          }));
+        }
+        if (registerMixed) {
+          void writer.write(createRequest(serverRequestSeq++, 'client/registerCapability', {
+            registrations: [
+              {
+                id: `${serverName}-watcher-ts`,
+                method: 'workspace/didChangeWatchedFiles',
+                registerOptions: {
+                  watchers: [{ globPattern: '**/*.ts', kind: 7 }],
+                },
+              },
+              {
+                id: `${serverName}-save`,
+                method: 'textDocument/didSave',
+                registerOptions: { includeText: true },
+              },
+            ],
+          }));
+        }
+        break;
+      }
+      case 'workspace/didChangeWatchedFiles': {
+        watcherEvents.push(msg.params);
+        break;
+      }
       case 'textDocument/didOpen': {
         const { textDocument: td } = v.parse(DidOpenParamsSchema, msg.params);
-        openDocuments.set(td.uri, { uri: td.uri, languageId: td.languageId, version: td.version });
+        openDocuments.set(td.uri, { uri: td.uri, languageId: td.languageId, version: td.version, text: td.text });
         publishDiagnostics(td.uri);
         break;
       }
       case 'textDocument/didChange': {
-        const { textDocument: td } = v.parse(DidChangeParamsSchema, msg.params);
-        const doc = openDocuments.get(td.uri);
-        if (doc) doc.version = td.version;
+        const params = v.parse(DidChangeParamsSchema, msg.params);
+        const doc = openDocuments.get(params.textDocument.uri);
+        if (doc) {
+          doc.version = params.textDocument.version;
+          // Apply full-content change (TextDocumentSyncKind.Full)
+          const fullChange = params.contentChanges.find(c => c.range === undefined);
+          if (fullChange) doc.text = fullChange.text;
+        }
         break;
       }
       case 'textDocument/didClose': {

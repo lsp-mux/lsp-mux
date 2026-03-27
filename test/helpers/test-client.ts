@@ -1,5 +1,5 @@
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
-import type { Message } from 'vscode-jsonrpc';
+import type { Message, ResponseMessage } from 'vscode-jsonrpc';
 import { Message as Msg, createRequest, createNotification } from '../../src/types.js';
 
 /** Collect messages from a reader until a predicate matches. */
@@ -48,17 +48,27 @@ export const collectMessages = (
   });
 
 /** Send a request and wait for the matching response. */
-export const request = async (
+export const request = (
   writer: StreamMessageWriter,
   reader: StreamMessageReader,
   id: number,
   method: string,
   params?: object,
-): Promise<Message> => {
-  const promise = waitForMessage(reader, msg => Msg.isResponse(msg) && msg.id === id);
-  await writer.write(createRequest(id, method, params));
-  return promise;
-};
+): Promise<ResponseMessage> =>
+  new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => { reject(new Error('Timeout waiting for response')); },
+      10_000,
+    );
+    const disposable = reader.listen((msg) => {
+      if (Msg.isResponse(msg) && msg.id === id) {
+        clearTimeout(timer);
+        disposable.dispose();
+        resolve(msg);
+      }
+    });
+    void writer.write(createRequest(id, method, params));
+  });
 
 /** Send a notification (fire and forget). */
 export const notify = async (writer: StreamMessageWriter, method: string, params?: object): Promise<void> => {
@@ -69,10 +79,11 @@ export const notify = async (writer: StreamMessageWriter, method: string, params
 export const initializeProxy = async (
   writer: StreamMessageWriter,
   reader: StreamMessageReader,
+  rootUri: string | null = null,
 ): Promise<Message> => {
   const res = await request(writer, reader, 0, 'initialize', {
     processId: process.pid,
-    rootUri: null,
+    rootUri,
     capabilities: {},
   });
   await notify(writer, 'initialized', {});

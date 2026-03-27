@@ -70,7 +70,17 @@ A separate proxy config defines the multiplexing layer:
     "definition": "union",
     "references": "union",
     "codeAction": "union"
-  }
+  },
+  // Glob patterns to exclude from workspace file watching.
+  // Matches against paths relative to the workspace root.
+  // Defaults shown below — override to customize.
+  "watcherExclude": [
+    "**/node_modules/**",
+    "**/.git/**",
+    "**/.hg/**",
+    "**/.svn/**",
+    "**/dist/**"
+  ]
 }
 ```
 
@@ -92,6 +102,12 @@ A separate proxy config defines the multiplexing layer:
   transparent to the client
 - **Document state tracking** — proxy tracks `didOpen`/`didChange`/`didClose`
   and replays current state to servers that restart mid-session
+- **File watching** — Claude Code doesn't send
+  `workspace/didChangeWatchedFiles`, so the proxy watches tracked files
+  with `fs.watch` (like VS Code's built-in file watcher). When an
+  external tool (e.g., ESLint `--fix`, `git checkout`) modifies a file,
+  the proxy reads from disk, compares with tracked content, and sends
+  `didClose`/`didOpen` with fresh content to the relevant child servers.
 
 ### Volar 3 Forwarding (Example)
 

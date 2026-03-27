@@ -12,7 +12,9 @@ const main = async (): Promise<void> => {
     log.info(`Loaded server config: ${name}`);
   }
 
-  const proxy = new LspProxy(serverConfigs);
+  const proxy = new LspProxy(serverConfigs, {
+    watcherExclude: proxyConfig.watcherExclude,
+  });
   log.info('Proxy ready — waiting for client');
   await proxy.start();
   process.exit(0);
