@@ -30,6 +30,12 @@ export const createNotification = (
   params?: NotificationMessage['params'],
 ): NotificationMessage => ({ jsonrpc: '2.0', method, ...(params && { params }) });
 
+// --- Utilities ---
+
+/** Shared no-op function for catch handlers, callbacks, etc. */
+// eslint-disable-next-line @typescript-eslint/no-empty-function -- intentional
+export const noop = (): void => {};
+
 // --- Constants ---
 
 /** Notifications that mutate document state — tracked by the proxy, not buffered during restart. */

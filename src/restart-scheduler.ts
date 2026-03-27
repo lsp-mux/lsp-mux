@@ -28,9 +28,12 @@ export const createRestartScheduler = (policy: RestartPolicy): RestartScheduler 
   return {
     schedule(callback) {
       if (count >= policy.maxRetries) return false;
-      const delay = Math.min(policy.baseDelayMs * 2 ** count, policy.maxDelayMs);
+      const base = Math.min(policy.baseDelayMs * 2 ** count, policy.maxDelayMs);
+      // Add ±50% jitter to prevent thundering herd when multiple servers crash,
+      // clamped so jittered delay never exceeds the configured max.
+      const jitter = Math.min(base * (0.5 + Math.random()), policy.maxDelayMs);
       count++;
-      timer = setTimeout(callback, delay);
+      timer = setTimeout(callback, jitter);
       return true;
     },
 

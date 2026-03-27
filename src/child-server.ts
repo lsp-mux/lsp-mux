@@ -1,6 +1,7 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import type { Message, ServerConfig } from './types.js';
+import { noop } from './types.js';
 import { log } from './logger.js';
 
 export interface ChildServerEvents {
@@ -77,9 +78,8 @@ export class ChildServer {
 
   write(msg: Message): void {
     if (!this.disposed && this.writer) {
-      this.writer.write(msg).catch(() => {
-        // Stream may already be destroyed — safe to ignore
-      });
+      // Stream may already be destroyed — safe to ignore
+      this.writer.write(msg).catch(noop);
     }
   }
 

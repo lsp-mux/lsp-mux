@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { join, dirname } from 'node:path';
+import { basename, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as v from 'valibot';
 import { ProxyConfigSchema, ServerConfigSchema } from './config-schema.js';
@@ -17,5 +17,10 @@ export const loadProxyConfig = async (
 export const loadServerConfig = async (
   name: string,
   dir = join(baseDir, 'servers'),
-): Promise<ServerConfig> =>
-  v.parse(ServerConfigSchema, await parseJsonFile(join(dir, `${name}.json`)));
+): Promise<ServerConfig> => {
+  // basename on POSIX doesn't treat '\' as a separator, so check explicitly
+  if (basename(name) !== name || name.includes('\\')) {
+    throw new Error(`Invalid server name: ${name}`);
+  }
+  return v.parse(ServerConfigSchema, await parseJsonFile(join(dir, `${name}.json`)));
+};

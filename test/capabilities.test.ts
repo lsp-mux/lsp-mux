@@ -42,6 +42,15 @@ describe('mergeCapabilities', () => {
     ])).toEqual({ textDocumentSync: 2 });
   });
 
+  it('deep-merges nested object providers without losing keys', () => {
+    expect(mergeCapabilities([
+      { completionProvider: { triggerCharacters: ['.'], resolveProvider: true } },
+      { completionProvider: { triggerCharacters: [':', '<'] } },
+    ])).toEqual({
+      completionProvider: { triggerCharacters: ['.', ':', '<'], resolveProvider: true },
+    });
+  });
+
   it('shallow-merges object providers', () => {
     expect(mergeCapabilities([
       { completionProvider: { triggerCharacters: ['.'] } },

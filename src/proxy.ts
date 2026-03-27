@@ -1,7 +1,7 @@
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import type { Message, RequestMessage, ResponseMessage, ServerConfig } from './types.js';
 import * as v from 'valibot';
-import { Message as Msg, createNotification, DOCUMENT_SYNC_METHODS, LSP_ERROR_CODES } from './types.js';
+import { Message as Msg, createNotification, noop, DOCUMENT_SYNC_METHODS, LSP_ERROR_CODES } from './types.js';
 import { createManagedServer } from './managed-server.js';
 import type { ManagedServer, ServerState } from './managed-server.js';
 import { createRouter, extractUri } from './router.js';
@@ -132,6 +132,7 @@ export class LspProxy {
 
   private async initializeAllServers(clientRequestId: number | string | null): Promise<void> {
     const allCapabilities: Record<string, unknown>[] = [];
+    const initialized: ManagedServer[] = [];
 
     for (const [name, server] of this.servers) {
       const response = await server.initialize(this.initParams);
@@ -141,10 +142,13 @@ export class LspProxy {
         this.sendErrorToClient(clientRequestId, LSP_ERROR_CODES.InternalError,
           `Server ${name} failed to initialize: ${response.error.message}`);
         this.state = 'stopped';
+        // Send clean shutdown to servers that already initialized (parallel to avoid N*30s timeout)
+        await Promise.allSettled(initialized.map(s => s.shutdown().catch(noop)));
         for (const s of this.servers.values()) s.dispose();
         return;
       }
 
+      initialized.push(server);
       const parsed = v.safeParse(InitializeResultSchema, response.result);
       if (parsed.success) {
         allCapabilities.push(parsed.output.capabilities);
@@ -265,7 +269,7 @@ export class LspProxy {
     const allStopped = [...this.servers.values()].every(s => s.state === 'stopped');
     if (allStopped && this.state === 'running') {
       log.error('All servers stopped — proxy stopping');
-      this.state = 'stopped';
+      this.dispose();
     }
   }
 

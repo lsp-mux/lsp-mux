@@ -46,6 +46,28 @@ describe('LspProxy integration', () => {
     proxy.dispose();
   });
 
+  it('returns ServerNotInitialized for requests before initialize', async () => {
+    ({ proxy, writer, reader } = createTestProxy());
+    void proxy.start();
+
+    const res = await request(writer, reader, 1, 'textDocument/hover', {
+      textDocument: { uri: 'file:///test.ts' },
+      position: { line: 0, character: 0 },
+    });
+    expect(res).toMatchObject({ error: { code: -32002 } });
+  });
+
+  it('returns ServerNotInitialized for requests after shutdown', async () => {
+    ({ proxy, writer, reader } = createTestProxy());
+    void proxy.start();
+    await initializeProxy(writer, reader);
+
+    await request(writer, reader, 98, 'shutdown');
+
+    const res = await request(writer, reader, 99, 'textDocument/hover', {});
+    expect(res).toMatchObject({ error: { code: -32002 } });
+  });
+
   it('completes initialize handshake', async () => {
     ({ proxy, writer, reader } = createTestProxy());
     void proxy.start();
@@ -167,6 +189,23 @@ describe('LspProxy integration', () => {
         position: { line: 0, character: 0 },
       });
       expect(res).toMatchObject({ error: { code: -32002 } });
+    });
+
+    it('resolves start() when all servers exhaust retries', async () => {
+      ({ proxy, writer, reader } = createTestProxy(mockServerConfig, { maxRetries: 0 }));
+      const done = proxy.start();
+      await initializeProxy(writer, reader);
+
+      // Crash with 0 retries → server enters stopped state → proxy should auto-dispose
+      await request(writer, reader, 42, '$/crash');
+
+      // start() should resolve (not hang as a zombie)
+      const timeout = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('zombie'));
+        }, 3000);
+      });
+      await expect(Promise.race([done, timeout])).resolves.toBeUndefined();
     });
 
     it('handles shutdown during restart', async () => {

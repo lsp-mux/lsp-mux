@@ -16,11 +16,30 @@ export const ServerConfigSchema = v.object({
 
 export type ServerConfig = v.InferOutput<typeof ServerConfigSchema>;
 
-export const ProxyConfigSchema = v.object({
-  servers: v.pipe(
-    v.array(v.pipe(v.string(), v.nonEmpty('server name must not be empty'))),
-    v.minLength(1, 'at least one server must be configured'),
-  ),
-});
+const DEFAULT_WATCHER_EXCLUDE = [
+  '**/node_modules/**',
+  '**/.git/**',
+  '**/.hg/**',
+  '**/.svn/**',
+  '**/dist/**',
+];
+
+export const ProxyConfigSchema = v.pipe(
+  v.object({
+    servers: v.pipe(
+      v.array(v.pipe(v.string(), v.nonEmpty('server name must not be empty'))),
+      v.minLength(1, 'at least one server must be configured'),
+      v.check(
+        names => new Set(names).size === names.length,
+        'server names must be unique',
+      ),
+    ),
+    watcherExclude: v.optional(v.array(v.string())),
+  }),
+  v.transform(cfg => ({
+    ...cfg,
+    watcherExclude: [...new Set([...DEFAULT_WATCHER_EXCLUDE, ...(cfg.watcherExclude ?? [])])],
+  })),
+);
 
 export type ProxyConfig = v.InferOutput<typeof ProxyConfigSchema>;

@@ -11,22 +11,22 @@ describe('RestartScheduler', () => {
     const sched = createRestartScheduler(policy);
     const calls: number[] = [];
 
-    // Attempt 1: 100 * 2^0 = 100ms
+    // Attempt 1: base 100 * 2^0 = 100ms, jittered to [50, 150]
     expect(sched.schedule(() => calls.push(1))).toBe(true);
     expect(sched.attempt).toBe(1);
-    vi.advanceTimersByTime(100);
+    vi.advanceTimersByTime(150); // max jittered delay for base 100
     expect(calls).toEqual([1]);
 
-    // Attempt 2: 100 * 2^1 = 200ms
+    // Attempt 2: base 100 * 2^1 = 200ms, jittered to [100, 300]
     expect(sched.schedule(() => calls.push(2))).toBe(true);
     expect(sched.attempt).toBe(2);
-    vi.advanceTimersByTime(200);
+    vi.advanceTimersByTime(300);
     expect(calls).toEqual([1, 2]);
 
-    // Attempt 3: 100 * 2^2 = 400ms
+    // Attempt 3: base min(400, 500) = 400ms, jittered to [200, 600)
     expect(sched.schedule(() => calls.push(3))).toBe(true);
     expect(sched.attempt).toBe(3);
-    vi.advanceTimersByTime(400);
+    vi.advanceTimersByTime(600);
     expect(calls).toEqual([1, 2, 3]);
 
     // Attempt 4: over maxRetries
@@ -39,19 +39,19 @@ describe('RestartScheduler', () => {
     const sched = createRestartScheduler({ maxRetries: 10, baseDelayMs: 100, maxDelayMs: 300 });
     const calls: number[] = [];
 
-    // Attempt 1: 100ms
+    // Attempt 1: base 100ms → jittered [50, 150]
     sched.schedule(() => calls.push(1));
-    vi.advanceTimersByTime(100);
+    vi.advanceTimersByTime(150);
 
-    // Attempt 2: 200ms
+    // Attempt 2: base 200ms → jittered [100, 300]
     sched.schedule(() => calls.push(2));
-    vi.advanceTimersByTime(200);
+    vi.advanceTimersByTime(300);
 
-    // Attempt 3: min(400, 300) = 300ms (capped)
+    // Attempt 3: base min(400, 300) = 300ms → jittered [150, 450]
+    // With the cap at 300, jitter range is [150, 450]
     sched.schedule(() => calls.push(3));
-    vi.advanceTimersByTime(299);
     expect(calls).toEqual([1, 2]);
-    vi.advanceTimersByTime(1);
+    vi.advanceTimersByTime(450);
     expect(calls).toEqual([1, 2, 3]);
   });
 
@@ -60,9 +60,9 @@ describe('RestartScheduler', () => {
     const sched = createRestartScheduler(policy);
 
     sched.schedule(() => { /* no-op */ });
-    vi.advanceTimersByTime(100);
+    vi.advanceTimersByTime(150); // max jittered delay for base 100
     sched.schedule(() => { /* no-op */ });
-    vi.advanceTimersByTime(200);
+    vi.advanceTimersByTime(300); // max jittered delay for base 200
     expect(sched.attempt).toBe(2);
 
     sched.reset();
@@ -72,7 +72,7 @@ describe('RestartScheduler', () => {
     const called = vi.fn();
     expect(sched.schedule(called)).toBe(true);
     expect(sched.attempt).toBe(1);
-    vi.advanceTimersByTime(100);
+    vi.advanceTimersByTime(150); // max jittered delay for base 100
     expect(called).toHaveBeenCalledOnce();
   });
 
@@ -90,5 +90,36 @@ describe('RestartScheduler', () => {
   it('exposes maxRetries from policy', () => {
     const sched = createRestartScheduler(policy);
     expect(sched.maxRetries).toBe(3);
+  });
+
+  it('adds jitter so simultaneous restarts do not thundering-herd', () => {
+    vi.useFakeTimers();
+    const delays: number[] = [];
+    vi.spyOn(globalThis, 'setTimeout').mockImplementation(((
+      _cb: () => void, delay: number,
+    ) => {
+      delays.push(delay);
+      return 0 as unknown as ReturnType<typeof setTimeout>;
+    }) as typeof setTimeout);
+
+    // Schedule 10 attempts to get enough samples to verify jitter variance
+    const noop = (): void => { /* no-op */ };
+    for (let i = 0; i < 10; i++) {
+      const sched = createRestartScheduler(policy);
+      sched.schedule(noop);
+    }
+
+    // All use attempt 0 → deterministic base delay is 100ms.
+    // With jitter, delays should be within [50, 150] (±50% of base)
+    // and NOT all identical (which would indicate no jitter).
+    expect(delays).toHaveLength(10);
+    for (const d of delays) {
+      expect(d).toBeGreaterThanOrEqual(50);
+      expect(d).toBeLessThanOrEqual(150);
+    }
+    const allSame = delays.every(d => d === delays[0]);
+    expect(allSame).toBe(false);
+
+    vi.restoreAllMocks();
   });
 });
