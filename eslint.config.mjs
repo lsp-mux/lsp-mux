@@ -2,6 +2,7 @@ import { defineConfig } from 'eslint/config';
 import { flatConfigs as importPluginConfigs } from 'eslint-plugin-import-x';
 import nodePlugin from 'eslint-plugin-n';
 import 'eslint-plugin-only-warn';
+import { configs as pnpmPluginConfigs } from 'eslint-plugin-pnpm';
 import stylistic from '@stylistic/eslint-plugin';
 import vitest from '@vitest/eslint-plugin';
 import { configs as typescriptPluginConfigs } from 'typescript-eslint';
@@ -13,6 +14,12 @@ export default defineConfig([
   importPluginConfigs.recommended,
   importPluginConfigs.typescript,
   nodePlugin.configs['flat/recommended-module'],
+  ...pnpmPluginConfigs.json,
+  ...pnpmPluginConfigs.yaml,
+  {
+    files: ['**/package.json', 'pnpm-workspace.yaml'],
+    extends: [typescriptPluginConfigs.disableTypeChecked],
+  },
   {
     rules: {
       // Justification: Redundant with import-x/no-unresolved + TypeScript module resolution
