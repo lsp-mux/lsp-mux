@@ -17,45 +17,35 @@ export default defineConfig([
   ...pnpmPluginConfigs.json,
   ...pnpmPluginConfigs.yaml,
   {
+    name: 'root/pnpm-disable-type-checked',
     files: ['**/package.json', 'pnpm-workspace.yaml'],
     extends: [typescriptPluginConfigs.disableTypeChecked],
   },
   {
+    name: 'root/disable-redundant-node-rules',
     rules: {
       // Justification: Redundant with import-x/no-unresolved + TypeScript module resolution
       'n/no-missing-import': 'off',
       // Justification: Redundant with import-x/no-extraneous-dependencies
       'n/no-unpublished-import': 'off',
+      // Justification: Redundant with import-x/no-extraneous-dependencies in a pnpm workspace
+      'n/no-extraneous-import': 'off',
     },
   },
   {
-    files: ['src/**/*.ts'],
+    name: 'root/strict-type-assertions',
+    files: ['packages/*/src/**/*.ts'],
     rules: {
       // Justification: Use type-safe alternatives (satisfies, generics, narrowing)
       '@typescript-eslint/consistent-type-assertions': ['error', { assertionStyle: 'never' }],
     },
   },
   {
-    files: ['src/main.ts', 'src/generate-plugin.ts', 'test/helpers/mock-server.ts'],
-    rules: {
-      // Justification: Entry points and test harness — process.exit() is the correct shutdown mechanism
-      'n/no-process-exit': 'off',
-    },
-  },
-  {
-    settings: {
-      'import-x/resolver': {
-        typescript: {
-          project: './tsconfig.json',
-        },
-      },
-    },
-  },
-  {
+    name: 'root/typescript-parser',
     languageOptions: {
       parserOptions: {
         projectService: {
-          allowDefaultProject: ['*.config.*'],
+          allowDefaultProject: ['*.config.*', 'packages/*/*.config.*'],
           defaultProject: 'tsconfig.root.json',
         },
         tsconfigRootDir: import.meta.dirname,
@@ -63,13 +53,15 @@ export default defineConfig([
     },
   },
   {
-    files: ['test/**/*.ts'],
+    name: 'root/vitest',
+    files: ['packages/*/test/**/*.ts'],
     plugins: { vitest },
     rules: {
       ...vitest.configs.recommended.rules,
     },
   },
   {
-    ignores: ['dist/'],
+    name: 'root/ignores',
+    ignores: ['**/dist/**', '**/tmp-workspace*/**'],
   },
 ]);

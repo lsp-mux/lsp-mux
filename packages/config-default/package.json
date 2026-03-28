@@ -1,0 +1,14 @@
+{
+  "name": "claude-lsp-proxy-config-default",
+  "version": "0.1.0",
+  "description": "Default server configs (vtsls, eslint) for claude-lsp-proxy",
+  "type": "module",
+  "scripts": {
+    "generate-plugin": "generate-lsp-plugin"
+  },
+  "dependencies": {
+    "claude-lsp-proxy": "workspace:*",
+    "@vtsls/language-server": "catalog:lsp",
+    "vscode-langservers-extracted": "catalog:lsp"
+  }
+}

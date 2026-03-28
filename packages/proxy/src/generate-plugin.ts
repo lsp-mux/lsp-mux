@@ -1,10 +1,8 @@
+#!/usr/bin/env node
 import { mkdir, writeFile } from 'node:fs/promises';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { loadProxyConfig, loadServerConfig } from './config.js';
+import { join } from 'node:path';
+import { loadProxyConfig, loadServerConfig, ownPackageDir } from './config.js';
 import { log } from './logger.js';
-
-const baseDir = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 const buildExtensionToLanguage = (
   servers: readonly { languages: Readonly<Record<string, readonly string[]>> }[],
@@ -18,9 +16,10 @@ const buildExtensionToLanguage = (
   );
 
 const main = async (): Promise<void> => {
-  const proxyConfig = await loadProxyConfig();
+  const configDir = process.cwd();
+  const proxyConfig = await loadProxyConfig(configDir);
   const serverConfigs = await Promise.all(
-    proxyConfig.servers.map(name => loadServerConfig(name)),
+    proxyConfig.servers.map(name => loadServerConfig(name, configDir)),
   );
 
   const extensionToLanguage = buildExtensionToLanguage(serverConfigs);
@@ -28,7 +27,7 @@ const main = async (): Promise<void> => {
   const lspJson = {
     'lsp-proxy': {
       command: 'node',
-      args: [join(baseDir, 'dist', 'main.js')],
+      args: [join(ownPackageDir, 'dist', 'main.js'), '--config-dir', configDir],
       extensionToLanguage,
       transport: 'stdio',
       initializationOptions: {},
@@ -43,16 +42,22 @@ const main = async (): Promise<void> => {
     description: 'Multiplexing LSP proxy for Claude Code',
   };
 
-  await writeFile(join(baseDir, '.lsp.json'), JSON.stringify(lspJson, null, 2) + '\n');
-  await mkdir(join(baseDir, '.claude-plugin'), { recursive: true });
-  await writeFile(
-    join(baseDir, '.claude-plugin', 'plugin.json'),
-    JSON.stringify(pluginJson, null, 2) + '\n',
-  );
+  const marketplaceJson = {
+    name: 'claude-lsp-proxy',
+    owner: { name: 'claude-lsp-proxy' },
+    plugins: [{ name: 'lsp-proxy', source: './', description: pluginJson.description }],
+  };
+
+  await writeFile(join(configDir, '.lsp.json'), JSON.stringify(lspJson, null, 2) + '\n');
+  const pluginDir = join(configDir, '.claude-plugin');
+  await mkdir(pluginDir, { recursive: true });
+  await writeFile(join(pluginDir, 'plugin.json'), JSON.stringify(pluginJson, null, 2) + '\n');
+  await writeFile(join(pluginDir, 'marketplace.json'), JSON.stringify(marketplaceJson, null, 2) + '\n');
 
   const extCount = Object.keys(extensionToLanguage).length;
   log.info(`Generated .lsp.json (${String(extCount)} extensions from ${proxyConfig.servers.join(', ')})`);
   log.info('Generated .claude-plugin/plugin.json');
+  log.info('Generated .claude-plugin/marketplace.json');
 };
 
 main().catch((err: unknown) => {

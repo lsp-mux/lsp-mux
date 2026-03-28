@@ -1,26 +1,19 @@
 {
-  "name": "claude-lsp-proxy",
-  "version": "0.1.0",
-  "description": "Multiplexing LSP proxy for Claude Code",
+  "name": "claude-lsp-proxy-root",
+  "private": true,
   "type": "module",
-  "main": "dist/main.js",
   "engines": {
     "node": ">=22.16"
   },
   "scripts": {
-    "lint": "tsc -b && eslint --max-warnings=0 .",
-    "build": "pnpm lint && vitest run",
-    "dev": "tsc -b --watch",
+    "build": "concurrently -g pnpm:compile pnpm:lint pnpm:test && pnpm generate-plugin",
+    "compile": "tsc -b",
+    "compile:watch": "pnpm compile --watch",
+    "generate-plugin": "pnpm -C packages/config-default generate-plugin",
+    "lint": "eslint --max-warnings=0 .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "generate-plugin": "node --import tsx src/generate-plugin.ts"
-  },
-  "dependencies": {
-    "@vtsls/language-server": "catalog:lsp",
-    "picomatch": "catalog:",
-    "valibot": "catalog:",
-    "vscode-jsonrpc": "catalog:",
-    "vscode-langservers-extracted": "catalog:lsp"
+    "watch": "concurrently -g pnpm:compile:watch pnpm:test:watch"
   },
   "devDependencies": {
     "@stylistic/eslint-plugin": "catalog:lint",
@@ -28,6 +21,7 @@
     "@types/node": "catalog:build",
     "@types/picomatch": "catalog:build",
     "@vitest/eslint-plugin": "catalog:lint",
+    "concurrently": "catalog:build",
     "eslint": "catalog:lint",
     "eslint-import-resolver-typescript": "catalog:lint",
     "eslint-plugin-import-x": "catalog:lint",

@@ -1,0 +1,18 @@
+{
+  "name": "claude-lsp-proxy",
+  "version": "0.1.0",
+  "description": "Multiplexing LSP proxy for Claude Code",
+  "type": "module",
+  "main": "dist/main.js",
+  "bin": {
+    "generate-lsp-plugin": "dist/generate-plugin.js"
+  },
+  "engines": {
+    "node": ">=22.16"
+  },
+  "dependencies": {
+    "picomatch": "catalog:",
+    "valibot": "catalog:",
+    "vscode-jsonrpc": "catalog:"
+  }
+}

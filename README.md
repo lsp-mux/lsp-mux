@@ -1,117 +1,126 @@
 # claude-lsp-proxy
 
-An LSP proxy for Claude Code. Sits between Claude Code and a child LSP server,
-adding transparent crash recovery with document state replay.
+A multiplexing LSP proxy for Claude Code. Presents as a single LSP server
+while internally managing multiple language servers per file type, with
+transparent crash recovery and document state replay.
 
 ## Problem
 
-Claude Code's LSP plugin system has no lifecycle recovery — a crashed LSP
-server requires restarting Claude Code entirely.
+Claude Code's LSP plugin system has limitations:
+
+- [**One server per file type**](https://github.com/anthropics/claude-code/issues/27692) — can't run vtsls + ESLint for `.ts` files
+- **No lifecycle recovery** — a crashed LSP server requires restarting Claude
+- **No inter-server communication** — Volar 3 requires forwarding between servers
+  (bridging is [planned](./AGENTS.md) but not yet implemented)
+- [**Windows `.cmd` spawn**](https://github.com/anthropics/claude-code/issues/16751) — npm shim resolution fails on Windows
 
 ## How It Works
 
-The proxy presents as a single LSP server over stdio. It spawns a child LSP
-server, forwards all JSON-RPC messages bidirectionally, and tracks document
-state. If the child server crashes, the proxy automatically restarts it with
-exponential backoff and replays the current document state so the client never
-notices.
+The proxy presents as a single LSP server over stdio. It spawns child LSP
+servers, routes requests by file type, merges diagnostics, and tracks document
+state. If a child server crashes, the proxy restarts it with exponential
+backoff and replays open documents.
 
 ```
-Claude Code (stdio) <--> claude-lsp-proxy <--> child LSP server (e.g. vtsls)
+Claude Code (stdio) <--> claude-lsp-proxy <--> vtsls
+                                           \-> eslint
 ```
 
-## Setup
+## Packages
+
+| Package | Description |
+|---------|-------------|
+| [`packages/proxy`](packages/proxy) | The multiplexing proxy core |
+| [`packages/config-default`](packages/config-default) | Default server configs (vtsls + eslint for TS/JS) |
+
+## Quick Start
 
 ```sh
 pnpm install
 pnpm build
 ```
 
-## Configuration
+## Usage with Claude Code
 
-The proxy reads `proxy.config.json` for which server to manage, and loads the
-server config from `servers/`.
+Generate the plugin files from your config package:
 
-```jsonc
-// proxy.config.json
+```sh
+pnpm -C packages/config-default generate-plugin
+```
+
+This creates `.lsp.json` and `.claude-plugin/plugin.json` in
+`packages/config-default/`. The generated files contain absolute paths —
+re-run this command if you move the directory.
+
+### Dev/testing (current session only)
+
+```sh
+claude --plugin-dir /path/to/claude-lsp-proxy/packages/config-default
+```
+
+### Persistent (local marketplace)
+
+In Claude Code:
+
+```
+/plugin marketplace add /absolute/path/to/packages/config-default
+/plugin install lsp-proxy@claude-lsp-proxy
+```
+
+### Conflicting plugins
+
+Disable individual LSP plugins that handle the same file types:
+
+```
+/plugin disable vtsls@claude-code-lsps
+```
+
+## Custom Server Configuration
+
+To use different LSP servers, create your own config package:
+
+```sh
+mkdir my-lsp-config && cd my-lsp-config
+pnpm init
+pnpm add claude-lsp-proxy
+pnpm add vscode-langservers-extracted  # or whatever servers you need
+```
+
+Create `proxy.config.json`:
+
+```json
 {
-  "servers": ["vtsls"]
+  "servers": ["css"]
 }
 ```
 
-```jsonc
-// servers/vtsls.json
+Create `servers/css.json`:
+
+```json
 {
   "command": "node",
-  "args": ["./node_modules/@vtsls/language-server/bin/vtsls.js", "--stdio"],
+  "args": ["./node_modules/vscode-langservers-extracted/bin/vscode-css-language-server", "--stdio"],
   "languages": {
-    "typescript": [".ts", ".mts", ".cts"],
-    "typescriptreact": [".tsx"],
-    "javascript": [".js", ".mjs", ".cjs"],
-    "javascriptreact": [".jsx"]
+    "css": [".css"],
+    "scss": [".scss"],
+    "less": [".less"]
   },
   "transport": "stdio"
 }
 ```
 
-## Usage with Claude Code
-
-Generate the plugin files, then point Claude Code at the proxy:
+Generate and register:
 
 ```sh
-pnpm generate-plugin
-```
-
-This creates `.lsp.json` and `.claude-plugin/plugin.json` from your
-`proxy.config.json` and `servers/*.json` configs.
-
-### Dev/testing (current session only)
-
-```sh
-claude --plugin-dir /path/to/claude-lsp-proxy
-```
-
-### Persistent (local marketplace)
-
-Add to `~/.claude/settings.json`:
-
-```json
-{
-  "extraKnownMarketplaces": {
-    "claude-lsp-proxy": {
-      "source": {
-        "source": "directory",
-        "path": "/absolute/path/to/claude-lsp-proxy"
-      }
-    }
-  },
-  "enabledPlugins": {
-    "lsp-proxy@claude-lsp-proxy": true
-  }
-}
-```
-
-Then run `/reload-plugins` in Claude Code.
-
-### Conflicting plugins
-
-Disable or remove individual LSP plugins that handle the same file types so
-the proxy handles them exclusively:
-
-```json
-{
-  "enabledPlugins": {
-    "vtsls@claude-code-lsps": false,
-    "lsp-proxy@claude-lsp-proxy": true
-  }
-}
+pnpm dlx generate-lsp-plugin
+claude --plugin-dir /path/to/my-lsp-config
 ```
 
 ## Testing
 
 ```sh
 pnpm test        # vitest only
-pnpm build       # type-check + emit + test
+pnpm build       # type-check + lint + test + generate plugin
 ```
 
 ## Roadmap

@@ -15,6 +15,22 @@ Claude Code's LSP plugin system has limitations:
   cache but fetches `args` from the remote marketplace, so local patches to
   launch arguments have no effect (tested on Claude Code 2.1.83)
 
+## Project Structure
+
+pnpm workspace monorepo with two packages:
+
+- **`packages/proxy`** — the multiplexing proxy core. Dependencies:
+  `vscode-jsonrpc`, `picomatch`, `valibot`. Exposes `generate-lsp-plugin` bin.
+- **`packages/config-default`** — default server configs (vtsls + eslint for
+  TS/JS). Depends on the proxy package and LSP server packages. Users can
+  create their own config package with different servers.
+
+The proxy accepts `--config-dir` to locate `proxy.config.json` and
+`servers/*.json`. The `generate-lsp-plugin` bin reads configs from `cwd` and
+writes `.lsp.json` / `.claude-plugin/plugin.json` there. Relative paths in
+server configs (e.g., `./node_modules/...`) are resolved to absolute paths
+at config load time so child servers inherit the workspace cwd.
+
 ## Design
 
 A Node.js process that:
@@ -22,9 +38,9 @@ A Node.js process that:
 - Accepts stdio from Claude Code as a single LSP server
 - Spawns and manages child LSP servers
 - Routes requests by file type / language ID to the appropriate server(s)
-- Merges responses from multiple servers (diagnostics, completions, hovers)
-- Bridges inter-server protocols (Volar 3's tsserver request forwarding)
+- Merges diagnostics from multiple servers (union)
 - Auto-restarts crashed servers transparently
+- Watches workspace files and resyncs document state on external changes
 
 ### Architecture
 
@@ -34,7 +50,7 @@ Claude Code (stdio)
     v
 claude-lsp-proxy (generic multiplexer)
     |--- vtsls
-    |--- vue-language-server v3
+    |--- vue-language-server v3  (planned — requires bridging)
     |       |-- tsserver/request --> vtsls  (bridge)
     |       |<- tsserver/response <-- vtsls
     |--- eslint
@@ -43,19 +59,32 @@ claude-lsp-proxy (generic multiplexer)
 
 ### Server Configuration
 
-Each server is defined in its own JSON file using the same format as
-claude-code-lsps `.lsp.json` (command, args, languages, transport, settings).
-The proxy ships with default configs; users can copy/modify from
-claude-code-lsps as a starting point.
+Each server is defined in its own JSON file in the config package's `servers/`
+directory (command, args, languages, transport, settings). The proxy loads
+configs from `--config-dir` (or its own package root as fallback).
 
-Server configs are loaded from layered sources (later overrides earlier):
-bundled defaults → user config → project config. Exact paths TBD.
-
-A separate proxy config defines the multiplexing layer:
+A separate `proxy.config.json` defines which servers to load:
 
 ```jsonc
 {
-  "servers": ["vtsls", "vue-volar", "vscode-langservers"],
+  "servers": ["vtsls", "eslint"],
+  // Glob patterns to exclude from workspace file watching.
+  // Matches against paths relative to the workspace root.
+  // Defaults shown below — override to customize.
+  "watcherExclude": [
+    "**/node_modules/**",
+    "**/.git/**",
+    "**/.hg/**",
+    "**/.svn/**",
+    "**/dist/**"
+  ]
+}
+```
+
+Future config fields (not yet implemented):
+
+```jsonc
+{
   "bridges": [{
     "from": "vue-volar",
     "notification": "tsserver/request",
@@ -70,17 +99,7 @@ A separate proxy config defines the multiplexing layer:
     "definition": "union",
     "references": "union",
     "codeAction": "union"
-  },
-  // Glob patterns to exclude from workspace file watching.
-  // Matches against paths relative to the workspace root.
-  // Defaults shown below — override to customize.
-  "watcherExclude": [
-    "**/node_modules/**",
-    "**/.git/**",
-    "**/.hg/**",
-    "**/.svn/**",
-    "**/dist/**"
-  ]
+  }
 }
 ```
 
@@ -92,10 +111,10 @@ A separate proxy config defines the multiplexing layer:
   the proxy demuxes requests and muxes responses
 - **File-type routing** — derived from each server's `extensionToLanguage`
   mapping; a file can fan out to multiple servers
-- **Response merging** — configurable per-method strategy for combining
-  results from multiple servers
+- **Response merging** — diagnostics merged via union; other methods routed
+  to primary server only (full merging planned for M4)
 - **Notification bridging** — declarative config for forwarding custom
-  notifications between servers (e.g., Volar 3's tsserver protocol)
+  notifications between servers (planned for M3)
 - **Request ID namespacing** — proxy rewrites IDs to avoid collisions
   between servers, maps responses back to the original client ID
 - **Lifecycle management** — exponential backoff restart with max retries;
@@ -108,11 +127,14 @@ A separate proxy config defines the multiplexing layer:
   external tool (e.g., ESLint `--fix`, `git checkout`) modifies a file,
   the proxy reads from disk, compares with tracked content, and sends
   `didClose`/`didOpen` with fresh content to the relevant child servers.
+- **Config/proxy separation** — the proxy package is server-agnostic; which
+  servers to run is determined by the config package. Users create their own
+  config package with different servers without forking the proxy.
 
 ### Volar 3 Forwarding (Example)
 
 Volar 3 removed `hybridMode` — it always requires a companion TypeScript
-server. The `bridges` config handles this declaratively:
+server. The `bridges` config will handle this declaratively:
 
 1. Volar sends `tsserver/request` notification: `[requestId, command, args]`
 1. Proxy matches the bridge rule, forwards to vtsls
@@ -132,13 +154,13 @@ No proxy code changes needed — just config.
 
 ## Milestones
 
-### M1: Single-server passthrough
+### M1: Single-server passthrough (done)
 
 Wire up the proxy to manage a single child server (vtsls) with lifecycle
 restart. Validates the JSON-RPC multiplexing, initialize/shutdown
 coordination, and document state tracking. No merging yet.
 
-### M2: Multi-server diagnostics
+### M2: Multi-server diagnostics (done)
 
 Add a second server (eslint) for `.ts`/`.js` files. Merge diagnostics
 from both via union. Fan out `didOpen`/`didChange`/`didClose` to both.
@@ -158,6 +180,8 @@ timeout/fallback, and capability-aware routing.
 
 - Node.js (same runtime as the servers it manages)
 - `vscode-jsonrpc` for LSP message parsing
+- `valibot` for config schema validation
+- `picomatch` for glob pattern matching (file watcher exclusions)
 - Distributed as a Claude Code LSP plugin (`.lsp.json` + `plugin.json`)
 - Server-agnostic — works with any `.lsp.json`-compatible server
 

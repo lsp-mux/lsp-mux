@@ -1,3 +1,4 @@
+import { isAbsolute, join } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import * as v from 'valibot';
 import { ProxyConfigSchema, ServerConfigSchema } from '../src/config-schema.js';
@@ -84,5 +85,13 @@ describe('loadServerConfig', () => {
   it('rejects server names with directory separators', async () => {
     await expect(loadServerConfig('foo/bar')).rejects.toThrow();
     await expect(loadServerConfig('foo\\bar')).rejects.toThrow();
+  });
+
+  it('resolves relative paths and preserves non-path args', async () => {
+    const configDir = join(import.meta.dirname, 'fixtures');
+    const { command, args: [serverBin = '', flagArg = ''] } = await loadServerConfig('relative-paths', configDir);
+    expect(isAbsolute(command)).toBe(true);
+    expect(isAbsolute(serverBin)).toBe(true);
+    expect(flagArg).toBe('--stdio');
   });
 });
