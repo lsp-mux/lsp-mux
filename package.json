@@ -24,6 +24,7 @@
     "@vitest/eslint-plugin": "catalog:lint",
     "@vitest/ui": "catalog:test",
     "concurrently": "catalog:build",
+    "console-fail-test": "catalog:test",
     "eslint": "catalog:lint",
     "eslint-import-resolver-typescript": "catalog:lint",
     "eslint-plugin-import-x": "catalog:lint",

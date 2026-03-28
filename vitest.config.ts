@@ -11,6 +11,7 @@ export default defineConfig({
     },
     include: ['packages/*/test/**/*.test.ts'],
     mockReset: true,
+    setupFiles: ['console-fail-test/setup'],
     unstubEnvs: true,
   },
 });
