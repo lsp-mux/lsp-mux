@@ -30,6 +30,21 @@ export const createNotification = (
   params?: NotificationMessage['params'],
 ): NotificationMessage => ({ jsonrpc: '2.0', method, ...(params && { params }) });
 
+// --- Timer abstraction ---
+
+// Method syntax is intentional: bivariant parameter checking allows
+// sinon's Clock (clearTimeout(id: number)) to satisfy clearTimeout(id: unknown).
+export interface Timers {
+  setTimeout(callback: () => void, ms: number): unknown;
+  clearTimeout(id: unknown): void;
+}
+
+export const defaultTimers: Timers = {
+  setTimeout: (cb, ms) => globalThis.setTimeout(cb, ms),
+  // @ts-expect-error — timer ID is opaque; Node accepts any value at runtime
+  clearTimeout: (id) => { globalThis.clearTimeout(id); },
+};
+
 // --- Utilities ---
 
 /** Shared no-op function for catch handlers, callbacks, etc. */

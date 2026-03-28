@@ -15,6 +15,9 @@ catalogs:
     '@types/picomatch':
       specifier: 4.0.2
       version: 4.0.2
+    '@types/sinonjs__fake-timers':
+      specifier: 15.0.1
+      version: 15.0.1
     concurrently:
       specifier: 9.2.1
       version: 9.2.1
@@ -70,6 +73,9 @@ catalogs:
       specifier: 4.10.0
       version: 4.10.0
   test:
+    '@sinonjs/fake-timers':
+      specifier: 15.1.1
+      version: 15.1.1
     '@vitest/coverage-v8':
       specifier: 4.1.2
       version: 4.1.2
@@ -87,6 +93,9 @@ importers:
 
   .:
     devDependencies:
+      '@sinonjs/fake-timers':
+        specifier: catalog:test
+        version: 15.1.1
       '@stylistic/eslint-plugin':
         specifier: catalog:lint
         version: 5.10.0(eslint@10.1.0)
@@ -99,6 +108,9 @@ importers:
       '@types/picomatch':
         specifier: catalog:build
         version: 4.0.2
+      '@types/sinonjs__fake-timers':
+        specifier: catalog:build
+        version: 15.0.1
       '@vitest/coverage-v8':
         specifier: catalog:test
         version: 4.1.2(vitest@4.1.2)
@@ -560,6 +572,12 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@sinonjs/commons@3.0.1':
+    resolution: {integrity: sha512-K3mCHKQ9sVh8o1C9cxkwxaOmXoAMlDxC1mYyHrjqOWEcBjYr76t96zL2zlj5dUGZ3HSw240X1qgH3Mjf1yJWpQ==}
+
+  '@sinonjs/fake-timers@15.1.1':
+    resolution: {integrity: sha512-cO5W33JgAPbOh07tvZjUOJ7oWhtaqGHiZw+11DPbyqh2kHTBc3eF/CjJDeQ4205RLQsX6rxCuYOroFQwl7JDRw==}
+
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
@@ -595,6 +613,9 @@ packages:
 
   '@types/picomatch@4.0.2':
     resolution: {integrity: sha512-qHHxQ+P9PysNEGbALT8f8YOSHW0KJu6l2xU8DYY0fu/EmGxXdVnuTLvFUvBgPJMSqXq29SYHveejeAha+4AYgA==}
+
+  '@types/sinonjs__fake-timers@15.0.1':
+    resolution: {integrity: sha512-Ko2tjWJq8oozHzHV+reuvS5KYIRAokHnGbDwGh/J64LntgpbuylF74ipEL24HCyRjf9FOlBiBHWBR1RlVKsI1w==}
 
   '@typescript-eslint/eslint-plugin@8.57.2':
     resolution: {integrity: sha512-NZZgp0Fm2IkD+La5PR81sd+g+8oS6JwJje+aRWsDocxHkjyRw0J5L5ZTlN3LI1LlOcGL7ph3eaIUmTXMIjLk0w==}
@@ -1468,6 +1489,10 @@ packages:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
     engines: {node: '>= 0.8.0'}
 
+  type-detect@4.0.8:
+    resolution: {integrity: sha512-0fr/mIH1dlO+x7TlcMy+bIDqKPsw/70tVyeHW787goQjhmqaZe10uwLujubK9q9Lg6Fiho1KUKDYz0Z7k7g5/g==}
+    engines: {node: '>=4'}
+
   typescript-eslint@8.57.2:
     resolution: {integrity: sha512-VEPQ0iPgWO/sBaZOU1xo4nuNdODVOajPnTIbog2GKYr31nIlZ0fWPoCQgGfF3ETyBl1vn63F/p50Um9Z4J8O8A==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
@@ -1927,6 +1952,14 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.60.0':
     optional: true
 
+  '@sinonjs/commons@3.0.1':
+    dependencies:
+      type-detect: 4.0.8
+
+  '@sinonjs/fake-timers@15.1.1':
+    dependencies:
+      '@sinonjs/commons': 3.0.1
+
   '@standard-schema/spec@1.1.0': {}
 
   '@stylistic/eslint-plugin@5.10.0(eslint@10.1.0)':
@@ -1964,6 +1997,8 @@ snapshots:
       undici-types: 6.21.0
 
   '@types/picomatch@4.0.2': {}
+
+  '@types/sinonjs__fake-timers@15.0.1': {}
 
   '@typescript-eslint/eslint-plugin@8.57.2(@typescript-eslint/parser@8.57.2(eslint@10.1.0)(typescript@5.9.3))(eslint@10.1.0)(typescript@5.9.3)':
     dependencies:
@@ -2861,6 +2896,8 @@ snapshots:
   type-check@0.4.0:
     dependencies:
       prelude-ls: 1.2.1
+
+  type-detect@4.0.8: {}
 
   typescript-eslint@8.57.2(eslint@10.1.0)(typescript@5.9.3):
     dependencies:

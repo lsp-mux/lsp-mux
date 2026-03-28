@@ -1,33 +1,32 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { createClock } from '@sinonjs/fake-timers';
+import { describe, it, expect, vi } from 'vitest';
 import { createRestartScheduler } from '../src/restart-scheduler.js';
+import type { Timers } from '../src/types.js';
 
-// Sequential: tests share vi.useFakeTimers() global state
-describe.sequential('RestartScheduler', () => {
-  afterEach(() => vi.restoreAllMocks());
-
+describe('RestartScheduler', () => {
   const policy = { maxRetries: 3, baseDelayMs: 100, maxDelayMs: 500 };
 
   it('schedules with exponential backoff', () => {
-    vi.useFakeTimers();
-    const sched = createRestartScheduler(policy);
+    const t = createClock();
+    const sched = createRestartScheduler({ policy, timers: t });
     const calls: number[] = [];
 
     // Attempt 1: base 100 * 2^0 = 100ms, jittered to [50, 150]
     expect(sched.schedule(() => calls.push(1))).toBe(true);
     expect(sched.attempt).toBe(1);
-    vi.advanceTimersByTime(150); // max jittered delay for base 100
+    t.tick(150); // max jittered delay for base 100
     expect(calls).toEqual([1]);
 
     // Attempt 2: base 100 * 2^1 = 200ms, jittered to [100, 300]
     expect(sched.schedule(() => calls.push(2))).toBe(true);
     expect(sched.attempt).toBe(2);
-    vi.advanceTimersByTime(300);
+    t.tick(300);
     expect(calls).toEqual([1, 2]);
 
     // Attempt 3: base min(400, 500) = 400ms, jittered to [200, 600)
     expect(sched.schedule(() => calls.push(3))).toBe(true);
     expect(sched.attempt).toBe(3);
-    vi.advanceTimersByTime(600);
+    t.tick(600);
     expect(calls).toEqual([1, 2, 3]);
 
     // Attempt 4: over maxRetries
@@ -36,34 +35,33 @@ describe.sequential('RestartScheduler', () => {
   });
 
   it('caps delay at maxDelayMs', () => {
-    vi.useFakeTimers();
-    const sched = createRestartScheduler({ maxRetries: 10, baseDelayMs: 100, maxDelayMs: 300 });
+    const t = createClock();
+    const sched = createRestartScheduler({ policy: { maxRetries: 10, baseDelayMs: 100, maxDelayMs: 300 }, timers: t });
     const calls: number[] = [];
 
     // Attempt 1: base 100ms → jittered [50, 150]
     sched.schedule(() => calls.push(1));
-    vi.advanceTimersByTime(150);
+    t.tick(150);
 
     // Attempt 2: base 200ms → jittered [100, 300]
     sched.schedule(() => calls.push(2));
-    vi.advanceTimersByTime(300);
+    t.tick(300);
 
-    // Attempt 3: base min(400, 300) = 300ms → jittered [150, 450]
-    // With the cap at 300, jitter range is [150, 450]
+    // Attempt 3: base min(400, 300) = 300ms → jittered capped at 300
     sched.schedule(() => calls.push(3));
     expect(calls).toEqual([1, 2]);
-    vi.advanceTimersByTime(450);
+    t.tick(450);
     expect(calls).toEqual([1, 2, 3]);
   });
 
   it('reset restores attempt counter', () => {
-    vi.useFakeTimers();
-    const sched = createRestartScheduler(policy);
+    const t = createClock();
+    const sched = createRestartScheduler({ policy, timers: t });
 
     sched.schedule(() => { /* no-op */ });
-    vi.advanceTimersByTime(150); // max jittered delay for base 100
+    t.tick(150);
     sched.schedule(() => { /* no-op */ });
-    vi.advanceTimersByTime(300); // max jittered delay for base 200
+    t.tick(300);
     expect(sched.attempt).toBe(2);
 
     sched.reset();
@@ -73,40 +71,40 @@ describe.sequential('RestartScheduler', () => {
     const called = vi.fn();
     expect(sched.schedule(called)).toBe(true);
     expect(sched.attempt).toBe(1);
-    vi.advanceTimersByTime(150); // max jittered delay for base 100
+    t.tick(150);
     expect(called).toHaveBeenCalledOnce();
   });
 
   it('cancel prevents pending callback', () => {
-    vi.useFakeTimers();
-    const sched = createRestartScheduler(policy);
+    const t = createClock();
+    const sched = createRestartScheduler({ policy, timers: t });
     const called = vi.fn();
 
     sched.schedule(called);
     sched.cancel();
-    vi.advanceTimersByTime(1000);
+    t.tick(1000);
     expect(called).not.toHaveBeenCalled();
   });
 
   it('exposes maxRetries from policy', () => {
-    const sched = createRestartScheduler(policy);
+    const sched = createRestartScheduler({ policy });
     expect(sched.maxRetries).toBe(3);
   });
 
   it('adds jitter so simultaneous restarts do not thundering-herd', () => {
-    vi.useFakeTimers();
     const delays: number[] = [];
-    vi.spyOn(globalThis, 'setTimeout').mockImplementation(((
-      _cb: () => void, delay: number,
-    ) => {
-      delays.push(delay);
-      return 0 as unknown as ReturnType<typeof setTimeout>;
-    }) as typeof setTimeout);
+    const capturingTimers: Timers = {
+      setTimeout: (_cb: () => void, ms: number) => {
+        delays.push(ms);
+        return delays.length;
+      },
+      clearTimeout: () => { /* no-op */ },
+    };
 
     // Schedule 10 attempts to get enough samples to verify jitter variance
     const noop = (): void => { /* no-op */ };
     for (let i = 0; i < 10; i++) {
-      const sched = createRestartScheduler(policy);
+      const sched = createRestartScheduler({ policy, timers: capturingTimers });
       sched.schedule(noop);
     }
 
@@ -120,7 +118,5 @@ describe.sequential('RestartScheduler', () => {
     }
     const allSame = delays.every(d => d === delays[0]);
     expect(allSame).toBe(false);
-
-    vi.restoreAllMocks();
   });
 });

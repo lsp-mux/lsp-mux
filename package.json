@@ -16,10 +16,12 @@
     "watch": "concurrently -g pnpm:compile:watch pnpm:test:watch"
   },
   "devDependencies": {
+    "@sinonjs/fake-timers": "catalog:test",
     "@stylistic/eslint-plugin": "catalog:lint",
     "@tsconfig/strictest": "catalog:build",
     "@types/node": "catalog:build",
     "@types/picomatch": "catalog:build",
+    "@types/sinonjs__fake-timers": "catalog:build",
     "@vitest/coverage-v8": "catalog:test",
     "@vitest/eslint-plugin": "catalog:lint",
     "@vitest/ui": "catalog:test",

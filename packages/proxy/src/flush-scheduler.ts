@@ -1,4 +1,5 @@
-import { noop } from './types.js';
+import { noop, defaultTimers } from './types.js';
+import type { Timers } from './types.js';
 
 export interface FlushSchedulerOptions {
   /** Delay before flushing after the last notification. */
@@ -7,6 +8,8 @@ export interface FlushSchedulerOptions {
   maxWaitMs: number;
   /** Called when it's time to flush. Must not be called concurrently. */
   onFlush: () => Promise<void>;
+  /** Timer functions (defaults to globalThis). Inject for testability. */
+  timers?: Timers | undefined;
 }
 
 export interface FlushScheduler {
@@ -26,18 +29,18 @@ interface AsyncState {
 }
 
 export const createFlushScheduler = (options: FlushSchedulerOptions): FlushScheduler => {
-  const { debounceMs, maxWaitMs, onFlush } = options;
-  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-  let maxWaitTimer: ReturnType<typeof setTimeout> | null = null;
+  const { debounceMs, maxWaitMs, onFlush, timers: t = defaultTimers } = options;
+  let debounceTimer: unknown = null;
+  let maxWaitTimer: unknown = null;
   const s: AsyncState = { flushInProgress: false, notifiedDuringFlush: false, disposed: false };
 
   const clearTimers = (): void => {
     if (debounceTimer) {
-      clearTimeout(debounceTimer);
+      t.clearTimeout(debounceTimer);
       debounceTimer = null;
     }
     if (maxWaitTimer) {
-      clearTimeout(maxWaitTimer);
+      t.clearTimeout(maxWaitTimer);
       maxWaitTimer = null;
     }
   };
@@ -56,9 +59,9 @@ export const createFlushScheduler = (options: FlushSchedulerOptions): FlushSched
       s.notifiedDuringFlush = true;
       return;
     }
-    if (debounceTimer) clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(triggerFlush, debounceMs);
-    maxWaitTimer ??= setTimeout(triggerFlush, maxWaitMs);
+    if (debounceTimer) t.clearTimeout(debounceTimer);
+    debounceTimer = t.setTimeout(triggerFlush, debounceMs);
+    maxWaitTimer ??= t.setTimeout(triggerFlush, maxWaitMs);
   };
 
   const doFlush = async (): Promise<void> => {

@@ -1,3 +1,6 @@
+import { defaultTimers } from './types.js';
+import type { Timers } from './types.js';
+
 export interface RestartPolicy {
   readonly maxRetries: number;
   readonly baseDelayMs: number;
@@ -21,9 +24,14 @@ export interface RestartScheduler {
   readonly maxRetries: number;
 }
 
-export const createRestartScheduler = (policy: RestartPolicy): RestartScheduler => {
+export interface RestartSchedulerOptions {
+  policy: RestartPolicy;
+  timers?: Timers | undefined;
+}
+
+export const createRestartScheduler = ({ policy, timers: t = defaultTimers }: RestartSchedulerOptions): RestartScheduler => {
   let count = 0;
-  let timer: ReturnType<typeof setTimeout> | null = null;
+  let timer: unknown = null;
 
   return {
     schedule(callback) {
@@ -33,7 +41,7 @@ export const createRestartScheduler = (policy: RestartPolicy): RestartScheduler 
       // clamped so jittered delay never exceeds the configured max.
       const jitter = Math.min(base * (0.5 + Math.random()), policy.maxDelayMs);
       count++;
-      timer = setTimeout(callback, jitter);
+      timer = t.setTimeout(callback, jitter);
       return true;
     },
 
@@ -43,7 +51,7 @@ export const createRestartScheduler = (policy: RestartPolicy): RestartScheduler 
 
     cancel() {
       if (timer) {
-        clearTimeout(timer);
+        t.clearTimeout(timer);
         timer = null;
       }
     },

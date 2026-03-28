@@ -63,7 +63,7 @@ export const createManagedServer = (
 
   const pendingRequests = new Set<number | string | null>();
   const buffer = createMessageBuffer(MAX_BUFFER_SIZE);
-  const scheduler = createRestartScheduler({ ...DEFAULT_RESTART_POLICY, ...restartPolicy });
+  const scheduler = createRestartScheduler({ policy: { ...DEFAULT_RESTART_POLICY, ...restartPolicy } });
 
   let proxySeq = 0;
   const proxyCallbacks = new Map<string, (res: ResponseMessage) => void>();

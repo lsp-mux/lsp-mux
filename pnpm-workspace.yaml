@@ -12,6 +12,7 @@ catalogs:
     concurrently: 9.2.1
     '@types/node': 22.16.0
     '@types/picomatch': 4.0.2
+    '@types/sinonjs__fake-timers': 15.0.1
     tsx: 4.21.0
     typescript: 5.9.3
   lint:
@@ -28,6 +29,7 @@ catalogs:
     '@vtsls/language-server': 0.3.0
     vscode-langservers-extracted: 4.10.0
   test:
+    '@sinonjs/fake-timers': 15.1.1
     '@vitest/coverage-v8': 4.1.2
     '@vitest/ui': 4.1.2
     console-fail-test: 0.6.1
