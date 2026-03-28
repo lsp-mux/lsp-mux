@@ -1,9 +1,9 @@
 import { createClock } from '@sinonjs/fake-timers';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, vi } from 'vitest';
 import { createFlushScheduler } from '../src/flush-scheduler.js';
 
 describe('FlushScheduler', () => {
-  it('calls onFlush after debounceMs', async () => {
+  it('calls onFlush after debounceMs', async ({ expect }) => {
     const t = createClock();
     const onFlush = vi.fn().mockResolvedValue(undefined);
     const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 1000, onFlush, timers: t });
@@ -17,7 +17,7 @@ describe('FlushScheduler', () => {
     scheduler.dispose();
   });
 
-  it('resets debounce on each notify', async () => {
+  it('resets debounce on each notify', async ({ expect }) => {
     const t = createClock();
     const onFlush = vi.fn().mockResolvedValue(undefined);
     const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 2000, onFlush, timers: t });
@@ -34,7 +34,7 @@ describe('FlushScheduler', () => {
     scheduler.dispose();
   });
 
-  it('forces flush at maxWaitMs even when debounce keeps resetting', async () => {
+  it('forces flush at maxWaitMs even when debounce keeps resetting', async ({ expect }) => {
     const t = createClock();
     const onFlush = vi.fn().mockResolvedValue(undefined);
     const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 300, onFlush, timers: t });
@@ -54,7 +54,7 @@ describe('FlushScheduler', () => {
     scheduler.dispose();
   });
 
-  it('re-enters debounce cycle when notified during flush (not immediate)', async () => {
+  it('re-enters debounce cycle when notified during flush (not immediate)', async ({ expect }) => {
     const t = createClock();
     let flushCount = 0;
     const onFlush = vi.fn().mockResolvedValue(undefined);
@@ -82,7 +82,7 @@ describe('FlushScheduler', () => {
     scheduler.dispose();
   });
 
-  it('does not run concurrent flushes', async () => {
+  it('does not run concurrent flushes', async ({ expect }) => {
     const t = createClock();
     let resolveFlush!: () => void;
     const flushPromise = new Promise<void>((r) => {
@@ -109,7 +109,7 @@ describe('FlushScheduler', () => {
     scheduler.dispose();
   });
 
-  it('dispose cancels pending timers', async () => {
+  it('dispose cancels pending timers', async ({ expect }) => {
     const t = createClock();
     const onFlush = vi.fn().mockResolvedValue(undefined);
     const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 1000, onFlush, timers: t });
@@ -121,7 +121,7 @@ describe('FlushScheduler', () => {
     expect(onFlush).not.toHaveBeenCalled();
   });
 
-  it('recovers after onFlush throws', async () => {
+  it('recovers after onFlush throws', async ({ expect }) => {
     const t = createClock();
     const onFlush = vi.fn()
       .mockRejectedValueOnce(new Error('boom'))
@@ -140,7 +140,7 @@ describe('FlushScheduler', () => {
     scheduler.dispose();
   });
 
-  it('does not flush after dispose', async () => {
+  it('does not flush after dispose', async ({ expect }) => {
     const t = createClock();
     const onFlush = vi.fn().mockResolvedValue(undefined);
     const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 1000, onFlush, timers: t });
@@ -152,7 +152,7 @@ describe('FlushScheduler', () => {
     expect(onFlush).not.toHaveBeenCalled();
   });
 
-  it('resets maxWait timer after flush completes', async () => {
+  it('resets maxWait timer after flush completes', async ({ expect }) => {
     const t = createClock();
     const onFlush = vi.fn().mockResolvedValue(undefined);
     const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 300, onFlush, timers: t });

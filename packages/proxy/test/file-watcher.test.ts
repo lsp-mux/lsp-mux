@@ -1,7 +1,7 @@
 import { mkdtemp, symlink, rm, mkdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { describe, it, expect, afterAll } from 'vitest';
+import { describe, it, afterAll } from 'vitest';
 import {
   empty, register, unregister, unregisterServer, matchEvent,
   classifyChange, createExcludeMatcher, resolveRoot, isWithinRoot,
@@ -18,7 +18,7 @@ const configWatchers = {
 
 describe('file-watcher', () => {
   describe('register / unregister', () => {
-    it('registers and matches a glob pattern', () => {
+    it('registers and matches a glob pattern', ({ expect }) => {
       const state = register(empty(), 'vtsls', 'reg-1', tsWatchers);
       const matches = matchEvent(state, 'src/foo.ts', FileChangeType.Changed, 'file:///src/foo.ts');
       expect(matches.get('vtsls')).toStrictEqual([
@@ -26,20 +26,20 @@ describe('file-watcher', () => {
       ]);
     });
 
-    it('does not match unrelated extensions', () => {
+    it('does not match unrelated extensions', ({ expect }) => {
       const state = register(empty(), 'vtsls', 'reg-1', tsWatchers);
       const matches = matchEvent(state, 'src/foo.css', FileChangeType.Changed, 'file:///src/foo.css');
       expect(matches.size).toBe(0);
     });
 
-    it('unregisters by ID', () => {
+    it('unregisters by ID', ({ expect }) => {
       const s1 = register(empty(), 'vtsls', 'reg-1', tsWatchers);
       const s2 = unregister(s1, 'reg-1');
       const matches = matchEvent(s2, 'src/foo.ts', FileChangeType.Changed, 'file:///src/foo.ts');
       expect(matches.size).toBe(0);
     });
 
-    it('unregisters all for a server', () => {
+    it('unregisters all for a server', ({ expect }) => {
       let state = register(empty(), 'vtsls', 'reg-1', tsWatchers);
       state = register(state, 'vtsls', 'reg-2', configWatchers);
       state = register(state, 'eslint', 'reg-3', tsWatchers);
@@ -50,19 +50,19 @@ describe('file-watcher', () => {
       expect(matchEvent(state, 'src/foo.ts', FileChangeType.Changed, 'file:///foo.ts').has('eslint')).toBe(true);
     });
 
-    it('returns same state when unregistering nonexistent ID', () => {
+    it('returns same state when unregistering nonexistent ID', ({ expect }) => {
       const state = register(empty(), 'vtsls', 'reg-1', tsWatchers);
       expect(unregister(state, 'nonexistent')).toBe(state);
     });
 
-    it('returns same state when unregistering nonexistent server', () => {
+    it('returns same state when unregistering nonexistent server', ({ expect }) => {
       const state = register(empty(), 'vtsls', 'reg-1', tsWatchers);
       expect(unregisterServer(state, 'nonexistent')).toBe(state);
     });
   });
 
   describe('event type filtering', () => {
-    it('respects WatchKind bitmask — Change only', () => {
+    it('respects WatchKind bitmask — Change only', ({ expect }) => {
       const state = register(empty(), 'vtsls', 'reg-1', configWatchers);
 
       const changed = matchEvent(state, 'tsconfig.json', FileChangeType.Changed, 'file:///tsconfig.json');
@@ -75,7 +75,7 @@ describe('file-watcher', () => {
       expect(deleted.size).toBe(0);
     });
 
-    it('respects WatchKind bitmask — Create only', () => {
+    it('respects WatchKind bitmask — Create only', ({ expect }) => {
       const state = register(empty(), 'vtsls', 'reg-1', {
         watchers: [{ globPattern: '**/*.ts', kind: WatchKind.Create }],
       });
@@ -84,7 +84,7 @@ describe('file-watcher', () => {
       expect(matchEvent(state, 'new.ts', FileChangeType.Deleted, 'file:///new.ts').has('vtsls')).toBe(false);
     });
 
-    it('respects WatchKind bitmask — Delete only', () => {
+    it('respects WatchKind bitmask — Delete only', ({ expect }) => {
       const state = register(empty(), 'vtsls', 'reg-1', {
         watchers: [{ globPattern: '**/*.ts', kind: WatchKind.Delete }],
       });
@@ -93,7 +93,7 @@ describe('file-watcher', () => {
       expect(matchEvent(state, 'old.ts', FileChangeType.Changed, 'file:///old.ts').has('vtsls')).toBe(false);
     });
 
-    it('defaults to WatchKind.All when kind is omitted', () => {
+    it('defaults to WatchKind.All when kind is omitted', ({ expect }) => {
       const state = register(empty(), 'vtsls', 'reg-1', {
         watchers: [{ globPattern: '**/*.ts' }],
       });
@@ -102,7 +102,7 @@ describe('file-watcher', () => {
       }
     });
 
-    it('matches all event types with WatchKind.All', () => {
+    it('matches all event types with WatchKind.All', ({ expect }) => {
       const state = register(empty(), 'vtsls', 'reg-1', tsWatchers);
 
       for (const type of [FileChangeType.Created, FileChangeType.Changed, FileChangeType.Deleted]) {
@@ -111,7 +111,7 @@ describe('file-watcher', () => {
       }
     });
 
-    it('matches via second registration when first does not match kind', () => {
+    it('matches via second registration when first does not match kind', ({ expect }) => {
       // reg-1: Create only, reg-2: Change only — both same server, same glob
       let state = register(empty(), 'vtsls', 'reg-1', {
         watchers: [{ globPattern: '**/*.ts', kind: WatchKind.Create }],
@@ -127,7 +127,7 @@ describe('file-watcher', () => {
   });
 
   describe('multi-server matching', () => {
-    it('matches same event to multiple servers', () => {
+    it('matches same event to multiple servers', ({ expect }) => {
       let state = register(empty(), 'vtsls', 'reg-1', tsWatchers);
       state = register(state, 'eslint', 'reg-2', tsWatchers);
 
@@ -138,7 +138,7 @@ describe('file-watcher', () => {
   });
 
   describe('deduplication', () => {
-    it('deduplicates events per-server across multiple registrations', () => {
+    it('deduplicates events per-server across multiple registrations', ({ expect }) => {
       let state = register(empty(), 'vtsls', 'reg-1', tsWatchers);
       state = register(state, 'vtsls', 'reg-2', {
         watchers: [{ globPattern: '**/*.{ts,js}', kind: WatchKind.All }],
@@ -149,7 +149,7 @@ describe('file-watcher', () => {
       expect(matches.get('vtsls')).toHaveLength(1);
     });
 
-    it('still matches different servers independently', () => {
+    it('still matches different servers independently', ({ expect }) => {
       let state = register(empty(), 'vtsls', 'reg-1', tsWatchers);
       state = register(state, 'eslint', 'reg-2', tsWatchers);
 
@@ -160,31 +160,31 @@ describe('file-watcher', () => {
   });
 
   describe('createExcludeMatcher', () => {
-    it('matches excluded patterns', () => {
+    it('matches excluded patterns', ({ expect }) => {
       const isExcluded = createExcludeMatcher(['**/node_modules/**', '**/.git/**']);
       expect(isExcluded('node_modules/foo/bar.js')).toBe(true);
       expect(isExcluded('.git/objects/abc')).toBe(true);
       expect(isExcluded('src/index.ts')).toBe(false);
     });
 
-    it('returns always-false for empty patterns', () => {
+    it('returns always-false for empty patterns', ({ expect }) => {
       const isExcluded = createExcludeMatcher([]);
       expect(isExcluded('anything')).toBe(false);
     });
   });
 
   describe('classifyChange', () => {
-    it('classifies exists as Changed', () => {
+    it('classifies exists as Changed', ({ expect }) => {
       expect(classifyChange(true)).toBe(FileChangeType.Changed);
     });
 
-    it('classifies !exists as Deleted', () => {
+    it('classifies !exists as Deleted', ({ expect }) => {
       expect(classifyChange(false)).toBe(FileChangeType.Deleted);
     });
   });
 
   describe('relative patterns', () => {
-    it('handles { baseUri, pattern } glob with bare directory', () => {
+    it('handles { baseUri, pattern } glob with bare directory', ({ expect }) => {
       const state = register(empty(), 'vtsls', 'reg-1', {
         watchers: [{
           globPattern: { baseUri: 'src', pattern: '**/*.ts' },
@@ -199,7 +199,7 @@ describe('file-watcher', () => {
       expect(noMatch.size).toBe(0);
     });
 
-    it('resolves file:// URI baseUri to workspace-relative path', () => {
+    it('resolves file:// URI baseUri to workspace-relative path', ({ expect }) => {
       const workspaceRoot = process.platform === 'win32' ? 'C:\\projects\\my-app' : '/projects/my-app';
       const baseUri = process.platform === 'win32'
         ? 'file:///C:/projects/my-app/src'
@@ -219,7 +219,7 @@ describe('file-watcher', () => {
       expect(noMatch.size).toBe(0);
     });
 
-    it('handles WorkspaceFolder object as baseUri', () => {
+    it('handles WorkspaceFolder object as baseUri', ({ expect }) => {
       const workspaceRoot = process.platform === 'win32' ? 'C:\\projects\\app' : '/projects/app';
       const baseUri = process.platform === 'win32'
         ? 'file:///C:/projects/app/src'
@@ -239,7 +239,7 @@ describe('file-watcher', () => {
       expect(noMatch.size).toBe(0);
     });
 
-    it('strips trailing slash from baseUri', () => {
+    it('strips trailing slash from baseUri', ({ expect }) => {
       const state = register(empty(), 'vtsls', 'reg-1', {
         watchers: [{
           globPattern: { baseUri: 'src/', pattern: '*.ts' },
@@ -257,23 +257,23 @@ describe('file-watcher', () => {
     // Pre-resolve to match what the proxy does at startup.
     const root = resolve('/workspace');
 
-    it('accepts paths within root', async () => {
+    it('accepts paths within root', async ({ expect }) => {
       expect(await isWithinRoot('/workspace/src/foo.ts', root)).toBe(true);
     });
 
-    it('rejects paths that escape via ..', async () => {
+    it('rejects paths that escape via ..', async ({ expect }) => {
       expect(await isWithinRoot('/workspace/../etc/passwd', root)).toBe(false);
     });
 
-    it('accepts the root path itself', async () => {
+    it('accepts the root path itself', async ({ expect }) => {
       expect(await isWithinRoot('/workspace', root)).toBe(true);
     });
 
-    it('rejects a sibling directory', async () => {
+    it('rejects a sibling directory', async ({ expect }) => {
       expect(await isWithinRoot('/other/foo.ts', root)).toBe(false);
     });
 
-    it('rejects a prefix that is not a directory boundary', async () => {
+    it('rejects a prefix that is not a directory boundary', async ({ expect }) => {
       // /workspace-evil is not inside /workspace
       expect(await isWithinRoot('/workspace-evil/foo.ts', root)).toBe(false);
     });
@@ -305,20 +305,20 @@ describe('file-watcher', () => {
       await writeFile(join(realDir, 'existing.ts'), '');
     };
 
-    it('resolveRoot follows the symlink to the real path', async () => {
+    it('resolveRoot follows the symlink to the real path', async ({ expect }) => {
       await setup();
       const resolved = await resolveRoot(linkDir);
       expect(resolved).toBe(resolve(realDir));
     });
 
-    it('accepts existing files inside symlinked root', async () => {
+    it('accepts existing files inside symlinked root', async ({ expect }) => {
       await setup();
       const resolved = await resolveRoot(linkDir);
       // Existing file accessed via symlink — realpath resolves to real path
       expect(await isWithinRoot(join(linkDir, 'existing.ts'), resolved)).toBe(true);
     });
 
-    it('accepts non-existent files inside symlinked root (delete events)', async () => {
+    it('accepts non-existent files inside symlinked root (delete events)', async ({ expect }) => {
       await setup();
       const resolved = await resolveRoot(linkDir);
       // Non-existent file — resolve() fallback uses symlink namespace.
@@ -326,7 +326,7 @@ describe('file-watcher', () => {
       expect(await isWithinRoot(join(linkDir, 'deleted.ts'), resolved)).toBe(true);
     });
 
-    it('rejects non-existent files outside symlinked root', async () => {
+    it('rejects non-existent files outside symlinked root', async ({ expect }) => {
       await setup();
       const resolved = await resolveRoot(linkDir);
       expect(await isWithinRoot(join(tmpBase, 'outside.ts'), resolved)).toBe(false);

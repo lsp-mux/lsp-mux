@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, vi, beforeEach } from 'vitest';
 
 vi.mock('node:fs/promises', () => ({
   stat: vi.fn(),
@@ -90,7 +90,7 @@ const addEvent = (filename: string) => {
 // Sequential: tests share module-level vi.mock state
 describe.sequential('WorkspaceWatcher', () => {
   describe('flushFileEvents', () => {
-    it('dispatches matched events via delegate', async () => {
+    it('dispatches matched events via delegate', async ({ expect }) => {
       const changes: fw.FileChange[] = [{ uri: toUri('test.ts'), type: fw.FileChangeType.Changed }];
       const delegate = createDelegate({
         matchEvent: vi.fn(() => new Map([['mock', changes]])),
@@ -106,7 +106,7 @@ describe.sequential('WorkspaceWatcher', () => {
       expect(delegate.sendWatchedFilesEvent).toHaveBeenCalledWith('mock', changes);
     });
 
-    it('classifies ENOENT stat error as Deleted', async () => {
+    it('classifies ENOENT stat error as Deleted', async ({ expect }) => {
       vi.mocked(stat).mockRejectedValue(nodeError('ENOENT'));
       const delegate = createDelegate();
 
@@ -119,7 +119,7 @@ describe.sequential('WorkspaceWatcher', () => {
       );
     });
 
-    it('classifies non-ENOENT stat error as Changed', async () => {
+    it('classifies non-ENOENT stat error as Changed', async ({ expect }) => {
       vi.mocked(stat).mockRejectedValue(nodeError('EACCES'));
       const delegate = createDelegate();
 
@@ -132,7 +132,7 @@ describe.sequential('WorkspaceWatcher', () => {
       );
     });
 
-    it('skips events outside workspace root', async () => {
+    it('skips events outside workspace root', async ({ expect }) => {
       vi.mocked(fw.isWithinRoot).mockResolvedValue(false);
       const delegate = createDelegate();
 
@@ -144,7 +144,7 @@ describe.sequential('WorkspaceWatcher', () => {
       expect(log.warn).toHaveBeenCalledWith(expect.stringContaining('outside workspace root') as unknown);
     });
 
-    it('stops processing when isStopped returns true', async () => {
+    it('stops processing when isStopped returns true', async ({ expect }) => {
       const delegate = createDelegate({
         isStopped: vi.fn(() => true),
       });
@@ -157,7 +157,7 @@ describe.sequential('WorkspaceWatcher', () => {
       expect(delegate.matchEvent).not.toHaveBeenCalled();
     });
 
-    it('resyncs tracked files on change', async () => {
+    it('resyncs tracked files on change', async ({ expect }) => {
       const doc = { uri: toUri('tracked.ts'), languageId: 'typescript', version: 1, content: 'old' };
       vi.mocked(readFile).mockResolvedValue('new content');
 
@@ -173,7 +173,7 @@ describe.sequential('WorkspaceWatcher', () => {
       expect(delegate.resyncDocument).toHaveBeenCalledWith(toUri('tracked.ts'), 1, 'new content');
     });
 
-    it('handles per-file errors without aborting batch', async () => {
+    it('handles per-file errors without aborting batch', async ({ expect }) => {
       vi.mocked(fw.isWithinRoot)
         .mockRejectedValueOnce(new Error('boom'))
         .mockResolvedValueOnce(true);
@@ -192,7 +192,7 @@ describe.sequential('WorkspaceWatcher', () => {
       expect(delegate.sendWatchedFilesEvent).toHaveBeenCalledWith('mock', changes);
     });
 
-    it('normalizes backslashes in filenames', async () => {
+    it('normalizes backslashes in filenames', async ({ expect }) => {
       const delegate = createDelegate();
 
       await startWatcher(delegate);
@@ -206,7 +206,7 @@ describe.sequential('WorkspaceWatcher', () => {
   });
 
   describe('resyncTrackedFile', () => {
-    it('returns unchanged when content matches disk', async () => {
+    it('returns unchanged when content matches disk', async ({ expect }) => {
       const doc = { uri: toUri('same.ts'), languageId: 'typescript', version: 1, content: 'same' };
       vi.mocked(readFile).mockResolvedValue('same');
       const delegate = createDelegate({ getDocument: vi.fn(() => doc) });
@@ -218,7 +218,7 @@ describe.sequential('WorkspaceWatcher', () => {
       expect(delegate.resyncDocument).not.toHaveBeenCalled();
     });
 
-    it('returns unchanged when document not tracked', async () => {
+    it('returns unchanged when document not tracked', async ({ expect }) => {
       const delegate = createDelegate({ getDocument: vi.fn(() => undefined) });
 
       await startWatcher(delegate);
@@ -228,7 +228,7 @@ describe.sequential('WorkspaceWatcher', () => {
       expect(delegate.resyncDocument).not.toHaveBeenCalled();
     });
 
-    it('returns deleted on stat ENOENT', async () => {
+    it('returns deleted on stat ENOENT', async ({ expect }) => {
       const doc = { uri: toUri('vanished.ts'), languageId: 'typescript', version: 1, content: 'old' };
       // First stat (flush existence check) succeeds, second stat (resync) fails
       vi.mocked(stat)
@@ -247,7 +247,7 @@ describe.sequential('WorkspaceWatcher', () => {
       );
     });
 
-    it('returns unchanged on stat non-ENOENT error', async () => {
+    it('returns unchanged on stat non-ENOENT error', async ({ expect }) => {
       const doc = { uri: toUri('perm.ts'), languageId: 'typescript', version: 1, content: 'old' };
       vi.mocked(stat)
         .mockResolvedValueOnce({ size: 10 } as Awaited<ReturnType<typeof stat>>)
@@ -265,7 +265,7 @@ describe.sequential('WorkspaceWatcher', () => {
       );
     });
 
-    it('returns deleted on readFile ENOENT', async () => {
+    it('returns deleted on readFile ENOENT', async ({ expect }) => {
       const doc = { uri: toUri('gone.ts'), languageId: 'typescript', version: 1, content: 'old' };
       vi.mocked(readFile).mockRejectedValue(nodeError('ENOENT'));
       const delegate = createDelegate({ getDocument: vi.fn(() => doc) });
@@ -280,7 +280,7 @@ describe.sequential('WorkspaceWatcher', () => {
       );
     });
 
-    it('skips files exceeding stat 2x pre-filter', async () => {
+    it('skips files exceeding stat 2x pre-filter', async ({ expect }) => {
       const doc = { uri: toUri('huge.ts'), languageId: 'typescript', version: 1, content: 'old' };
       vi.mocked(stat).mockResolvedValue({ size: 300 } as Awaited<ReturnType<typeof stat>>);
       const delegate = createDelegate({ getDocument: vi.fn(() => doc) });
@@ -294,7 +294,7 @@ describe.sequential('WorkspaceWatcher', () => {
       expect(log.warn).toHaveBeenCalledWith(expect.stringContaining('exceeds limit') as unknown);
     });
 
-    it('skips files exceeding byteLength threshold', async () => {
+    it('skips files exceeding byteLength threshold', async ({ expect }) => {
       const doc = { uri: toUri('big.ts'), languageId: 'typescript', version: 1, content: 'old' };
       // stat.size passes 2x filter (150 < 200) but byteLength (150) > maxResyncBytes (100)
       vi.mocked(stat).mockResolvedValue({ size: 150 } as Awaited<ReturnType<typeof stat>>);
@@ -309,7 +309,7 @@ describe.sequential('WorkspaceWatcher', () => {
       expect(log.warn).toHaveBeenCalledWith(expect.stringContaining('exceeds') as unknown);
     });
 
-    it('skips when version changed during read (optimistic concurrency)', async () => {
+    it('skips when version changed during read (optimistic concurrency)', async ({ expect }) => {
       const v1 = { uri: toUri('race.ts'), languageId: 'typescript', version: 1, content: 'old' };
       const v2 = { uri: toUri('race.ts'), languageId: 'typescript', version: 2, content: 'client edit' };
       vi.mocked(readFile).mockResolvedValue('disk content');
@@ -332,7 +332,7 @@ describe.sequential('WorkspaceWatcher', () => {
   });
 
   describe('backpressure', () => {
-    it('drops events exceeding maxPendingEvents and warns once', async () => {
+    it('drops events exceeding maxPendingEvents and warns once', async ({ expect }) => {
       const delegate = createDelegate();
 
       await startWatcher(delegate, { maxPendingEvents: 2 });
@@ -347,7 +347,7 @@ describe.sequential('WorkspaceWatcher', () => {
       expect(log.warn).toHaveBeenCalledWith(expect.stringContaining('exceeded cap') as unknown);
     });
 
-    it('allows duplicate paths within the cap', async () => {
+    it('allows duplicate paths within the cap', async ({ expect }) => {
       const delegate = createDelegate();
 
       await startWatcher(delegate, { maxPendingEvents: 1 });
@@ -361,7 +361,7 @@ describe.sequential('WorkspaceWatcher', () => {
   });
 
   describe('lifecycle', () => {
-    it('dispose cleans up scheduler and watcher', async () => {
+    it('dispose cleans up scheduler and watcher', async ({ expect }) => {
       const delegate = createDelegate();
       const watcher = await startWatcher(delegate);
 
@@ -372,7 +372,7 @@ describe.sequential('WorkspaceWatcher', () => {
       expect(mockFsWatcher.close).toHaveBeenCalled();
     });
 
-    it('Symbol.dispose calls dispose', async () => {
+    it('Symbol.dispose calls dispose', async ({ expect }) => {
       const delegate = createDelegate();
       const watcher = await startWatcher(delegate);
 
@@ -381,7 +381,7 @@ describe.sequential('WorkspaceWatcher', () => {
       expect(mockFsWatcher.close).toHaveBeenCalled();
     });
 
-    it('isDegraded is false initially', async () => {
+    it('isDegraded is false initially', async ({ expect }) => {
       const delegate = createDelegate();
       const watcher = await startWatcher(delegate);
 

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it } from 'vitest';
 import { empty, trackOpen, trackChange, trackClose, toArray } from '../src/document-tracker.js';
 import type { DocumentMap } from '../src/document-tracker.js';
 import type { TrackedDocument } from '../src/types.js';
@@ -17,14 +17,14 @@ const first = (docs: DocumentMap): TrackedDocument => {
 
 describe('document-tracker', () => {
   describe('trackOpen', () => {
-    it('stores document state', () => {
+    it('stores document state', ({ expect }) => {
       const docs = openDoc('file:///test.ts', 'const x = 1;');
       expect(toArray(docs)).toEqual([
         { uri: 'file:///test.ts', languageId: 'typescript', version: 1, content: 'const x = 1;' },
       ]);
     });
 
-    it('overwrites existing document at same URI', () => {
+    it('overwrites existing document at same URI', ({ expect }) => {
       let docs = openDoc('file:///a.ts', 'old');
       docs = trackOpen(docs, {
         textDocument: { uri: 'file:///a.ts', languageId: 'typescript', version: 2, text: 'new' },
@@ -34,7 +34,7 @@ describe('document-tracker', () => {
   });
 
   describe('trackChange — full replacement', () => {
-    it('replaces entire content', () => {
+    it('replaces entire content', ({ expect }) => {
       let docs = openDoc('file:///test.ts', 'old');
       docs = trackChange(docs, {
         textDocument: { uri: 'file:///test.ts', version: 2 },
@@ -45,7 +45,7 @@ describe('document-tracker', () => {
   });
 
   describe('trackChange — incremental', () => {
-    it('inserts text at a position', () => {
+    it('inserts text at a position', ({ expect }) => {
       let docs = openDoc('file:///test.ts', 'hello world');
       docs = trackChange(docs, {
         textDocument: { uri: 'file:///test.ts', version: 2 },
@@ -59,7 +59,7 @@ describe('document-tracker', () => {
       expect(first(docs).content).toBe('hello beautiful world');
     });
 
-    it('replaces text within a line', () => {
+    it('replaces text within a line', ({ expect }) => {
       let docs = openDoc('file:///test.ts', 'hello world');
       docs = trackChange(docs, {
         textDocument: { uri: 'file:///test.ts', version: 2 },
@@ -73,7 +73,7 @@ describe('document-tracker', () => {
       expect(first(docs).content).toBe('hello there');
     });
 
-    it('replaces text across lines', () => {
+    it('replaces text across lines', ({ expect }) => {
       let docs = openDoc('file:///test.ts', 'line1\nline2\nline3');
       docs = trackChange(docs, {
         textDocument: { uri: 'file:///test.ts', version: 2 },
@@ -87,7 +87,7 @@ describe('document-tracker', () => {
       expect(first(docs).content).toBe('line1\nREPLACED\nline3');
     });
 
-    it('handles \\r\\n line endings', () => {
+    it('handles \\r\\n line endings', ({ expect }) => {
       let docs = openDoc('file:///test.ts', 'line1\r\nline2\r\nline3');
       docs = trackChange(docs, {
         textDocument: { uri: 'file:///test.ts', version: 2 },
@@ -101,7 +101,7 @@ describe('document-tracker', () => {
       expect(first(docs).content).toBe('line1\r\nREPLACED\r\nline3');
     });
 
-    it('handles bare \\r line endings', () => {
+    it('handles bare \\r line endings', ({ expect }) => {
       let docs = openDoc('file:///test.ts', 'line1\rline2\rline3');
       docs = trackChange(docs, {
         textDocument: { uri: 'file:///test.ts', version: 2 },
@@ -115,7 +115,7 @@ describe('document-tracker', () => {
       expect(first(docs).content).toBe('line1\rREPLACED\rline3');
     });
 
-    it('deletes a range', () => {
+    it('deletes a range', ({ expect }) => {
       let docs = openDoc('file:///test.ts', 'abcdef');
       docs = trackChange(docs, {
         textDocument: { uri: 'file:///test.ts', version: 2 },
@@ -129,7 +129,7 @@ describe('document-tracker', () => {
       expect(first(docs).content).toBe('abef');
     });
 
-    it('applies multiple changes in sequence', () => {
+    it('applies multiple changes in sequence', ({ expect }) => {
       let docs = openDoc('file:///test.ts', 'aaa');
       docs = trackChange(docs, {
         textDocument: { uri: 'file:///test.ts', version: 2 },
@@ -143,20 +143,20 @@ describe('document-tracker', () => {
   });
 
   describe('trackClose', () => {
-    it('removes document', () => {
+    it('removes document', ({ expect }) => {
       let docs = openDoc('file:///test.ts', 'x');
       docs = trackClose(docs, { textDocument: { uri: 'file:///test.ts' } });
       expect(toArray(docs)).toStrictEqual([]);
     });
 
-    it('is a no-op for unknown URI', () => {
+    it('is a no-op for unknown URI', ({ expect }) => {
       const docs = trackClose(empty(), { textDocument: { uri: 'file:///unknown.ts' } });
       expect(toArray(docs)).toStrictEqual([]);
     });
   });
 
   describe('edge cases', () => {
-    it('ignores change for unknown document', () => {
+    it('ignores change for unknown document', ({ expect }) => {
       const docs = trackChange(empty(), {
         textDocument: { uri: 'file:///unknown.ts', version: 2 },
         contentChanges: [{ text: 'new' }],
@@ -164,7 +164,7 @@ describe('document-tracker', () => {
       expect(toArray(docs)).toStrictEqual([]);
     });
 
-    it('tracks multiple documents independently', () => {
+    it('tracks multiple documents independently', ({ expect }) => {
       let docs = openDoc('file:///a.ts', 'a');
       docs = trackOpen(docs, {
         textDocument: { uri: 'file:///b.ts', languageId: 'javascript', version: 1, text: 'b' },
@@ -172,7 +172,7 @@ describe('document-tracker', () => {
       expect(toArray(docs)).toHaveLength(2);
     });
 
-    it('returns immutable state (original unchanged)', () => {
+    it('returns immutable state (original unchanged)', ({ expect }) => {
       const before = empty();
       const after = openDoc('file:///test.ts', 'x');
       expect(toArray(before)).toStrictEqual([]);

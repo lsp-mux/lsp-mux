@@ -1,10 +1,10 @@
-import { describe, expect } from 'vitest';
+import { describe } from 'vitest';
 import { request, notify, initializeProxy } from '../helpers/test-client.js';
 import { it } from './harness.js';
 
 describe('LspProxy lifecycle', () => {
   describe('lazy initialization', () => {
-    it('does not spawn servers during initialize handshake', async ({ createProxy }) => {
+    it('does not spawn servers during initialize handshake', async ({ createProxy, expect }) => {
       const { writer, reader } = createProxy();
 
       await initializeProxy(writer, reader);
@@ -13,7 +13,7 @@ describe('LspProxy lifecycle', () => {
       expect(res).toMatchObject({ result: null });
     });
 
-    it('starts server on first matching didOpen', async ({ createProxy }) => {
+    it('starts server on first matching didOpen', async ({ createProxy, expect }) => {
       const { writer, reader } = createProxy();
 
       await initializeProxy(writer, reader);
@@ -35,7 +35,7 @@ describe('LspProxy lifecycle', () => {
     });
   });
 
-  it('returns ServerNotInitialized for requests before initialize', async ({ createProxy }) => {
+  it('returns ServerNotInitialized for requests before initialize', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
     const res = await request(writer, reader, 1, 'textDocument/hover', {
@@ -45,7 +45,7 @@ describe('LspProxy lifecycle', () => {
     expect(res).toMatchObject({ error: { code: -32002 } });
   });
 
-  it('returns ServerNotInitialized for requests after shutdown', async ({ createProxy }) => {
+  it('returns ServerNotInitialized for requests after shutdown', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
     await initializeProxy(writer, reader);
@@ -56,14 +56,14 @@ describe('LspProxy lifecycle', () => {
     expect(res).toMatchObject({ error: { code: -32002 } });
   });
 
-  it('completes initialize handshake', async ({ createProxy }) => {
+  it('completes initialize handshake', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
     const res = await initializeProxy(writer, reader);
     expect(res).toMatchObject({ result: { capabilities: { hoverProvider: true } } });
   });
 
-  it('forwards requests to child server', async ({ createProxy }) => {
+  it('forwards requests to child server', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
     await initializeProxy(writer, reader);
@@ -85,7 +85,7 @@ describe('LspProxy lifecycle', () => {
     expect(hover).toMatchObject({ result: { echo: 'textDocument/hover' } });
   });
 
-  it('handles shutdown/exit gracefully', async ({ createProxy }) => {
+  it('handles shutdown/exit gracefully', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
     await initializeProxy(writer, reader);
@@ -94,7 +94,7 @@ describe('LspProxy lifecycle', () => {
     expect(shutdownRes).toMatchObject({ result: null });
   });
 
-  it('preserves existing client capabilities when injecting dynamicRegistration', async ({ createProxy }) => {
+  it('preserves existing client capabilities when injecting dynamicRegistration', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
     await request(writer, reader, 0, 'initialize', {
@@ -121,7 +121,7 @@ describe('LspProxy lifecycle', () => {
     });
   });
 
-  it('injects dynamicRegistration for didChangeWatchedFiles into server init params', async ({ createProxy }) => {
+  it('injects dynamicRegistration for didChangeWatchedFiles into server init params', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
     await initializeProxy(writer, reader);
@@ -138,7 +138,7 @@ describe('LspProxy lifecycle', () => {
     });
   });
 
-  it('always advertises textDocumentSync Full (1) regardless of server capability', async ({ createProxy }) => {
+  it('always advertises textDocumentSync Full (1) regardless of server capability', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
     // The mock server advertises textDocumentSync: 1, but even if it advertised

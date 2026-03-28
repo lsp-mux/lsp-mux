@@ -1,6 +1,7 @@
 {
   "files": [],
   "references": [
-    { "path": "packages/proxy" }
+    { "path": "packages/proxy" },
+    { "path": "test" }
   ]
 }

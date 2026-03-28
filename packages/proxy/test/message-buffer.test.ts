@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it } from 'vitest';
 import { createMessageBuffer } from '../src/message-buffer.js';
 import { createRequest, createNotification } from '../src/types.js';
 
 describe('MessageBuffer', () => {
-  it('buffers and flushes messages in order', () => {
+  it('buffers and flushes messages in order', ({ expect }) => {
     const buf = createMessageBuffer(10);
     const r1 = createRequest(1, 'a');
     const r2 = createRequest(2, 'b');
@@ -16,7 +16,7 @@ describe('MessageBuffer', () => {
     expect(buf.length).toBe(0);
   });
 
-  it('rejects when full', () => {
+  it('rejects when full', ({ expect }) => {
     const buf = createMessageBuffer(2);
     expect(buf.push(createRequest(1, 'a'))).toBe(true);
     expect(buf.push(createRequest(2, 'b'))).toBe(true);
@@ -24,7 +24,7 @@ describe('MessageBuffer', () => {
     expect(buf.length).toBe(2);
   });
 
-  it('cancels a buffered request by ID', () => {
+  it('cancels a buffered request by ID', ({ expect }) => {
     const buf = createMessageBuffer(10);
     buf.push(createRequest(1, 'a'));
     buf.push(createRequest(2, 'b'));
@@ -37,14 +37,14 @@ describe('MessageBuffer', () => {
     expect(flushed.map(m => 'id' in m ? m.id : undefined)).toEqual([1, 3]);
   });
 
-  it('returns false when cancelling non-existent ID', () => {
+  it('returns false when cancelling non-existent ID', ({ expect }) => {
     const buf = createMessageBuffer(10);
     buf.push(createRequest(1, 'a'));
     expect(buf.cancel(99)).toBe(false);
     expect(buf.length).toBe(1);
   });
 
-  it('does not cancel notifications (only requests)', () => {
+  it('does not cancel notifications (only requests)', ({ expect }) => {
     const buf = createMessageBuffer(10);
     buf.push(createNotification('textDocument/hover'));
     buf.push(createRequest(1, 'a'));
@@ -54,7 +54,7 @@ describe('MessageBuffer', () => {
     expect(buf.length).toBe(1);
   });
 
-  it('flush returns empty array when buffer is empty', () => {
+  it('flush returns empty array when buffer is empty', ({ expect }) => {
     const buf = createMessageBuffer(10);
     expect(buf.flush()).toEqual([]);
   });

@@ -12,7 +12,7 @@ export default defineConfig({
     include: ['packages/*/test/**/*.test.ts'],
     mockReset: true,
     sequence: { concurrent: true },
-    setupFiles: ['console-fail-test/setup'],
+    setupFiles: ['console-fail-test/setup', './test/setup.ts'],
     unstubEnvs: true,
   },
 });

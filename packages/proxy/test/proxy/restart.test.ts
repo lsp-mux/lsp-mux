@@ -1,4 +1,4 @@
-import { describe, expect } from 'vitest';
+import { describe } from 'vitest';
 import type { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import { request, notify, initializeProxy } from '../helpers/test-client.js';
 import { it, type ServerConfig } from './harness.js';
@@ -7,7 +7,7 @@ const crashAndWait = (w: StreamMessageWriter, r: StreamMessageReader, id: number
   request(w, r, id, '$/crash');
 
 describe('LspProxy restart behavior', () => {
-  it('restarts after crash and flushes buffered requests', async ({ createProxy }) => {
+  it('restarts after crash and flushes buffered requests', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
     await initializeProxy(writer, reader);
@@ -22,7 +22,7 @@ describe('LspProxy restart behavior', () => {
     expect(hover).toMatchObject({ result: { echo: 'textDocument/hover' } });
   });
 
-  it('replays tracked documents to restarted server', async ({ createProxy }) => {
+  it('replays tracked documents to restarted server', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
     await initializeProxy(writer, reader);
@@ -45,7 +45,7 @@ describe('LspProxy restart behavior', () => {
     });
   });
 
-  it('errors pending requests on crash', async ({ createProxy }) => {
+  it('errors pending requests on crash', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
     await initializeProxy(writer, reader);
@@ -54,7 +54,7 @@ describe('LspProxy restart behavior', () => {
     expect(res).toMatchObject({ error: { message: expect.stringContaining('crashed') as unknown } });
   });
 
-  it('stops if server crashes before initial handshake', async ({ createProxy }) => {
+  it('stops if server crashes before initial handshake', async ({ createProxy, expect }) => {
     const exitingConfig: ServerConfig = {
       command: process.execPath,
       args: ['-e', 'process.exit(1)'],
@@ -72,7 +72,7 @@ describe('LspProxy restart behavior', () => {
     expect(res).toMatchObject({ error: expect.objectContaining({}) as unknown });
   });
 
-  it('stops after max retries exhausted', async ({ createProxy }) => {
+  it('stops after max retries exhausted', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy({ restartPolicy: { maxRetries: 0 } });
 
     await initializeProxy(writer, reader);
@@ -87,7 +87,7 @@ describe('LspProxy restart behavior', () => {
     expect(res).toMatchObject({ error: { code: -32002 } });
   });
 
-  it('resolves start() when all servers exhaust retries', async ({ createProxy }) => {
+  it('resolves start() when all servers exhaust retries', async ({ createProxy, expect }) => {
     const { writer, reader, started } = createProxy({ restartPolicy: { maxRetries: 0 } });
     await initializeProxy(writer, reader);
 
@@ -103,7 +103,7 @@ describe('LspProxy restart behavior', () => {
     await expect(Promise.race([started, timeout])).resolves.toBeUndefined();
   });
 
-  it('handles shutdown during restart', async ({ createProxy }) => {
+  it('handles shutdown during restart', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy({
       restartPolicy: { baseDelayMs: 500 },
     });
@@ -120,7 +120,7 @@ describe('LspProxy restart behavior', () => {
     expect(hover).toMatchObject({ error: { code: -32002 } });
   });
 
-  it('cancels buffered request during restart', async ({ createProxy }) => {
+  it('cancels buffered request during restart', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
     await initializeProxy(writer, reader);

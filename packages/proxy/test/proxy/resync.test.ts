@@ -1,12 +1,12 @@
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { describe, expect, vi } from 'vitest';
+import { describe, vi } from 'vitest';
 import { request, notify, initializeProxy } from '../helpers/test-client.js';
 import { it } from './harness.js';
 
 describe('LspProxy file resync', () => {
-  it('resyncs document when file changes on disk', async ({ createProxy, workspace }) => {
+  it('resyncs document when file changes on disk', async ({ createProxy, workspace, expect }) => {
     const { writer, reader } = createProxy();
 
     const tmpFile = join(workspace.dir, 'resync-test.ts');
@@ -36,7 +36,7 @@ describe('LspProxy file resync', () => {
     }, { timeout: 5000, interval: 100 });
   });
 
-  it('maintains monotonically increasing versions after resync', async ({ createProxy, workspace }) => {
+  it('maintains monotonically increasing versions after resync', async ({ createProxy, workspace, expect }) => {
     const { writer, reader } = createProxy();
 
     const tmpFile = join(workspace.dir, 'resync-test.ts');
@@ -77,7 +77,7 @@ describe('LspProxy file resync', () => {
     }, { timeout: 5000, interval: 100 });
   });
 
-  it('resets version offset on close and reopen', async ({ createProxy, workspace }) => {
+  it('resets version offset on close and reopen', async ({ createProxy, workspace, expect }) => {
     const { writer, reader } = createProxy();
 
     const tmpFile = join(workspace.dir, 'resync-test.ts');
@@ -121,7 +121,7 @@ describe('LspProxy file resync', () => {
     });
   });
 
-  it('server receives correct version after close and reopen post-resync', async ({ createProxy, workspace }) => {
+  it('server receives correct version after close and reopen post-resync', async ({ createProxy, workspace, expect }) => {
     const { writer, reader } = createProxy();
 
     const tmpFile = join(workspace.dir, 'resync-test.ts');
@@ -164,7 +164,7 @@ describe('LspProxy file resync', () => {
     });
   });
 
-  it('multiple resyncs produce monotonically increasing versions', async ({ createProxy, workspace }) => {
+  it('multiple resyncs produce monotonically increasing versions', async ({ createProxy, workspace, expect }) => {
     const { writer, reader } = createProxy();
 
     const tmpFile = join(workspace.dir, 'resync-test.ts');
@@ -216,7 +216,7 @@ describe('LspProxy file resync', () => {
     }, { timeout: 5000, interval: 100 });
   });
 
-  it('converges to final content after rapid successive writes', async ({ createProxy, workspace }) => {
+  it('converges to final content after rapid successive writes', async ({ createProxy, workspace, expect }) => {
     const { writer, reader } = createProxy();
 
     const tmpFile = join(workspace.dir, 'resync-test.ts');
@@ -245,7 +245,7 @@ describe('LspProxy file resync', () => {
     }, { timeout: 5000, interval: 100 });
   });
 
-  it('skips resync for files exceeding maxResyncBytes', async ({ createProxy, workspace }) => {
+  it('skips resync for files exceeding maxResyncBytes', async ({ createProxy, workspace, expect }) => {
     const { writer, reader } = createProxy({ maxResyncBytes: 10 });
 
     const tmpFile = join(workspace.dir, 'resync-test.ts');

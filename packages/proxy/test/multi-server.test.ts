@@ -1,5 +1,5 @@
 import * as v from 'valibot';
-import { describe, expect } from 'vitest';
+import { describe } from 'vitest';
 import type { Message, ResponseMessage } from 'vscode-jsonrpc';
 import { Message as Msg, createRequest } from '../src/types.js';
 import { collectMessages, request, notify, waitForMessage, initializeProxy } from './helpers/test-client.js';
@@ -34,7 +34,7 @@ const isResponse = (msg: Message, id: number): boolean =>
   Msg.isResponse(msg) && msg.id === id;
 
 describe('Multi-server proxy', () => {
-  it('initializes all servers and merges capabilities', async ({ createProxy }) => {
+  it('initializes all servers and merges capabilities', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy({ configs: twoServerConfigs() });
 
     const res = await initializeProxy(writer, reader);
@@ -43,7 +43,7 @@ describe('Multi-server proxy', () => {
     });
   });
 
-  it('starts only matching servers for a given file type', async ({ createProxy }) => {
+  it('starts only matching servers for a given file type', async ({ createProxy, expect }) => {
     // Alpha handles .ts, beta handles .css — opening .ts should only start alpha
     const configs = new Map([
       ['alpha', namedConfig('alpha')],
@@ -70,7 +70,7 @@ describe('Multi-server proxy', () => {
     expect(shutdownRes).toMatchObject({ result: null });
   });
 
-  it('merges diagnostics from multiple servers on didOpen', async ({ createProxy }) => {
+  it('merges diagnostics from multiple servers on didOpen', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy({ configs: twoServerConfigs() });
     await initializeProxy(writer, reader);
 
@@ -96,7 +96,7 @@ describe('Multi-server proxy', () => {
     ]));
   });
 
-  it('routes hover request to primary server only', async ({ createProxy }) => {
+  it('routes hover request to primary server only', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy({ configs: twoServerConfigs() });
     await initializeProxy(writer, reader);
 
@@ -108,7 +108,7 @@ describe('Multi-server proxy', () => {
     expect(hover).toMatchObject({ result: { echo: 'textDocument/hover', server: 'alpha' } });
   });
 
-  it('fans out didOpen to all matching servers', async ({ createProxy }) => {
+  it('fans out didOpen to all matching servers', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy({ configs: twoServerConfigs() });
     await initializeProxy(writer, reader);
 
@@ -134,7 +134,7 @@ describe('Multi-server proxy', () => {
     ]));
   });
 
-  it('clears crashed server diagnostics and re-publishes', async ({ createProxy }) => {
+  it('clears crashed server diagnostics and re-publishes', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy({ configs: twoServerConfigs() });
     await initializeProxy(writer, reader);
 
@@ -170,7 +170,7 @@ describe('Multi-server proxy', () => {
     ]);
   });
 
-  it('handles shutdown with multiple servers', async ({ createProxy }) => {
+  it('handles shutdown with multiple servers', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy({ configs: twoServerConfigs() });
     await initializeProxy(writer, reader);
 
@@ -178,7 +178,7 @@ describe('Multi-server proxy', () => {
     expect(res).toMatchObject({ result: null });
   });
 
-  it('continues operating when one server restarts', async ({ createProxy }) => {
+  it('continues operating when one server restarts', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy({ configs: twoServerConfigs() });
     await initializeProxy(writer, reader);
 
@@ -193,7 +193,7 @@ describe('Multi-server proxy', () => {
     expect(hover).toMatchObject({ result: { echo: 'textDocument/hover' } });
   });
 
-  it('forces textDocumentSync to Full even when a server advertises Incremental', async ({ createProxy }) => {
+  it('forces textDocumentSync to Full even when a server advertises Incremental', async ({ createProxy, expect }) => {
     const configs = new Map([
       ['alpha', namedConfig('alpha')],
       ['beta', namedConfig('beta', '--incremental-sync')],
@@ -209,7 +209,7 @@ describe('Multi-server proxy', () => {
     });
   });
 
-  it('routes client ack to originating server only (not broadcast)', async ({ createProxy }) => {
+  it('routes client ack to originating server only (not broadcast)', async ({ createProxy, expect }) => {
     const configs = new Map([
       ['alpha', namedConfig('alpha')],
       ['beta', namedConfig('beta', '--register-mixed')],

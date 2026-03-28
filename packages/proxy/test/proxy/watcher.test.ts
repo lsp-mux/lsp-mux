@@ -1,6 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { describe, expect, vi } from 'vitest';
+import { describe, vi } from 'vitest';
+import type { ExpectStatic } from 'vitest';
 import type { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import { Message as Msg } from '../../src/types.js';
 import { request, notify, waitForMessage, initializeProxy } from '../helpers/test-client.js';
@@ -8,6 +9,7 @@ import { it, mockServerConfig, type ServerConfig, type Workspace } from './harne
 
 /** Poll until the proxy's file watcher is active and dispatching events. */
 const waitForWatcherActive = (
+  expect: ExpectStatic,
   { dir, nextSeq }: Workspace,
   w: StreamMessageWriter,
   r: StreamMessageReader,
@@ -23,7 +25,7 @@ const waitForWatcherActive = (
 // Sequential: crash+restart test needs stable timing for watcher re-registration
 describe.sequential('LspProxy file watchers', () => {
   describe('watcher registration', () => {
-    it('intercepts watcher registration and dispatches file events', async ({ createProxy, workspace }) => {
+    it('intercepts watcher registration and dispatches file events', async ({ createProxy, workspace, expect }) => {
       const watcherConfig: ServerConfig = {
         ...mockServerConfig,
         args: [...mockServerConfig.args, '--register-watchers'],
@@ -32,7 +34,7 @@ describe.sequential('LspProxy file watchers', () => {
       const { writer, reader } = createProxy({ config: watcherConfig });
 
       await initializeProxy(writer, reader, workspace.uri);
-      await waitForWatcherActive(workspace, writer, reader);
+      await waitForWatcherActive(expect, workspace, writer, reader);
 
       // Write a .ts file — should trigger the registered watcher
       await writeFile(join(workspace.dir, 'new-file.ts'), 'export const x = 1;');
@@ -53,7 +55,7 @@ describe.sequential('LspProxy file watchers', () => {
       }, { timeout: 5000, interval: 100 });
     });
 
-    it('splits mixed registration: intercepts watchers, forwards rest to client', async ({ createProxy, workspace }) => {
+    it('splits mixed registration: intercepts watchers, forwards rest to client', async ({ createProxy, workspace, expect }) => {
       const mixedConfig: ServerConfig = {
         ...mockServerConfig,
         args: [...mockServerConfig.args, '--register-mixed'],
@@ -111,7 +113,7 @@ describe.sequential('LspProxy file watchers', () => {
   });
 
   describe('watcher unregistration', () => {
-    it('stops dispatching file events after unregistering a watcher', async ({ createProxy, workspace }) => {
+    it('stops dispatching file events after unregistering a watcher', async ({ createProxy, workspace, expect }) => {
       const config: ServerConfig = {
         ...mockServerConfig,
         args: [...mockServerConfig.args, '--register-watchers', '--unregister-on-command'],
@@ -120,7 +122,7 @@ describe.sequential('LspProxy file watchers', () => {
       const { writer, reader } = createProxy({ config });
 
       await initializeProxy(writer, reader, workspace.uri);
-      await waitForWatcherActive(workspace, writer, reader);
+      await waitForWatcherActive(expect, workspace, writer, reader);
 
       // Snapshot baseline events
       const baseline = await request(writer, reader, workspace.nextSeq(), '$/watcherEvents');
@@ -148,7 +150,7 @@ describe.sequential('LspProxy file watchers', () => {
   });
 
   describe('watcher cleanup on restart', () => {
-    it('clears watcher registrations on crash and re-registers after restart', async ({ createProxy, workspace }) => {
+    it('clears watcher registrations on crash and re-registers after restart', async ({ createProxy, workspace, expect }) => {
       const watcherConfig: ServerConfig = {
         ...mockServerConfig,
         args: [...mockServerConfig.args, '--register-watchers'],
@@ -157,7 +159,7 @@ describe.sequential('LspProxy file watchers', () => {
       const { writer, reader } = createProxy({ config: watcherConfig });
 
       await initializeProxy(writer, reader, workspace.uri);
-      await waitForWatcherActive(workspace, writer, reader);
+      await waitForWatcherActive(expect, workspace, writer, reader);
 
       // Crash the server — watcher registrations should be cleared
       const crashRes = await request(writer, reader, workspace.nextSeq(), '$/crash');
@@ -184,7 +186,7 @@ describe.sequential('LspProxy file watchers', () => {
   });
 
   describe('event backpressure', () => {
-    it('drops events exceeding maxPendingEvents cap', async ({ createProxy, workspace }) => {
+    it('drops events exceeding maxPendingEvents cap', async ({ createProxy, workspace, expect }) => {
       const watcherConfig: ServerConfig = {
         ...mockServerConfig,
         args: [...mockServerConfig.args, '--register-watchers'],
@@ -193,7 +195,7 @@ describe.sequential('LspProxy file watchers', () => {
       const { writer, reader } = createProxy({ config: watcherConfig, maxPendingEvents: 2 });
 
       await initializeProxy(writer, reader, workspace.uri);
-      await waitForWatcherActive(workspace, writer, reader);
+      await waitForWatcherActive(expect, workspace, writer, reader);
 
       // Write 4 files sequentially — with cap of 2, only the first 2 unique
       // paths get into pendingEvents before the cap blocks new entries.
@@ -238,7 +240,7 @@ describe.sequential('LspProxy file watchers', () => {
   });
 
   describe('event batching', () => {
-    it('batches multiple file changes into a single notification per server', async ({ createProxy, workspace }) => {
+    it('batches multiple file changes into a single notification per server', async ({ createProxy, workspace, expect }) => {
       const watcherConfig: ServerConfig = {
         ...mockServerConfig,
         args: [...mockServerConfig.args, '--register-watchers'],
@@ -247,7 +249,7 @@ describe.sequential('LspProxy file watchers', () => {
       const { writer, reader } = createProxy({ config: watcherConfig });
 
       await initializeProxy(writer, reader, workspace.uri);
-      await waitForWatcherActive(workspace, writer, reader);
+      await waitForWatcherActive(expect, workspace, writer, reader);
 
       // Write multiple files simultaneously — they should be batched into one notification
       await Promise.all([

@@ -1,12 +1,12 @@
 import { createClock } from '@sinonjs/fake-timers';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, vi } from 'vitest';
 import { createRestartScheduler } from '../src/restart-scheduler.js';
 import type { Timers } from '../src/types.js';
 
 describe('RestartScheduler', () => {
   const policy = { maxRetries: 3, baseDelayMs: 100, maxDelayMs: 500 };
 
-  it('schedules with exponential backoff', () => {
+  it('schedules with exponential backoff', ({ expect }) => {
     const t = createClock();
     const sched = createRestartScheduler({ policy, timers: t });
     const calls: number[] = [];
@@ -34,7 +34,7 @@ describe('RestartScheduler', () => {
     expect(sched.attempt).toBe(3);
   });
 
-  it('caps delay at maxDelayMs', () => {
+  it('caps delay at maxDelayMs', ({ expect }) => {
     const t = createClock();
     const sched = createRestartScheduler({ policy: { maxRetries: 10, baseDelayMs: 100, maxDelayMs: 300 }, timers: t });
     const calls: number[] = [];
@@ -54,7 +54,7 @@ describe('RestartScheduler', () => {
     expect(calls).toEqual([1, 2, 3]);
   });
 
-  it('reset restores attempt counter', () => {
+  it('reset restores attempt counter', ({ expect }) => {
     const t = createClock();
     const sched = createRestartScheduler({ policy, timers: t });
 
@@ -75,7 +75,7 @@ describe('RestartScheduler', () => {
     expect(called).toHaveBeenCalledOnce();
   });
 
-  it('cancel prevents pending callback', () => {
+  it('cancel prevents pending callback', ({ expect }) => {
     const t = createClock();
     const sched = createRestartScheduler({ policy, timers: t });
     const called = vi.fn();
@@ -86,12 +86,12 @@ describe('RestartScheduler', () => {
     expect(called).not.toHaveBeenCalled();
   });
 
-  it('exposes maxRetries from policy', () => {
+  it('exposes maxRetries from policy', ({ expect }) => {
     const sched = createRestartScheduler({ policy });
     expect(sched.maxRetries).toBe(3);
   });
 
-  it('adds jitter so simultaneous restarts do not thundering-herd', () => {
+  it('adds jitter so simultaneous restarts do not thundering-herd', ({ expect }) => {
     const delays: number[] = [];
     const capturingTimers: Timers = {
       setTimeout: (_cb: () => void, ms: number) => {

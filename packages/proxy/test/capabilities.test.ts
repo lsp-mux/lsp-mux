@@ -1,17 +1,17 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it } from 'vitest';
 import { mergeCapabilities } from '../src/capabilities.js';
 
 describe('mergeCapabilities', () => {
-  it('returns empty object for empty array', () => {
+  it('returns empty object for empty array', ({ expect }) => {
     expect(mergeCapabilities([])).toEqual({});
   });
 
-  it('returns capabilities unchanged for single server', () => {
+  it('returns capabilities unchanged for single server', ({ expect }) => {
     const caps = { hoverProvider: true, completionProvider: { triggerCharacters: ['.'] } };
     expect(mergeCapabilities([caps])).toEqual(caps);
   });
 
-  it('ORs boolean providers', () => {
+  it('ORs boolean providers', ({ expect }) => {
     expect(mergeCapabilities([
       { hoverProvider: true },
       { hoverProvider: false },
@@ -23,14 +23,14 @@ describe('mergeCapabilities', () => {
     ])).toEqual({ hoverProvider: true });
   });
 
-  it('merges disjoint providers from two servers', () => {
+  it('merges disjoint providers from two servers', ({ expect }) => {
     expect(mergeCapabilities([
       { hoverProvider: true },
       { completionProvider: {} },
     ])).toEqual({ hoverProvider: true, completionProvider: {} });
   });
 
-  it('takes max for number values (textDocumentSync)', () => {
+  it('takes max for number values (textDocumentSync)', ({ expect }) => {
     expect(mergeCapabilities([
       { textDocumentSync: 1 },
       { textDocumentSync: 2 },
@@ -42,7 +42,7 @@ describe('mergeCapabilities', () => {
     ])).toEqual({ textDocumentSync: 2 });
   });
 
-  it('deep-merges nested object providers without losing keys', () => {
+  it('deep-merges nested object providers without losing keys', ({ expect }) => {
     expect(mergeCapabilities([
       { completionProvider: { triggerCharacters: ['.'], resolveProvider: true } },
       { completionProvider: { triggerCharacters: [':', '<'] } },
@@ -51,7 +51,7 @@ describe('mergeCapabilities', () => {
     });
   });
 
-  it('shallow-merges object providers', () => {
+  it('shallow-merges object providers', ({ expect }) => {
     expect(mergeCapabilities([
       { completionProvider: { triggerCharacters: ['.'] } },
       { completionProvider: { resolveProvider: true } },
@@ -60,14 +60,14 @@ describe('mergeCapabilities', () => {
     });
   });
 
-  it('concatenates array values', () => {
+  it('concatenates array values', ({ expect }) => {
     expect(mergeCapabilities([
       { experimental: ['a', 'b'] },
       { experimental: ['c'] },
     ])).toEqual({ experimental: ['a', 'b', 'c'] });
   });
 
-  it('uses later value when types differ (fallback)', () => {
+  it('uses later value when types differ (fallback)', ({ expect }) => {
     expect(mergeCapabilities([
       { textDocumentSync: 1 },
       { textDocumentSync: { openClose: true, change: 2 } },
