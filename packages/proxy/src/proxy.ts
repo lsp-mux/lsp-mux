@@ -1,7 +1,5 @@
-import { readFile, stat } from 'node:fs/promises';
-import { watch, type FSWatcher } from 'node:fs';
-import { join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { stat } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import type { Message, NotificationMessage, RequestMessage, ResponseMessage, ServerConfig } from './types.js';
 import * as v from 'valibot';
@@ -14,9 +12,8 @@ import { isPlainObject, STATIC_CAPABILITIES } from './capabilities.js';
 import * as diag from './diagnostics-store.js';
 import * as docs from './document-tracker.js';
 import * as fw from './file-watcher.js';
-import { createFlushScheduler } from './flush-scheduler.js';
-import type { FlushScheduler } from './flush-scheduler.js';
 import type { RestartPolicy } from './restart-scheduler.js';
+import { WorkspaceWatcher } from './workspace-watcher.js';
 import { log } from './logger.js';
 
 const CancelParamsSchema = v.object({
@@ -46,18 +43,6 @@ const UnregisterCapabilitySchema = v.object({
     method: v.string(),
   })),
 });
-
-const WATCHER_DEBOUNCE_MS = 250;
-const WATCHER_MAX_WAIT_MS = 2000;
-const FLUSH_BATCH_SIZE = 100;
-const DEFAULT_MAX_PENDING_EVENTS = 10_000;
-const DEFAULT_MAX_RESYNC_BYTES = 1024 * 1024; // 1 MB
-
-const isNodeError = (err: unknown): err is NodeJS.ErrnoException =>
-  err instanceof Error && 'code' in err;
-
-const isEnoent = (err: unknown): boolean =>
-  isNodeError(err) && err.code === 'ENOENT';
 
 /** Ensures child servers see capabilities the proxy handles (e.g., file watching). */
 const injectProxyCapabilities = (params: unknown): object => {
@@ -109,20 +94,13 @@ export class LspProxy {
   private watchRegistrations: fw.WatchRegistrations = fw.empty();
   private initParams: RequestMessage['params'];
   private workspaceRoot: string | null = null;
-  private resolvedRoot: string | null = null;
-  private workspaceWatcher: FSWatcher | null = null;
-  private flushScheduler: FlushScheduler | null = null;
-  private readonly isExcluded: (path: string) => boolean;
-  private readonly maxResyncBytes: number;
-  private readonly maxPendingEvents: number;
-  private pendingOverflowWarned = false;
+  private watcher: WorkspaceWatcher | null = null;
 
-  /** True when the workspace watcher encountered a fatal error (e.g., ENOSPC).
-   *  File watching may be partially or fully non-functional. */
-  get isWatcherDegraded(): boolean { return this._watcherDegraded; }
-  private _watcherDegraded = false;
+  get isWatcherDegraded(): boolean { return this.watcher?.isDegraded ?? false; }
+
   private readonly servers: Map<string, ManagedServer>;
   private readonly router: Router;
+  private readonly proxyOptions: ProxyOptions | undefined;
 
   // Track which server owns each pending client request (used for cancel routing)
   private readonly requestRouting = new Map<number | string | null, string>();
@@ -134,17 +112,12 @@ export class LspProxy {
   // Bumped on resync so server versions stay monotonically increasing.
   private readonly versionOffsets = new Map<string, number>();
 
-  // Shared pending-event set written by the watcher callback, drained by flushFileEvents
-  private readonly pendingEvents = new Set<string>();
-
   private resolveDone?: () => void;
 
   constructor(serverConfigs: ReadonlyMap<string, ServerConfig>, options?: ProxyOptions) {
     this.clientReader = new StreamMessageReader(options?.input ?? process.stdin);
     this.clientWriter = new StreamMessageWriter(options?.output ?? process.stdout);
-    this.isExcluded = fw.createExcludeMatcher(options?.watcherExclude ?? []);
-    this.maxResyncBytes = options?.maxResyncBytes ?? DEFAULT_MAX_RESYNC_BYTES;
-    this.maxPendingEvents = options?.maxPendingEvents ?? DEFAULT_MAX_PENDING_EVENTS;
+    this.proxyOptions = options;
 
     this.servers = new Map<string, ManagedServer>();
     const serverEntries = [...serverConfigs].map(([name, config]) => ({ name, config }));
@@ -485,212 +458,42 @@ export class LspProxy {
     const exists = await stat(this.workspaceRoot).then(() => true, () => false);
     if (!exists) return;
 
-    this.resolvedRoot = await fw.resolveRoot(this.workspaceRoot);
-
-    if (process.platform === 'linux') {
-      const major = Number(process.versions.node.split('.')[0]);
-      if (major < 20) {
-        log.warn(`Recursive file watching may not work on Linux with Node.js ${process.versions.node} (requires ≥20.x)`);
-      }
-    }
-
-    const root = this.workspaceRoot;
-
-    // The watcher callback (synchronous, runs on the event loop between awaits)
-    // writes into pendingEvents. flushFileEvents snapshots and clears it at the
-    // start of each flush. Events arriving *during* an async flush land in the
-    // fresh map and are processed by the scheduler's re-check mechanism
-    // (notifiedDuringFlush → setTimeout(0) → next doFlush call). This avoids
-    // both double-processing and lost events without explicit locking.
-    const pending = this.pendingEvents;
-
-    this.flushScheduler = createFlushScheduler({
-      debounceMs: WATCHER_DEBOUNCE_MS,
-      maxWaitMs: WATCHER_MAX_WAIT_MS,
-      onFlush: () => this.flushFileEvents(),
-    });
-
-    this.workspaceWatcher = watch(
-      root,
-      { recursive: true },
-      (_event, filename) => {
-        if (!filename) return;
-        if (this.state === 'stopped') return;
-
-        const normalized = filename.replace(/\\/g, '/');
-        if (this.isExcluded(normalized)) return;
-
-        // Backpressure: drop new paths when the pending map exceeds the cap.
-        // Dropped events may re-fire from the watcher on the next cycle.
-        if (pending.size >= this.maxPendingEvents && !pending.has(normalized)) {
-          if (!this.pendingOverflowWarned) {
-            log.warn(`Pending file events exceeded cap (${String(this.maxPendingEvents)}) — dropping new events until flush`);
-            this.pendingOverflowWarned = true;
+    this.watcher = new WorkspaceWatcher(
+      {
+        workspaceRoot: this.workspaceRoot,
+        watcherExclude: this.proxyOptions?.watcherExclude,
+        maxResyncBytes: this.proxyOptions?.maxResyncBytes,
+        maxPendingEvents: this.proxyOptions?.maxPendingEvents,
+      },
+      {
+        isStopped: () => this.isStopped(),
+        getDocument: uri => this.documents.get(uri),
+        matchEvent: (relativePath, changeType, uri) =>
+          fw.matchEvent(this.watchRegistrations, relativePath, changeType, uri),
+        resyncDocument: (uri, clientVersion, text) => {
+          const offset = (this.versionOffsets.get(uri) ?? 0) + 1;
+          this.versionOffsets.set(uri, offset);
+          const serverVersion = clientVersion + offset;
+          this.documents = docs.trackChange(this.documents, {
+            textDocument: { uri, version: clientVersion },
+            contentChanges: [{ text }],
+          });
+          const notification = createNotification('textDocument/didChange', {
+            textDocument: { uri, version: serverVersion },
+            contentChanges: [{ text }],
+          });
+          for (const name of this.router.serversForUri(uri)) {
+            this.servers.get(name)?.send(notification);
           }
-          return;
-        }
-
-        pending.add(normalized);
-
-        this.flushScheduler?.notify();
+        },
+        sendWatchedFilesEvent: (serverName, changes) => {
+          this.servers.get(serverName)?.send(
+            createNotification('workspace/didChangeWatchedFiles', { changes }),
+          );
+        },
       },
     );
-
-    this.workspaceWatcher.on('error', (err) => {
-      log.error('Workspace watcher error — file watching may be degraded:', err);
-      this._watcherDegraded = true;
-    });
-
-    log.info(`Watching workspace: ${this.workspaceRoot}`);
-  }
-
-  private async flushFileEvents(): Promise<void> {
-    if (!this.workspaceRoot || !this.resolvedRoot) return;
-    const root = this.workspaceRoot;
-    const resolvedRoot = this.resolvedRoot;
-
-    // Snapshot-and-clear: events arriving during async processing go into a
-    // fresh pendingEvents map and are picked up by the scheduler's re-check
-    // (via notifiedDuringFlush), not by a loop here.
-    const events = new Set(this.pendingEvents);
-    this.pendingEvents.clear();
-    this.pendingOverflowWarned = false;
-
-    // Accumulate all file changes per server for batched dispatch
-    const batched = new Map<string, fw.FileChange[]>();
-
-    // Events are processed serially. Concurrent processing (Promise.all with a
-    // pool) would reduce wall time for large batches but risks saturating disk
-    // I/O and complicates error handling for per-file resync.
-    let count = 0;
-    for (const relativePath of events) {
-      if (this.isStopped()) break;
-
-      try {
-        const fullPath = join(root, relativePath);
-
-        // Skip events that resolve outside the workspace root (e.g., via .. or symlinks)
-        if (!await fw.isWithinRoot(fullPath, resolvedRoot)) {
-          log.warn(`Skipping event outside workspace root: ${relativePath}`);
-          continue;
-        }
-
-        const fileUri = pathToFileURL(fullPath).href;
-        const isTracked = this.documents.has(fileUri);
-
-        // NOTE: stat here, isWithinRoot above, and resyncTrackedFile below each
-        // touch the filesystem independently. Combining them would reduce syscalls
-        // but would leak resync concerns into path validation (or vice versa).
-        const fileExists = await stat(fullPath).then(() => true, () => false);
-        let changeType = fw.classifyChange(fileExists);
-
-        // Resync tracked (open) documents
-        if (changeType !== fw.FileChangeType.Deleted && isTracked) {
-          const result = await this.resyncTrackedFile(fileUri);
-          // TOCTOU: file vanished between stat and readFile
-          if (result === 'deleted') changeType = fw.FileChangeType.Deleted;
-        }
-
-        // Accumulate matched events per server (batched dispatch below)
-        const matches = fw.matchEvent(this.watchRegistrations, relativePath, changeType, fileUri);
-        for (const [serverName, changes] of matches) {
-          const existing = batched.get(serverName);
-          if (existing) {
-            existing.push(...changes);
-          }
-          else {
-            batched.set(serverName, [...changes]);
-          }
-        }
-      }
-      catch (err) {
-        // Per-file errors must not abort the entire batch — log and continue
-        log.error(`Error processing file event for ${relativePath}:`, err);
-      }
-
-      // Yield to event loop periodically to avoid blocking during large batches
-      count++;
-      if (count % FLUSH_BATCH_SIZE === 0) {
-        await new Promise<void>((resolve) => {
-          setTimeout(resolve, 0);
-        });
-      }
-    }
-
-    // Dispatch one batched notification per server
-    for (const [serverName, changes] of batched) {
-      this.servers.get(serverName)?.send(
-        createNotification('workspace/didChangeWatchedFiles', { changes }),
-      );
-    }
-  }
-
-  private async resyncTrackedFile(uri: string): Promise<'resynced' | 'unchanged' | 'deleted'> {
-    const tracked = this.documents.get(uri);
-    if (!tracked) return 'unchanged';
-
-    const filePath = fileURLToPath(uri);
-
-    // Stat pre-filter: skip clearly oversized files without reading them.
-    // Uses 2x threshold so near-boundary files still get the exact check below.
-    try {
-      const fileStat = await stat(filePath);
-      if (fileStat.size > this.maxResyncBytes * 2) {
-        log.warn(`Skipping resync for ${uri} (${String(fileStat.size)} bytes exceeds limit)`);
-        return 'unchanged';
-      }
-    }
-    catch (err) {
-      return isEnoent(err) ? 'deleted' : 'unchanged';
-    }
-
-    let text: string;
-    try {
-      text = await readFile(filePath, 'utf-8');
-    }
-    catch (err) {
-      return isEnoent(err) ? 'deleted' : 'unchanged';
-    }
-
-    const byteLength = Buffer.byteLength(text);
-    if (byteLength > this.maxResyncBytes) {
-      log.warn(`Skipping resync for ${uri} (${String(byteLength)} bytes exceeds ${String(this.maxResyncBytes)} limit)`);
-      return 'unchanged';
-    }
-
-    if (text === tracked.content) return 'unchanged';
-
-    // Optimistic concurrency: a client didChange may have arrived during the
-    // await above. If the document version changed, the client edit takes
-    // precedence — skip the resync to avoid overwriting it.
-    const current = this.documents.get(uri);
-    if (current?.version !== tracked.version) {
-      log.info(`Skipping resync for ${uri} — document modified by client during read`);
-      return 'unchanged';
-    }
-
-    // Bump version offset so server versions stay monotonically increasing
-    const offset = (this.versionOffsets.get(uri) ?? 0) + 1;
-    this.versionOffsets.set(uri, offset);
-    const serverVersion = tracked.version + offset;
-
-    // Update tracked content (client version stays unchanged)
-    this.documents = docs.trackChange(this.documents, {
-      textDocument: { uri, version: tracked.version },
-      contentChanges: [{ text }],
-    });
-
-    // Send didChange with full content (avoids diagnostics flicker from close/reopen)
-    const changeNotification = createNotification('textDocument/didChange', {
-      textDocument: { uri, version: serverVersion },
-      contentChanges: [{ text }],
-    });
-    for (const name of this.router.serversForUri(uri)) {
-      this.servers.get(name)?.send(changeNotification);
-    }
-
-    log.info(`Resynced ${uri} from disk (v${String(serverVersion)})`);
-    return 'resynced';
+    await this.watcher.start();
   }
 
   // ── Version Rewriting ─────────────────────────────────────────────────
@@ -759,10 +562,8 @@ export class LspProxy {
   dispose(): void {
     if (this.state === 'stopped') return;
     this.state = 'stopped';
-    this.flushScheduler?.dispose();
-    this.flushScheduler = null;
-    this.workspaceWatcher?.close();
-    this.workspaceWatcher = null;
+    this.watcher?.dispose();
+    this.watcher = null;
     for (const server of this.servers.values()) server.dispose();
     this.clientReader.dispose();
     log.info('Proxy shut down');
