@@ -279,7 +279,8 @@ describe('file-watcher', () => {
     });
   });
 
-  describe('isWithinRoot with symlinked workspace root', () => {
+  // Sequential: tests share a temp dir created by setup()
+  describe.sequential('isWithinRoot with symlinked workspace root', () => {
     let tmpBase: string;
     let realDir: string;
     let linkDir: string;

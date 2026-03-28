@@ -20,7 +20,8 @@ const waitForWatcherActive = (
     });
   }, { timeout: 5000, interval: 100 });
 
-describe('LspProxy file watchers', () => {
+// Sequential: crash+restart test needs stable timing for watcher re-registration
+describe.sequential('LspProxy file watchers', () => {
   describe('watcher registration', () => {
     it('intercepts watcher registration and dispatches file events', async ({ createProxy, workspace }) => {
       const watcherConfig: ServerConfig = {

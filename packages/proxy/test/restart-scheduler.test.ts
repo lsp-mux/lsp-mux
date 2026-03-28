@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { createRestartScheduler } from '../src/restart-scheduler.js';
 
-describe('RestartScheduler', () => {
+// Sequential: tests share vi.useFakeTimers() global state
+describe.sequential('RestartScheduler', () => {
   afterEach(() => vi.restoreAllMocks());
 
   const policy = { maxRetries: 3, baseDelayMs: 100, maxDelayMs: 500 };

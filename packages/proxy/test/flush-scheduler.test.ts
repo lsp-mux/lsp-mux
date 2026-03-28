@@ -5,7 +5,8 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('FlushScheduler', () => {
+// Sequential: tests share vi.useFakeTimers() global state
+describe.sequential('FlushScheduler', () => {
   it('calls onFlush after debounceMs', async () => {
     vi.useFakeTimers();
     const onFlush = vi.fn().mockResolvedValue(undefined);

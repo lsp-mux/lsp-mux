@@ -87,7 +87,8 @@ const addEvent = (filename: string) => {
   watchCallback('change', filename);
 };
 
-describe('WorkspaceWatcher', () => {
+// Sequential: tests share module-level vi.mock state
+describe.sequential('WorkspaceWatcher', () => {
   describe('flushFileEvents', () => {
     it('dispatches matched events via delegate', async () => {
       const changes: fw.FileChange[] = [{ uri: toUri('test.ts'), type: fw.FileChangeType.Changed }];
