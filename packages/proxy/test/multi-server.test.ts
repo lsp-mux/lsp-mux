@@ -1,41 +1,14 @@
 import * as v from 'valibot';
-import { describe, it, expect, afterEach } from 'vitest';
-import { PassThrough } from 'node:stream';
-import { join } from 'node:path';
+import { describe, expect } from 'vitest';
 import type { Message, ResponseMessage } from 'vscode-jsonrpc';
-import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
-import { LspProxy } from '../src/proxy.js';
 import { Message as Msg, createRequest } from '../src/types.js';
-import type { ServerConfig } from '../src/types.js';
 import { collectMessages, request, notify, waitForMessage, initializeProxy } from './helpers/test-client.js';
+import { it, namedConfig } from './proxy/harness.js';
 
-const MOCK_SERVER = join(import.meta.dirname, 'helpers', 'mock-server.ts');
-
-const makeConfig = (name: string): ServerConfig => ({
-  command: process.execPath,
-  args: ['--import', 'tsx', MOCK_SERVER, `--name=${name}`],
-  languages: { typescript: ['.ts'] },
-  transport: 'stdio',
-});
-
-const createMultiProxy = (
-  configs: ReadonlyMap<string, ServerConfig>,
-  restartPolicy?: Partial<{ maxRetries: number; baseDelayMs: number; maxDelayMs: number }>,
-) => {
-  const clientToProxy = new PassThrough();
-  const proxyToClient = new PassThrough();
-
-  const proxy = new LspProxy(configs, {
-    input: clientToProxy,
-    output: proxyToClient,
-    restartPolicy: { maxRetries: 3, baseDelayMs: 50, maxDelayMs: 200, ...restartPolicy },
-  });
-
-  const writer = new StreamMessageWriter(clientToProxy);
-  const reader = new StreamMessageReader(proxyToClient);
-
-  return { proxy, writer, reader };
-};
+const twoServerConfigs = () => new Map([
+  ['alpha', namedConfig('alpha')],
+  ['beta', namedConfig('beta')],
+]);
 
 const DiagNotificationSchema = v.object({
   params: v.object({
@@ -61,22 +34,8 @@ const isResponse = (msg: Message, id: number): boolean =>
   Msg.isResponse(msg) && msg.id === id;
 
 describe('Multi-server proxy', () => {
-  let proxy: LspProxy;
-  let writer: StreamMessageWriter;
-  let reader: StreamMessageReader;
-
-  afterEach(() => {
-    proxy.dispose();
-  });
-
-  const twoServerConfigs = () => new Map([
-    ['alpha', makeConfig('alpha')],
-    ['beta', makeConfig('beta')],
-  ]);
-
-  it('initializes all servers and merges capabilities', async () => {
-    ({ proxy, writer, reader } = createMultiProxy(twoServerConfigs()));
-    void proxy.start();
+  it('initializes all servers and merges capabilities', async ({ createProxy }) => {
+    const { writer, reader } = createProxy({ configs: twoServerConfigs() });
 
     const res = await initializeProxy(writer, reader);
     expect(res).toMatchObject({
@@ -84,18 +43,14 @@ describe('Multi-server proxy', () => {
     });
   });
 
-  it('starts only matching servers for a given file type', async () => {
+  it('starts only matching servers for a given file type', async ({ createProxy }) => {
     // Alpha handles .ts, beta handles .css — opening .ts should only start alpha
     const configs = new Map([
-      ['alpha', makeConfig('alpha')],
-      ['beta', {
-        ...makeConfig('beta'),
-        languages: { css: ['.css'] },
-      }],
+      ['alpha', namedConfig('alpha')],
+      ['beta', { ...namedConfig('beta'), languages: { css: ['.css'] } }],
     ]);
 
-    ({ proxy, writer, reader } = createMultiProxy(configs));
-    void proxy.start();
+    const { writer, reader } = createProxy({ configs });
     await initializeProxy(writer, reader);
 
     // Open a .ts file — only alpha should start
@@ -115,9 +70,8 @@ describe('Multi-server proxy', () => {
     expect(shutdownRes).toMatchObject({ result: null });
   });
 
-  it('merges diagnostics from multiple servers on didOpen', async () => {
-    ({ proxy, writer, reader } = createMultiProxy(twoServerConfigs()));
-    void proxy.start();
+  it('merges diagnostics from multiple servers on didOpen', async ({ createProxy }) => {
+    const { writer, reader } = createProxy({ configs: twoServerConfigs() });
     await initializeProxy(writer, reader);
 
     const diagPromise = collectMessages(
@@ -142,9 +96,8 @@ describe('Multi-server proxy', () => {
     ]));
   });
 
-  it('routes hover request to primary server only', async () => {
-    ({ proxy, writer, reader } = createMultiProxy(twoServerConfigs()));
-    void proxy.start();
+  it('routes hover request to primary server only', async ({ createProxy }) => {
+    const { writer, reader } = createProxy({ configs: twoServerConfigs() });
     await initializeProxy(writer, reader);
 
     const hover = await request(writer, reader, 10, 'textDocument/hover', {
@@ -155,9 +108,8 @@ describe('Multi-server proxy', () => {
     expect(hover).toMatchObject({ result: { echo: 'textDocument/hover', server: 'alpha' } });
   });
 
-  it('fans out didOpen to all matching servers', async () => {
-    ({ proxy, writer, reader } = createMultiProxy(twoServerConfigs()));
-    void proxy.start();
+  it('fans out didOpen to all matching servers', async ({ createProxy }) => {
+    const { writer, reader } = createProxy({ configs: twoServerConfigs() });
     await initializeProxy(writer, reader);
 
     const diagPromise = collectMessages(
@@ -182,9 +134,8 @@ describe('Multi-server proxy', () => {
     ]));
   });
 
-  it('clears crashed server diagnostics and re-publishes', async () => {
-    ({ proxy, writer, reader } = createMultiProxy(twoServerConfigs()));
-    void proxy.start();
+  it('clears crashed server diagnostics and re-publishes', async ({ createProxy }) => {
+    const { writer, reader } = createProxy({ configs: twoServerConfigs() });
     await initializeProxy(writer, reader);
 
     const uri = 'file:///crash-diag.ts';
@@ -219,18 +170,16 @@ describe('Multi-server proxy', () => {
     ]);
   });
 
-  it('handles shutdown with multiple servers', async () => {
-    ({ proxy, writer, reader } = createMultiProxy(twoServerConfigs()));
-    void proxy.start();
+  it('handles shutdown with multiple servers', async ({ createProxy }) => {
+    const { writer, reader } = createProxy({ configs: twoServerConfigs() });
     await initializeProxy(writer, reader);
 
     const res = await request(writer, reader, 200, 'shutdown');
     expect(res).toMatchObject({ result: null });
   });
 
-  it('continues operating when one server restarts', async () => {
-    ({ proxy, writer, reader } = createMultiProxy(twoServerConfigs()));
-    void proxy.start();
+  it('continues operating when one server restarts', async ({ createProxy }) => {
+    const { writer, reader } = createProxy({ configs: twoServerConfigs() });
     await initializeProxy(writer, reader);
 
     const crashRes = await request(writer, reader, 300, '$/crash');
@@ -244,20 +193,13 @@ describe('Multi-server proxy', () => {
     expect(hover).toMatchObject({ result: { echo: 'textDocument/hover' } });
   });
 
-  it('forces textDocumentSync to Full even when a server advertises Incremental', async () => {
-    const incrementalConfig: ServerConfig = {
-      command: process.execPath,
-      args: ['--import', 'tsx', MOCK_SERVER, '--name=beta', '--incremental-sync'],
-      languages: { typescript: ['.ts'] },
-      transport: 'stdio',
-    };
+  it('forces textDocumentSync to Full even when a server advertises Incremental', async ({ createProxy }) => {
     const configs = new Map([
-      ['alpha', makeConfig('alpha')],
-      ['beta', incrementalConfig],
+      ['alpha', namedConfig('alpha')],
+      ['beta', namedConfig('beta', '--incremental-sync')],
     ]);
 
-    ({ proxy, writer, reader } = createMultiProxy(configs));
-    void proxy.start();
+    const { writer, reader } = createProxy({ configs });
 
     const res = await initializeProxy(writer, reader);
     // Even though beta advertises textDocumentSync: 2 (Incremental),
@@ -267,23 +209,13 @@ describe('Multi-server proxy', () => {
     });
   });
 
-  it('routes client ack to originating server only (not broadcast)', async () => {
-    // Beta sends mixed registrations (watcher + non-watcher).
-    // Alpha is the primary server and queryable — it should NOT receive
-    // the client's ack response for beta's registration.
-    const betaConfig: ServerConfig = {
-      command: process.execPath,
-      args: ['--import', 'tsx', MOCK_SERVER, '--name=beta', '--register-mixed'],
-      languages: { typescript: ['.ts'] },
-      transport: 'stdio',
-    };
+  it('routes client ack to originating server only (not broadcast)', async ({ createProxy }) => {
     const configs = new Map([
-      ['alpha', makeConfig('alpha')],
-      ['beta', betaConfig],
+      ['alpha', namedConfig('alpha')],
+      ['beta', namedConfig('beta', '--register-mixed')],
     ]);
 
-    ({ proxy, writer, reader } = createMultiProxy(configs));
-    void proxy.start();
+    const { writer, reader } = createProxy({ configs });
 
     await request(writer, reader, 0, 'initialize', {
       processId: process.pid,

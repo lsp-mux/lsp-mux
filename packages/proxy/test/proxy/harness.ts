@@ -19,8 +19,14 @@ export const mockServerConfig: ServerConfig = {
   transport: 'stdio',
 };
 
+export const namedConfig = (name: string, ...extraArgs: string[]): ServerConfig => ({
+  ...mockServerConfig,
+  args: [...mockServerConfig.args, `--name=${name}`, ...extraArgs],
+});
+
 interface TestProxyOptions {
   config?: ServerConfig;
+  configs?: ReadonlyMap<string, ServerConfig>;
   restartPolicy?: Partial<{ maxRetries: number; baseDelayMs: number; maxDelayMs: number }>;
   maxResyncBytes?: number;
   maxPendingEvents?: number;
@@ -28,6 +34,7 @@ interface TestProxyOptions {
 
 export const createTestProxy = ({
   config = mockServerConfig,
+  configs,
   restartPolicy,
   ...extraOptions
 }: TestProxyOptions = {}) => {
@@ -35,7 +42,7 @@ export const createTestProxy = ({
   const proxyToClient = new PassThrough();
 
   const proxy = new LspProxy(
-    new Map([['mock', config]]),
+    configs ?? new Map([['mock', config]]),
     {
       input: clientToProxy,
       output: proxyToClient,
