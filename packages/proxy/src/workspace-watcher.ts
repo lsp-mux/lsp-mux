@@ -6,7 +6,7 @@ import type { TrackedDocument } from './types.js';
 import * as fw from './file-watcher.js';
 import { createFlushScheduler } from './flush-scheduler.js';
 import type { FlushScheduler } from './flush-scheduler.js';
-import { log } from './logger.js';
+import type { Logger } from './logger.js';
 
 const WATCHER_DEBOUNCE_MS = 250;
 const WATCHER_MAX_WAIT_MS = 2000;
@@ -30,6 +30,7 @@ export interface WatcherDelegate {
 }
 
 export interface WorkspaceWatcherOptions {
+  log: Logger;
   workspaceRoot: string;
   watcherExclude?: readonly string[] | undefined;
   maxResyncBytes?: number | undefined;
@@ -48,6 +49,7 @@ export class WorkspaceWatcher {
   private readonly maxResyncBytes: number;
   private readonly maxPendingEvents: number;
   private readonly delegate: WatcherDelegate;
+  private readonly log: Logger;
 
   get isDegraded(): boolean { return this._isDegraded; }
 
@@ -57,6 +59,7 @@ export class WorkspaceWatcher {
     this.maxResyncBytes = options.maxResyncBytes ?? DEFAULT_MAX_RESYNC_BYTES;
     this.maxPendingEvents = options.maxPendingEvents ?? DEFAULT_MAX_PENDING_EVENTS;
     this.delegate = delegate;
+    this.log = options.log;
   }
 
   async start(): Promise<void> {
@@ -65,7 +68,7 @@ export class WorkspaceWatcher {
     if (process.platform === 'linux') {
       const major = Number(process.versions.node.split('.')[0]);
       if (major < 20) {
-        log.warn(`Recursive file watching may not work on Linux with Node.js ${process.versions.node} (requires ≥20.x)`);
+        this.log.warn(`Recursive file watching may not work on Linux with Node.js ${process.versions.node} (requires ≥20.x)`);
       }
     }
 
@@ -90,7 +93,7 @@ export class WorkspaceWatcher {
 
         if (pending.size >= this.maxPendingEvents && !pending.has(normalized)) {
           if (!this.pendingOverflowWarned) {
-            log.warn(`Pending file events exceeded cap (${String(this.maxPendingEvents)}) — dropping new events until flush`);
+            this.log.warn(`Pending file events exceeded cap (${String(this.maxPendingEvents)}) — dropping new events until flush`);
             this.pendingOverflowWarned = true;
           }
           return;
@@ -102,11 +105,11 @@ export class WorkspaceWatcher {
     );
 
     this.watcher.on('error', (err) => {
-      log.error('Workspace watcher error — file watching may be degraded:', err);
+      this.log.error('Workspace watcher error — file watching may be degraded:', err);
       this._isDegraded = true;
     });
 
-    log.info(`Watching workspace: ${this.workspaceRoot}`);
+    this.log.info(`Watching workspace: ${this.workspaceRoot}`);
   }
 
   private async flushFileEvents(): Promise<void> {
@@ -128,7 +131,7 @@ export class WorkspaceWatcher {
         const fullPath = join(root, relativePath);
 
         if (!await fw.isWithinRoot(fullPath, resolvedRoot)) {
-          log.warn(`Skipping event outside workspace root: ${relativePath}`);
+          this.log.warn(`Skipping event outside workspace root: ${relativePath}`);
           continue;
         }
 
@@ -163,7 +166,7 @@ export class WorkspaceWatcher {
         }
       }
       catch (err) {
-        log.error(`Error processing file event for ${relativePath}:`, err);
+        this.log.error(`Error processing file event for ${relativePath}:`, err);
       }
 
       count++;
@@ -190,7 +193,7 @@ export class WorkspaceWatcher {
     try {
       const fileStat = await stat(filePath);
       if (fileStat.size > this.maxResyncBytes * 2) {
-        log.warn(`Skipping resync for ${uri} (${String(fileStat.size)} bytes exceeds limit)`);
+        this.log.warn(`Skipping resync for ${uri} (${String(fileStat.size)} bytes exceeds limit)`);
         return 'unchanged';
       }
     }
@@ -208,7 +211,7 @@ export class WorkspaceWatcher {
 
     const byteLength = Buffer.byteLength(text);
     if (byteLength > this.maxResyncBytes) {
-      log.warn(`Skipping resync for ${uri} (${String(byteLength)} bytes exceeds ${String(this.maxResyncBytes)} limit)`);
+      this.log.warn(`Skipping resync for ${uri} (${String(byteLength)} bytes exceeds ${String(this.maxResyncBytes)} limit)`);
       return 'unchanged';
     }
 
@@ -216,13 +219,13 @@ export class WorkspaceWatcher {
 
     const current = this.delegate.getDocument(uri);
     if (current?.version !== tracked.version) {
-      log.info(`Skipping resync for ${uri} — document modified by client during read`);
+      this.log.info(`Skipping resync for ${uri} — document modified by client during read`);
       return 'unchanged';
     }
 
     this.delegate.resyncDocument(uri, tracked.version, text);
 
-    log.info(`Resynced ${uri} from disk`);
+    this.log.info(`Resynced ${uri} from disk`);
     return 'resynced';
   }
 

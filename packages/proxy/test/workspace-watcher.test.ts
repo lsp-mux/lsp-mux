@@ -21,7 +21,7 @@ vi.mock('../src/file-watcher.js', async (importOriginal) => {
   };
 });
 vi.mock('../src/logger.js', () => ({
-  log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+  createLogger: vi.fn(() => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })),
 }));
 
 import { stat, readFile } from 'node:fs/promises';
@@ -29,7 +29,8 @@ import { watch } from 'node:fs';
 import type { FSWatcher } from 'node:fs';
 import * as fw from '../src/file-watcher.js';
 import { createFlushScheduler } from '../src/flush-scheduler.js';
-import { log } from '../src/logger.js';
+import { createLogger } from '../src/logger.js';
+import type { Logger } from '../src/logger.js';
 import { WorkspaceWatcher, type WatcherDelegate, type WorkspaceWatcherOptions } from '../src/workspace-watcher.js';
 
 const WORKSPACE = join(import.meta.dirname, 'fake-workspace');
@@ -52,11 +53,13 @@ const nodeError = (code: string): NodeJS.ErrnoException => {
   return err;
 };
 
+let log: Logger;
 let onFlush: () => Promise<void>;
 let watchCallback: (event: string, filename: string | null) => void;
 let mockFsWatcher: { on: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn> };
 
 beforeEach(() => {
+  log = vi.mocked(createLogger)();
   mockFsWatcher = { on: vi.fn(), close: vi.fn() };
 
   vi.mocked(fw.resolveRoot).mockResolvedValue(WORKSPACE);
@@ -74,8 +77,8 @@ beforeEach(() => {
   });
 });
 
-const startWatcher = async (delegate: WatcherDelegate, opts?: Partial<WorkspaceWatcherOptions>) => {
-  const watcher = new WorkspaceWatcher({ workspaceRoot: WORKSPACE, ...opts }, delegate);
+const startWatcher = async (delegate: WatcherDelegate, opts?: Omit<Partial<WorkspaceWatcherOptions>, 'log'>) => {
+  const watcher = new WorkspaceWatcher({ log, workspaceRoot: WORKSPACE, ...opts }, delegate);
   await watcher.start();
   return watcher;
 };

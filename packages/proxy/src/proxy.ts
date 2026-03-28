@@ -14,7 +14,8 @@ import * as docs from './document-tracker.js';
 import * as fw from './file-watcher.js';
 import type { RestartPolicy } from './restart-scheduler.js';
 import { WorkspaceWatcher } from './workspace-watcher.js';
-import { log } from './logger.js';
+import { createLogger } from './logger.js';
+import type { Logger } from './logger.js';
 
 const CancelParamsSchema = v.object({
   id: v.union([v.number(), v.string()]),
@@ -69,6 +70,7 @@ type ProxyState = 'idle' | 'running' | 'stopped';
 
 export interface ProxyOptions {
   input?: NodeJS.ReadableStream;
+  logger?: Logger | undefined;
   output?: NodeJS.WritableStream;
   restartPolicy?: Partial<RestartPolicy>;
   watcherExclude?: readonly string[];
@@ -87,6 +89,7 @@ export interface ProxyOptions {
 export class LspProxy {
   private readonly clientReader: StreamMessageReader;
   private readonly clientWriter: StreamMessageWriter;
+  private readonly log: Logger;
 
   private state: ProxyState = 'idle';
   private documents: docs.DocumentMap = docs.empty();
@@ -117,6 +120,7 @@ export class LspProxy {
   constructor(serverConfigs: ReadonlyMap<string, ServerConfig>, options?: ProxyOptions) {
     this.clientReader = new StreamMessageReader(options?.input ?? process.stdin);
     this.clientWriter = new StreamMessageWriter(options?.output ?? process.stdout);
+    this.log = options?.logger ?? createLogger();
     this.proxyOptions = options;
 
     this.servers = new Map<string, ManagedServer>();
@@ -134,22 +138,22 @@ export class LspProxy {
           this.handleServerStateChange(name, serverState);
         },
         getDocuments: () => this.getDocumentsWithEffectiveVersions(),
-      }, options?.restartPolicy));
+      }, this.log, options?.restartPolicy));
     }
 
     this.router = createRouter(serverEntries);
   }
 
   start(): Promise<void> {
-    log.info('Proxy starting');
+    this.log.info('Proxy starting');
     this.clientReader.listen((msg) => {
       this.handleClientMessage(msg);
     });
     this.clientReader.onError((err) => {
-      log.error('Client reader error:', err);
+      this.log.error('Client reader error:', err);
     });
     this.clientReader.onClose(() => {
-      log.info('Client connection closed');
+      this.log.info('Client connection closed');
       this.dispose();
     });
     return new Promise((resolve) => {
@@ -225,7 +229,7 @@ export class LspProxy {
 
     if (Msg.isNotification(msg) && msg.method === 'initialized') {
       for (const server of this.servers.values()) server.sendInitialized();
-      log.info('LSP handshake complete');
+      this.log.info('LSP handshake complete');
       return;
     }
 
@@ -356,11 +360,11 @@ export class LspProxy {
             this.workspaceRoot ?? undefined,
           );
           handledCount++;
-          log.info(`${serverName}: registered file watcher ${reg.id}`);
+          this.log.info(`${serverName}: registered file watcher ${reg.id}`);
           continue;
         }
         // Malformed watcher registration — log and count as handled (don't forward)
-        log.warn(`${serverName}: malformed watcher registration ${reg.id} — skipping`);
+        this.log.warn(`${serverName}: malformed watcher registration ${reg.id} — skipping`);
         handledCount++;
         continue;
       }
@@ -398,7 +402,7 @@ export class LspProxy {
       if (unreg.method === 'workspace/didChangeWatchedFiles') {
         this.watchRegistrations = fw.unregister(this.watchRegistrations, unreg.id);
         handledCount++;
-        log.info(`${serverName}: unregistered file watcher ${unreg.id}`);
+        this.log.info(`${serverName}: unregistered file watcher ${unreg.id}`);
       }
       else {
         otherUnregs.push(unreg);
@@ -436,7 +440,7 @@ export class LspProxy {
 
     const allStopped = [...this.servers.values()].every(s => s.state === 'stopped');
     if (allStopped && this.state === 'running') {
-      log.error('All servers stopped — proxy stopping');
+      this.log.error('All servers stopped — proxy stopping');
       this.dispose();
     }
   }
@@ -460,6 +464,7 @@ export class LspProxy {
 
     this.watcher = new WorkspaceWatcher(
       {
+        log: this.log,
         workspaceRoot: this.workspaceRoot,
         watcherExclude: this.proxyOptions?.watcherExclude,
         maxResyncBytes: this.proxyOptions?.maxResyncBytes,
@@ -555,7 +560,7 @@ export class LspProxy {
 
   private writeToClient(msg: Message): void {
     this.clientWriter.write(msg).catch((err: unknown) => {
-      log.warn('Client write failed:', err);
+      this.log.warn('Client write failed:', err);
     });
   }
 
@@ -566,7 +571,7 @@ export class LspProxy {
     this.watcher = null;
     for (const server of this.servers.values()) server.dispose();
     this.clientReader.dispose();
-    log.info('Proxy shut down');
+    this.log.info('Proxy shut down');
     this.resolveDone?.();
   }
 

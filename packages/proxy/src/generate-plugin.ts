@@ -2,7 +2,9 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { loadProxyConfig, loadServerConfig, ownPackageDir } from './config.js';
-import { log } from './logger.js';
+import { createLogger } from './logger.js';
+
+const log = createLogger();
 
 const buildExtensionToLanguage = (
   servers: readonly { languages: Readonly<Record<string, readonly string[]>> }[],

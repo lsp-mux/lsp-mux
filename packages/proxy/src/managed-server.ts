@@ -4,7 +4,7 @@ import { ChildServer } from './child-server.js';
 import { createMessageBuffer } from './message-buffer.js';
 import { createRestartScheduler, DEFAULT_RESTART_POLICY } from './restart-scheduler.js';
 import type { RestartPolicy } from './restart-scheduler.js';
-import { log } from './logger.js';
+import type { Logger } from './logger.js';
 
 const MAX_BUFFER_SIZE = 1000;
 
@@ -45,6 +45,7 @@ export const createManagedServer = (
   name: string,
   config: ServerConfig,
   callbacks: ManagedServerCallbacks,
+  log: Logger,
   restartPolicy?: Partial<RestartPolicy>,
 ): ManagedServer => {
   let state: ServerState = 'idle';
@@ -110,7 +111,7 @@ export const createManagedServer = (
         log.error(`${name} spawn error:`, err);
         handleServerExit();
       },
-    });
+    }, log);
     child.start();
     server = child;
     return child;

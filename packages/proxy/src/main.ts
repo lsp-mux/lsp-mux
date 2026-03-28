@@ -2,7 +2,9 @@ import { resolve } from 'node:path';
 import { loadProxyConfig, loadServerConfig } from './config.js';
 import type { ServerConfig } from './types.js';
 import { LspProxy } from './proxy.js';
-import { log } from './logger.js';
+import { createLogger } from './logger.js';
+
+const log = createLogger();
 
 const parseConfigDir = (): string | undefined => {
   const idx = process.argv.indexOf('--config-dir');
@@ -26,6 +28,7 @@ const main = async (): Promise<void> => {
   );
 
   const proxy = new LspProxy(serverConfigs, {
+    logger: log,
     watcherExclude: proxyConfig.watcherExclude,
   });
   log.info('Proxy ready — waiting for client');

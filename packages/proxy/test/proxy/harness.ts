@@ -1,11 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { PassThrough } from 'node:stream';
+import { PassThrough, Writable } from 'node:stream';
 import { pathToFileURL } from 'node:url';
 import { test } from 'vitest';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import { LspProxy } from '../../src/proxy.js';
+import { createLogger } from '../../src/logger.js';
+import type { Logger } from '../../src/logger.js';
 import type { ServerConfig } from '../../src/types.js';
 
 export type { LspProxy, ServerConfig };
@@ -27,6 +29,7 @@ export const namedConfig = (name: string, ...extraArgs: string[]): ServerConfig 
 interface TestProxyOptions {
   config?: ServerConfig;
   configs?: ReadonlyMap<string, ServerConfig>;
+  logger?: Logger;
   restartPolicy?: Partial<{ maxRetries: number; baseDelayMs: number; maxDelayMs: number }>;
   maxResyncBytes?: number;
   maxPendingEvents?: number;
@@ -35,6 +38,7 @@ interface TestProxyOptions {
 export const createTestProxy = ({
   config = mockServerConfig,
   configs,
+  logger,
   restartPolicy,
   ...extraOptions
 }: TestProxyOptions = {}) => {
@@ -46,6 +50,7 @@ export const createTestProxy = ({
     {
       input: clientToProxy,
       output: proxyToClient,
+      logger,
       restartPolicy: { maxRetries: 3, baseDelayMs: 50, maxDelayMs: 200, ...restartPolicy },
       ...extraOptions,
     },
@@ -72,13 +77,30 @@ export const it = test.extend<{
 }>({
   createProxy: async ({}, use) => {
     const instances: LspProxy[] = [];
-    await use((opts) => {
-      const ctx = createTestProxy(opts);
-      instances.push(ctx.proxy);
-      const started = ctx.proxy.start();
-      return { ...ctx, started };
+    const logBuffer: string[] = [];
+    const sink = new Writable({
+      write(chunk, _enc, cb) {
+        logBuffer.push(String(chunk));
+        cb();
+      },
     });
-    for (const p of instances) p.dispose();
+    const logger = createLogger(sink);
+
+    try {
+      await use((opts) => {
+        const ctx = createTestProxy({ logger, ...opts });
+        instances.push(ctx.proxy);
+        const started = ctx.proxy.start();
+        return { ...ctx, started };
+      });
+    }
+    catch (err) {
+      for (const line of logBuffer) process.stderr.write(line);
+      throw err;
+    }
+    finally {
+      for (const p of instances) p.dispose();
+    }
   },
   workspace: async ({}, use) => {
     const dir = join(import.meta.dirname, '..', '..', `tmp-workspace-${randomUUID().slice(0, 8)}`);

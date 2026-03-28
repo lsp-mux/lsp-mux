@@ -2,7 +2,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import type { Message, ServerConfig } from './types.js';
 import { noop } from './types.js';
-import { log } from './logger.js';
+import type { Logger } from './logger.js';
 
 export interface ChildServerEvents {
   readonly onMessage: (msg: Message) => void;
@@ -26,12 +26,13 @@ export class ChildServer {
     readonly name: string,
     private readonly config: ServerConfig,
     private readonly events: ChildServerEvents,
+    private readonly log: Logger,
   ) {}
 
   start(): void {
     if (this.disposed) return;
 
-    log.info(`Spawning ${this.name}: ${this.config.command} ${this.config.args.join(' ')}`);
+    this.log.info(`Spawning ${this.name}: ${this.config.command} ${this.config.args.join(' ')}`);
 
     const proc = spawn(this.config.command, [...this.config.args], {
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -40,13 +41,13 @@ export class ChildServer {
 
     proc.stderr.on('data', (chunk: Buffer) => {
       for (const line of chunk.toString().split('\n').filter(Boolean)) {
-        log.debug(`[${this.name}] ${line}`);
+        this.log.debug(`[${this.name}] ${line}`);
       }
     });
 
     // Guard against both error and exit firing for the same process
     proc.on('error', (err) => {
-      log.error(`${this.name} spawn error:`, err);
+      this.log.error(`${this.name} spawn error:`, err);
       if (!this.exited && !this.disposed) {
         this.exited = true;
         this.events.onError(err);
@@ -54,7 +55,7 @@ export class ChildServer {
     });
 
     proc.on('exit', (code, signal) => {
-      log.warn(`${this.name} exited (code=${String(code)}, signal=${String(signal)})`);
+      this.log.warn(`${this.name} exited (code=${String(code)}, signal=${String(signal)})`);
       if (!this.exited && !this.disposed) {
         this.exited = true;
         this.events.onExit(code, signal);
@@ -68,7 +69,7 @@ export class ChildServer {
       if (!this.disposed) this.events.onMessage(msg);
     });
     reader.onError((err) => {
-      log.error(`${this.name} reader error:`, err);
+      this.log.error(`${this.name} reader error:`, err);
     });
 
     this.proc = proc;
