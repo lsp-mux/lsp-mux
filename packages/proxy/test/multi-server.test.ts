@@ -84,6 +84,37 @@ describe('Multi-server proxy', () => {
     });
   });
 
+  it('starts only matching servers for a given file type', async () => {
+    // Alpha handles .ts, beta handles .css — opening .ts should only start alpha
+    const configs = new Map([
+      ['alpha', makeConfig('alpha')],
+      ['beta', {
+        ...makeConfig('beta'),
+        languages: { css: ['.css'] },
+      }],
+    ]);
+
+    ({ proxy, writer, reader } = createMultiProxy(configs));
+    void proxy.start();
+    await initializeProxy(writer, reader);
+
+    // Open a .ts file — only alpha should start
+    await notify(writer, 'textDocument/didOpen', {
+      textDocument: { uri: 'file:///test.ts', languageId: 'typescript', version: 1, text: 'x' },
+    });
+
+    // Hover on .ts goes to alpha (primary for .ts)
+    const hover = await request(writer, reader, 10, 'textDocument/hover', {
+      textDocument: { uri: 'file:///test.ts' },
+      position: { line: 0, character: 0 },
+    });
+    expect(hover).toMatchObject({ result: { server: 'alpha' } });
+
+    // Shutdown should succeed instantly — beta was never started
+    const shutdownRes = await request(writer, reader, 99, 'shutdown');
+    expect(shutdownRes).toMatchObject({ result: null });
+  });
+
   it('merges diagnostics from multiple servers on didOpen', async () => {
     ({ proxy, writer, reader } = createMultiProxy(twoServerConfigs()));
     void proxy.start();
@@ -259,14 +290,18 @@ describe('Multi-server proxy', () => {
       rootUri: null,
       capabilities: {},
     });
+    await notify(writer, 'initialized', {});
 
-    // Listen for the forwarded non-watcher registration before triggering it
+    // Listen for the forwarded non-watcher registration before triggering lazy start
     const forwardedPromise = waitForMessage(
       reader,
       msg => Msg.isRequest(msg) && msg.method === 'client/registerCapability',
     );
 
-    await notify(writer, 'initialized', {});
+    // didOpen triggers lazy start of both servers — beta sends registerCapability on initialized
+    await notify(writer, 'textDocument/didOpen', {
+      textDocument: { uri: 'file:///trigger.ts', languageId: 'typescript', version: 1, text: '' },
+    });
 
     // Client acks the forwarded registration
     const forwarded = await forwardedPromise;

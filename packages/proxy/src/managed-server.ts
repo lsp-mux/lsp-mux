@@ -8,7 +8,7 @@ import { log } from './logger.js';
 
 const MAX_BUFFER_SIZE = 1000;
 
-export type ServerState = 'idle' | 'running' | 'restarting' | 'stopped';
+export type ServerState = 'idle' | 'starting' | 'running' | 'restarting' | 'stopped';
 
 export interface ManagedServerCallbacks {
   /** Server produced a message (response or notification) for the proxy. */
@@ -25,11 +25,13 @@ export interface ManagedServer {
   readonly name: string;
   readonly state: ServerState;
 
+  /** Store init params for deferred (lazy) initialization. */
+  setInitParams(params: RequestMessage['params']): void;
   /** Spawn server and send initialize. Resolves with the raw response. */
   initialize(params: RequestMessage['params']): Promise<ResponseMessage>;
-  /** Send the 'initialized' notification. Marks handshake complete for restart purposes. */
+  /** Mark the proxy-level handshake as complete. Enables lazy start on idle servers. */
   sendInitialized(): void;
-  /** Route a message to this server. Buffers if restarting; returns false if buffer full or stopped. */
+  /** Route a message to this server. Triggers lazy start if idle; buffers if starting/restarting. */
   send(msg: Message): boolean;
   /** Try to cancel a buffered request by ID. Returns true if found and removed. */
   cancelBuffered(id: number | string): boolean;
@@ -48,8 +50,15 @@ export const createManagedServer = (
   let state: ServerState = 'idle';
   let server: ChildServer | null = null;
   let initParams: RequestMessage['params'];
-  let everInitialized = false;
   let shutdownSent = false;
+
+  // Set by sendInitialized() after the client completes the LSP handshake.
+  // Gates lazy start: send() on idle servers only triggers start after this is true.
+  let lazyStartEnabled = false;
+
+  // Whether this server has ever completed a full init sequence (initialize + initialized).
+  // Gates restart: crash before first successful init → stop permanently (no retry).
+  let everInitialized = false;
 
   const pendingRequests = new Set<number | string | null>();
   const buffer = createMessageBuffer(MAX_BUFFER_SIZE);
@@ -143,6 +152,8 @@ export const createManagedServer = (
     if (!everInitialized) {
       log.error(`${name}: crashed before initial handshake — stopping`);
       state = 'stopped';
+      scheduler.cancel();
+      errorBufferedRequests('Server stopped');
       callbacks.onStateChange(state);
       return;
     }
@@ -150,56 +161,58 @@ export const createManagedServer = (
     if (shutdownSent) {
       log.info(`${name}: exited after shutdown — not restarting`);
       state = 'stopped';
+      scheduler.cancel();
       callbacks.onStateChange(state);
       return;
     }
 
-    // If already restarting (crash during restart), let performRestart reschedule
-    if (state === 'restarting') return;
+    // If already starting/restarting (crash during init sequence), let performInitSequence reschedule
+    if (state === 'starting' || state === 'restarting') return;
 
     state = 'restarting';
     callbacks.onStateChange(state);
-    scheduleRestart();
+    scheduleRetry('restarting');
   };
 
-  const scheduleRestart = (): void => {
-    if (state !== 'restarting') return;
-
-    const scheduled = scheduler.schedule(() => void performRestart());
+  const scheduleRetry = (expectedState: 'starting' | 'restarting'): void => {
+    const scheduled = scheduler.schedule(() => void performInitSequence(expectedState));
     if (!scheduled) {
-      log.error(`${name}: max restart attempts (${String(scheduler.maxRetries)}) reached — stopping`);
+      log.error(`${name}: max attempts (${String(scheduler.maxRetries)}) reached — stopping`);
       state = 'stopped';
+      errorBufferedRequests('Server stopped');
       callbacks.onStateChange(state);
       return;
     }
 
-    log.info(`${name}: scheduling restart (attempt ${String(scheduler.attempt)}/${String(scheduler.maxRetries)})`);
+    const label = expectedState === 'starting' ? 'start' : 'restart';
+    log.info(`${name}: scheduling ${label} (attempt ${String(scheduler.attempt)}/${String(scheduler.maxRetries)})`);
   };
 
-  const performRestart = async (): Promise<void> => {
-    if (state !== 'restarting') return;
+  const performInitSequence = async (expectedState: 'starting' | 'restarting'): Promise<void> => {
+    if (state !== expectedState) return;
+
+    const label = expectedState === 'starting' ? 'lazy start' : 'restart';
 
     try {
       const child = spawnServer();
 
       const initResponse = await sendProxyRequest(child, 'initialize', initParams);
 
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- state mutates across await via handleServerExit
-      if (state !== 'restarting' || server !== child) {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- state mutates across await via handleServerExit
-        if (state === 'restarting') scheduleRestart();
+      if (state !== expectedState || server !== child) {
+        if (state === expectedState) scheduleRetry(expectedState);
         return;
       }
 
       if (initResponse.error) {
-        log.error(`${name}: restart initialize failed:`, initResponse.error.message);
+        log.error(`${name}: ${label} initialize failed:`, initResponse.error.message);
         child.dispose();
         server = null;
-        scheduleRestart();
+        scheduleRetry(expectedState);
         return;
       }
 
       child.write(createNotification('initialized', {}));
+      everInitialized = true;
 
       // Replay tracked document state
       const documents = callbacks.getDocuments();
@@ -223,23 +236,33 @@ export const createManagedServer = (
       }
       if (flushed.length > 0) log.info(`${name}: flushed ${String(flushed.length)} buffered message(s)`);
 
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- state mutates across await via handleServerExit
-      if (state !== 'restarting' || server !== child) {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- state mutates across await via handleServerExit
-        if (state === 'restarting') scheduleRestart();
+      if (state !== expectedState || server !== child) {
+        if (state === expectedState) scheduleRetry(expectedState);
         return;
       }
 
       state = 'running';
       scheduler.reset();
       callbacks.onStateChange(state);
-      log.info(`${name}: restarted successfully`);
+      log.info(`${name}: ${label} completed`);
     }
     catch (err) {
-      log.error(`${name}: restart failed:`, err);
+      log.error(`${name}: ${label} failed:`, err);
       server?.dispose();
       server = null;
-      if (state === 'restarting') scheduleRestart();
+      if (state === expectedState) scheduleRetry(expectedState);
+    }
+  };
+
+  /** Drain buffered requests and notify proxy so it can send error responses. */
+  const errorBufferedRequests = (message: string): void => {
+    const flushed = buffer.flush();
+    const ids = new Set<number | string | null>();
+    for (const msg of flushed) {
+      if (Msg.isRequest(msg)) ids.add(msg.id);
+    }
+    if (ids.size > 0) {
+      callbacks.onPendingErrors(ids, message);
     }
   };
 
@@ -256,6 +279,10 @@ export const createManagedServer = (
     get name() { return name; },
     get state() { return state; },
 
+    setInitParams(params) {
+      initParams = params;
+    },
+
     async initialize(params) {
       initParams = params;
       const child = spawnServer();
@@ -264,9 +291,13 @@ export const createManagedServer = (
     },
 
     sendInitialized() {
+      lazyStartEnabled = true;
+      // Idle servers haven't been spawned yet — nothing to send.
+      // They'll run the full init sequence on first matching message.
+      if (!server) return;
       everInitialized = true;
       state = 'running';
-      server?.write(createNotification('initialized', {}));
+      server.write(createNotification('initialized', {}));
     },
 
     send(msg) {
@@ -279,17 +310,26 @@ export const createManagedServer = (
         return true;
       }
 
-      if (state === 'restarting') {
-        // Document sync notifications are already tracked by the proxy; skip during restart
-        if (Msg.isNotification(msg) && DOCUMENT_SYNC_METHODS.has(msg.method)) return true;
+      // Document sync notifications are tracked centrally by the proxy.
+      // Drop them here — they'll be replayed via getDocuments() after init.
+      const isDocSync = Msg.isNotification(msg) && DOCUMENT_SYNC_METHODS.has(msg.method);
 
-        if (!buffer.push(msg)) {
-          return false; // Buffer full
-        }
+      if (state === 'restarting' || state === 'starting') {
+        if (isDocSync) return true;
+        if (!buffer.push(msg)) return false;
         return true;
       }
 
-      return false; // stopped or idle
+      // Lazy start: first message to an idle server triggers spawn
+      if (state === 'idle' && initParams !== undefined && lazyStartEnabled) {
+        state = 'starting';
+        callbacks.onStateChange(state);
+        if (!isDocSync) buffer.push(msg);
+        void performInitSequence('starting');
+        return true;
+      }
+
+      return false; // stopped or idle without initParams/handshake
     },
 
     cancelBuffered(id) {
@@ -298,7 +338,7 @@ export const createManagedServer = (
 
     async shutdown() {
       shutdownSent = true;
-      if (state === 'restarting') {
+      if (state === 'restarting' || state === 'starting') {
         cancelRestart();
         state = 'stopped';
         callbacks.onStateChange(state);

@@ -39,3 +39,42 @@ export const mergeCapabilities = (
   capabilities: readonly ServerCapabilities[],
 ): ServerCapabilities =>
   capabilities.reduce<ServerCapabilities>(deepMerge, {});
+
+/** Static capabilities the proxy advertises during initialize.
+ *
+ *  Child servers are started lazily (on first matching file open), so
+ *  their actual capabilities aren't known at init time. The proxy declares
+ *  a permissive superset. Unsupported methods get natural null/error
+ *  responses from servers.
+ */
+export const STATIC_CAPABILITIES: ServerCapabilities = {
+  textDocumentSync: 1,
+  hoverProvider: true,
+  completionProvider: {
+    triggerCharacters: ['.', ':', '<', '"', '\'', '/', '@', '#'],
+    resolveProvider: true,
+  },
+  signatureHelpProvider: { triggerCharacters: ['(', ','] },
+  definitionProvider: true,
+  typeDefinitionProvider: true,
+  implementationProvider: true,
+  declarationProvider: true,
+  referencesProvider: true,
+  documentHighlightProvider: true,
+  documentSymbolProvider: true,
+  workspaceSymbolProvider: true,
+  codeActionProvider: true,
+  codeLensProvider: { resolveProvider: true },
+  documentLinkProvider: { resolveProvider: true },
+  colorProvider: true,
+  documentFormattingProvider: true,
+  documentRangeFormattingProvider: true,
+  renameProvider: { prepareProvider: true },
+  foldingRangeProvider: true,
+  selectionRangeProvider: true,
+  linkedEditingRangeProvider: true,
+  callHierarchyProvider: true,
+  typeHierarchyProvider: true,
+  inlayHintProvider: true,
+  diagnosticProvider: { interFileDependencies: true, workspaceDiagnostics: false },
+};

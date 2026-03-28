@@ -54,6 +54,44 @@ describe('LspProxy integration', () => {
     proxy.dispose();
   });
 
+  describe('lazy initialization', () => {
+    it('does not spawn servers during initialize handshake', async () => {
+      // If the proxy eagerly spawned, a subsequent immediate shutdown
+      // would need to wait for the server process. With lazy init,
+      // shutdown on a never-started server returns instantly.
+      ({ proxy, writer, reader } = createTestProxy());
+      void proxy.start();
+      await initializeProxy(writer, reader);
+
+      // Shutdown without opening any files — no server was spawned
+      const res = await request(writer, reader, 99, 'shutdown');
+      expect(res).toMatchObject({ result: null });
+    });
+
+    it('starts server on first matching didOpen', async () => {
+      ({ proxy, writer, reader } = createTestProxy());
+      void proxy.start();
+      await initializeProxy(writer, reader);
+
+      // didOpen triggers lazy start; the subsequent request is buffered
+      // then flushed after the server completes initialization
+      await notify(writer, 'textDocument/didOpen', {
+        textDocument: {
+          uri: 'file:///lazy.ts',
+          languageId: 'typescript',
+          version: 1,
+          text: 'const x = 1;',
+        },
+      });
+
+      const hover = await request(writer, reader, 10, 'textDocument/hover', {
+        textDocument: { uri: 'file:///lazy.ts' },
+        position: { line: 0, character: 0 },
+      });
+      expect(hover).toMatchObject({ result: { echo: 'textDocument/hover' } });
+    });
+  });
+
   it('returns ServerNotInitialized for requests before initialize', async () => {
     ({ proxy, writer, reader } = createTestProxy());
     void proxy.start();
@@ -234,11 +272,12 @@ describe('LspProxy integration', () => {
       };
       ({ proxy, writer, reader } = createTestProxy(exitingConfig));
       void proxy.start();
+      await initializeProxy(writer, reader);
 
-      const res = await request(writer, reader, 0, 'initialize', {
-        processId: process.pid,
-        rootUri: null,
-        capabilities: {},
+      // First request triggers lazy start — server crashes before handshake
+      const res = await request(writer, reader, 1, 'textDocument/hover', {
+        textDocument: { uri: 'file:///test.ts' },
+        position: { line: 0, character: 0 },
       });
       expect(res).toMatchObject({ error: expect.objectContaining({}) as unknown });
     });
@@ -380,14 +419,18 @@ describe('LspProxy integration', () => {
         rootUri: workspaceUri,
         capabilities: {},
       });
+      await notify(writer, 'initialized', {});
 
-      // Listen for forwarded registration BEFORE triggering it
+      // Listen for forwarded registration BEFORE triggering lazy start
       const forwardedPromise = waitForMessage(
         reader,
         msg => Msg.isRequest(msg) && msg.method === 'client/registerCapability',
       );
 
-      await notify(writer, 'initialized', {});
+      // didOpen triggers lazy start — server sends registerCapability on initialized
+      await notify(writer, 'textDocument/didOpen', {
+        textDocument: { uri: 'file:///trigger.ts', languageId: 'typescript', version: 1, text: '' },
+      });
 
       // Verify only the non-watcher registration was forwarded
       const forwarded = await forwardedPromise;

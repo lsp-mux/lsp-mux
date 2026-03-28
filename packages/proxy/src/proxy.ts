@@ -5,12 +5,12 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import type { Message, NotificationMessage, RequestMessage, ResponseMessage, ServerConfig } from './types.js';
 import * as v from 'valibot';
-import { Message as Msg, createNotification, noop, DOCUMENT_SYNC_METHODS, LSP_ERROR_CODES } from './types.js';
+import { Message as Msg, createNotification, DOCUMENT_SYNC_METHODS, LSP_ERROR_CODES } from './types.js';
 import { createManagedServer } from './managed-server.js';
 import type { ManagedServer, ServerState } from './managed-server.js';
 import { createRouter, extractUri } from './router.js';
 import type { Router } from './router.js';
-import { isPlainObject, mergeCapabilities } from './capabilities.js';
+import { isPlainObject, STATIC_CAPABILITIES } from './capabilities.js';
 import * as diag from './diagnostics-store.js';
 import * as docs from './document-tracker.js';
 import * as fw from './file-watcher.js';
@@ -26,10 +26,6 @@ const CancelParamsSchema = v.object({
 const PublishDiagnosticsSchema = v.object({
   uri: v.string(),
   diagnostics: v.array(v.unknown()),
-});
-
-const InitializeResultSchema = v.object({
-  capabilities: v.record(v.string(), v.unknown()),
 });
 
 const InitializeParamsSchema = v.object({
@@ -227,39 +223,15 @@ export class LspProxy {
   }
 
   private async initializeAllServers(clientRequestId: number | string | null): Promise<void> {
-    const allCapabilities: Record<string, unknown>[] = [];
-    const initialized: ManagedServer[] = [];
-
     // Servers check this to decide whether to use dynamic registration.
     const serverInitParams = injectProxyCapabilities(this.initParams);
 
-    for (const [name, server] of this.servers) {
-      const response = await server.initialize(serverInitParams);
-
-      if (response.error) {
-        log.error(`${name}: initialize failed — ${response.error.message}`);
-        this.sendErrorToClient(clientRequestId, LSP_ERROR_CODES.InternalError,
-          `Server ${name} failed to initialize: ${response.error.message}`);
-        this.state = 'stopped';
-        // Send clean shutdown to servers that already initialized (parallel to avoid N*30s timeout)
-        await Promise.allSettled(initialized.map(s => s.shutdown().catch(noop)));
-        for (const s of this.servers.values()) s.dispose();
-        return;
-      }
-
-      initialized.push(server);
-      const parsed = v.safeParse(InitializeResultSchema, response.result);
-      if (parsed.success) {
-        allCapabilities.push(parsed.output.capabilities);
-      }
+    // Store init params on each server for lazy start — no spawning yet.
+    for (const server of this.servers.values()) {
+      server.setInitParams(serverInitParams);
     }
 
-    this.respondToClient(clientRequestId, {
-      // Force Full sync (1) — the proxy's resync replaces tracked content with
-      // disk state, so incremental client edits (computed against stale content)
-      // would be misapplied. The client must always send full document text.
-      capabilities: { ...mergeCapabilities(allCapabilities), textDocumentSync: 1 },
-    });
+    this.respondToClient(clientRequestId, { capabilities: STATIC_CAPABILITIES });
     this.state = 'running';
     await this.startWorkspaceWatcher();
   }
@@ -271,7 +243,9 @@ export class LspProxy {
     }
 
     if (Msg.isNotification(msg) && msg.method === 'exit') {
-      for (const server of this.servers.values()) server.send(msg);
+      for (const server of this.servers.values()) {
+        if (server.state !== 'idle') server.send(msg);
+      }
       this.dispose();
       return;
     }
@@ -311,8 +285,10 @@ export class LspProxy {
           return;
         }
       }
-      // Not buffered — forward for in-flight cancellation
-      for (const server of this.servers.values()) server.send(msg);
+      // Not buffered — forward for in-flight cancellation (skip idle servers)
+      for (const server of this.servers.values()) {
+        if (server.state !== 'idle') server.send(msg);
+      }
       return;
     }
 
@@ -343,11 +319,15 @@ export class LspProxy {
       return;
     }
 
-    for (const server of this.servers.values()) server.send(msg);
+    // Fallback: broadcast to non-idle servers only
+    for (const server of this.servers.values()) {
+      if (server.state !== 'idle') server.send(msg);
+    }
   }
 
   private async shutdownAllServers(clientRequestId: number | string | null): Promise<void> {
     for (const server of this.servers.values()) {
+      if (server.state === 'idle') continue;
       await server.shutdown();
     }
     this.respondToClient(clientRequestId, null);
@@ -473,7 +453,7 @@ export class LspProxy {
   }
 
   private handleServerStateChange(serverName: string, serverState: ServerState): void {
-    if (serverState === 'restarting') {
+    if (serverState === 'restarting' || serverState === 'starting') {
       const { store, affectedUris } = diag.clearServer(this.diagnosticsStore, serverName);
       this.diagnosticsStore = store;
       for (const uri of affectedUris) this.publishMergedDiagnostics(uri);
