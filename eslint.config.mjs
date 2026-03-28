@@ -7,7 +7,7 @@ import stylistic from '@stylistic/eslint-plugin';
 import vitest from '@vitest/eslint-plugin';
 import { configs as typescriptPluginConfigs } from 'typescript-eslint';
 
-export default defineConfig([
+export default defineConfig(
   typescriptPluginConfigs.strictTypeChecked,
   typescriptPluginConfigs.stylisticTypeChecked,
   stylistic.configs.customize({ semi: true }),
@@ -54,14 +54,22 @@ export default defineConfig([
   },
   {
     name: 'root/vitest',
-    files: ['packages/*/test/**/*.ts'],
-    plugins: { vitest },
+    files: ['**/test/**/*.ts'],
+    extends: [vitest.configs.recommended],
     rules: {
-      ...vitest.configs.recommended.rules,
+      // Justification: vitest-aware version allows vi.fn() mocks in expect() — see
+      // https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/unbound-method.md
+      '@typescript-eslint/unbound-method': 'off',
+      // Justification: Plugin can't trace test.extend `it` re-exported across modules —
+      // see vitest-dev/eslint-plugin-vitest#686
+      'vitest/no-standalone-expect': 'off',
+      // Justification: vitest-aware version allows vi.fn() mocks in expect() — see
+      // https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/unbound-method.md
+      'vitest/unbound-method': 'error',
     },
   },
   {
     name: 'root/ignores',
     ignores: ['**/dist/**', '**/tmp-workspace*/**'],
   },
-]);
+);

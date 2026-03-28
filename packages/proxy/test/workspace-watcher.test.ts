@@ -57,8 +57,6 @@ let watchCallback: (event: string, filename: string | null) => void;
 let mockFsWatcher: { on: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn> };
 
 beforeEach(() => {
-  vi.clearAllMocks();
-
   mockFsWatcher = { on: vi.fn(), close: vi.fn() };
 
   vi.mocked(fw.resolveRoot).mockResolvedValue(WORKSPACE);
