@@ -103,7 +103,7 @@ export const it = test.extend<{
     }
   },
   workspace: async ({}, use) => {
-    const dir = join(import.meta.dirname, '..', '..', `tmp-workspace-${randomUUID().slice(0, 8)}`);
+    const dir = join(import.meta.dirname, '..', '..', 'dist', 'test-workspaces', randomUUID().slice(0, 8));
     await mkdir(dir, { recursive: true });
     let seq = 100;
     await use({ dir, uri: pathToFileURL(dir).href, nextSeq: () => seq++ });

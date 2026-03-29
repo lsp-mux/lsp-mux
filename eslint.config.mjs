@@ -70,6 +70,6 @@ export default defineConfig(
   },
   {
     name: 'root/ignores',
-    ignores: ['**/dist/**', '**/tmp-workspace*/**'],
+    ignores: ['**/dist/**'],
   },
 );
