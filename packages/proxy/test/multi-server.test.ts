@@ -3,7 +3,16 @@ import { describe } from 'vitest';
 import type { Message, ResponseMessage } from 'vscode-jsonrpc';
 import { Message as Msg, createRequest } from '../src/types.js';
 import { collectMessages, request, notify, waitForMessage, initializeProxy } from './helpers/test-client.js';
+import { faker } from '@faker-js/faker';
+import { fakeUri } from './helpers/fake.js';
 import { it, namedConfig } from './proxy/harness.js';
+
+const testUri = fakeUri();
+const multiUri = fakeUri();
+const fanoutUri = fakeUri();
+const crashUri = fakeUri();
+const triggerUri = fakeUri();
+const fenceUri = fakeUri();
 
 const twoServerConfigs = () => new Map([
   ['alpha', namedConfig('alpha')],
@@ -55,12 +64,12 @@ describe('Multi-server proxy', () => {
 
     // Open a .ts file — only alpha should start
     await notify(writer, 'textDocument/didOpen', {
-      textDocument: { uri: 'file:///test.ts', languageId: 'typescript', version: 1, text: 'x' },
+      textDocument: { uri: testUri, languageId: 'typescript', version: 1, text: faker.lorem.word() },
     });
 
     // Hover on .ts goes to alpha (primary for .ts)
     const hover = await request(writer, reader, 10, 'textDocument/hover', {
-      textDocument: { uri: 'file:///test.ts' },
+      textDocument: { uri: testUri },
       position: { line: 0, character: 0 },
     });
     expect(hover).toMatchObject({ result: { server: 'alpha' } });
@@ -76,16 +85,16 @@ describe('Multi-server proxy', () => {
 
     const diagPromise = collectMessages(
       reader,
-      msg => isDiagnosticForUri(msg, 'file:///multi.ts'),
+      msg => isDiagnosticForUri(msg, multiUri),
       2,
     );
 
     await notify(writer, 'textDocument/didOpen', {
       textDocument: {
-        uri: 'file:///multi.ts',
+        uri: multiUri,
         languageId: 'typescript',
         version: 1,
-        text: 'const x = 1;',
+        text: faker.lorem.sentence(),
       },
     });
 
@@ -101,7 +110,7 @@ describe('Multi-server proxy', () => {
     await initializeProxy(writer, reader);
 
     const hover = await request(writer, reader, 10, 'textDocument/hover', {
-      textDocument: { uri: 'file:///test.ts' },
+      textDocument: { uri: testUri },
       position: { line: 0, character: 0 },
     });
 
@@ -114,16 +123,16 @@ describe('Multi-server proxy', () => {
 
     const diagPromise = collectMessages(
       reader,
-      msg => isDiagnosticForUri(msg, 'file:///fanout.ts'),
+      msg => isDiagnosticForUri(msg, fanoutUri),
       2,
     );
 
     await notify(writer, 'textDocument/didOpen', {
       textDocument: {
-        uri: 'file:///fanout.ts',
+        uri: fanoutUri,
         languageId: 'typescript',
         version: 1,
-        text: 'export {};',
+        text: faker.lorem.sentence(),
       },
     });
 
@@ -138,16 +147,14 @@ describe('Multi-server proxy', () => {
     const { writer, reader } = createProxy({ configs: twoServerConfigs() });
     await initializeProxy(writer, reader);
 
-    const uri = 'file:///crash-diag.ts';
-
     const bothDiags = collectMessages(
       reader,
-      msg => isDiagnosticForUri(msg, uri),
+      msg => isDiagnosticForUri(msg, crashUri),
       2,
     );
 
     await notify(writer, 'textDocument/didOpen', {
-      textDocument: { uri, languageId: 'typescript', version: 1, text: 'x' },
+      textDocument: { uri: crashUri, languageId: 'typescript', version: 1, text: faker.lorem.word() },
     });
 
     await bothDiags;
@@ -158,14 +165,14 @@ describe('Multi-server proxy', () => {
       reader,
       msg =>
         isResponse(msg, 100)
-        || (isDiagnosticForUri(msg, uri)
+        || (isDiagnosticForUri(msg, crashUri)
           && getDiagnostics(msg).length === 1
           && getDiagnostics(msg)[0]?.source === 'beta'),
       2,
     );
 
     expect(msgs.find(m => isResponse(m, 100))).toMatchObject({ error: expect.objectContaining({}) as unknown });
-    expect(getDiagnostics(msgs.find(m => isDiagnosticForUri(m, uri)))).toStrictEqual([
+    expect(getDiagnostics(msgs.find(m => isDiagnosticForUri(m, crashUri)))).toStrictEqual([
       expect.objectContaining({ source: 'beta' }),
     ]);
   });
@@ -186,7 +193,7 @@ describe('Multi-server proxy', () => {
     expect(crashRes).toMatchObject({ error: expect.objectContaining({}) as unknown });
 
     const hover = await request(writer, reader, 301, 'textDocument/hover', {
-      textDocument: { uri: 'file:///test.ts' },
+      textDocument: { uri: testUri },
       position: { line: 0, character: 0 },
     });
 
@@ -232,7 +239,7 @@ describe('Multi-server proxy', () => {
 
     // didOpen triggers lazy start of both servers — beta sends registerCapability on initialized
     await notify(writer, 'textDocument/didOpen', {
-      textDocument: { uri: 'file:///trigger.ts', languageId: 'typescript', version: 1, text: '' },
+      textDocument: { uri: triggerUri, languageId: 'typescript', version: 1, text: faker.lorem.word() },
     });
 
     // Client acks the forwarded registration
@@ -246,7 +253,7 @@ describe('Multi-server proxy', () => {
     // Since requests are serialized through the proxy, this guarantees all
     // prior messages (including the ack) have been delivered.
     await request(writer, reader, 499, 'textDocument/hover', {
-      textDocument: { uri: 'file:///fence.ts' },
+      textDocument: { uri: fenceUri },
       position: { line: 0, character: 0 },
     });
 

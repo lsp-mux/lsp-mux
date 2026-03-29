@@ -2,23 +2,29 @@ import { describe, it } from 'vitest';
 import { createRouter, extractUri } from '../src/router.js';
 import type { ServerEntry } from '../src/router.js';
 import type { ServerConfig } from '../src/types.js';
+import { faker } from '@faker-js/faker';
+import { fakeUri } from './helpers/fake.js';
 
 const makeServer = (name: string, languages: Record<string, string[]>): ServerEntry => ({
   name,
   config: { command: name, args: [], languages, transport: 'stdio' } satisfies ServerConfig,
 });
 
-const vtsls = makeServer('vtsls', {
+const nameA = faker.string.alpha(8);
+const nameB = faker.string.alpha(8);
+const nameC = faker.string.alpha(8);
+
+const vtsls = makeServer(nameA, {
   typescript: ['.ts', '.tsx'],
   javascript: ['.js', '.jsx'],
 });
 
-const eslint = makeServer('eslint', {
+const eslint = makeServer(nameB, {
   typescript: ['.ts', '.tsx'],
   javascript: ['.js', '.jsx'],
 });
 
-const css = makeServer('css', {
+const css = makeServer(nameC, {
   css: ['.css'],
   scss: ['.scss'],
 });
@@ -28,11 +34,11 @@ describe('router', () => {
     const router = createRouter([vtsls]);
 
     it('serversForUri returns the server for a matching URI', ({ expect }) => {
-      expect(router.serversForUri('file:///project/src/index.ts')).toEqual(['vtsls']);
+      expect(router.serversForUri(fakeUri('.ts'))).toEqual([nameA]);
     });
 
     it('primaryForUri returns the server for a matching URI', ({ expect }) => {
-      expect(router.primaryForUri('file:///project/src/index.ts')).toBe('vtsls');
+      expect(router.primaryForUri(fakeUri('.ts'))).toBe(nameA);
     });
   });
 
@@ -40,23 +46,23 @@ describe('router', () => {
     const router = createRouter([vtsls, eslint]);
 
     it('serversForUri returns both in config order', ({ expect }) => {
-      expect(router.serversForUri('file:///project/src/app.tsx')).toEqual(['vtsls', 'eslint']);
+      expect(router.serversForUri(fakeUri('.tsx'))).toEqual([nameA, nameB]);
     });
 
     it('primaryForUri returns first', ({ expect }) => {
-      expect(router.primaryForUri('file:///project/src/app.tsx')).toBe('vtsls');
+      expect(router.primaryForUri(fakeUri('.tsx'))).toBe(nameA);
     });
   });
 
   describe('two servers with different languages', () => {
     const router = createRouter([vtsls, css]);
 
-    it('routes .ts to vtsls only', ({ expect }) => {
-      expect(router.serversForUri('file:///project/src/main.ts')).toEqual(['vtsls']);
+    it('routes .ts to first server only', ({ expect }) => {
+      expect(router.serversForUri(fakeUri('.ts'))).toEqual([nameA]);
     });
 
-    it('routes .css to css only', ({ expect }) => {
-      expect(router.serversForUri('file:///project/src/style.css')).toEqual(['css']);
+    it('routes .css to second server only', ({ expect }) => {
+      expect(router.serversForUri(fakeUri('.css'))).toEqual([nameC]);
     });
   });
 
@@ -64,7 +70,7 @@ describe('router', () => {
     const router = createRouter([vtsls, css]);
 
     it('returns allServers as fallback', ({ expect }) => {
-      expect(router.serversForUri('file:///project/README.md')).toEqual(['vtsls', 'css']);
+      expect(router.serversForUri(fakeUri('.md'))).toEqual([nameA, nameC]);
     });
   });
 
@@ -72,18 +78,18 @@ describe('router', () => {
     const router = createRouter([vtsls, css]);
 
     it('serversForUri returns allServers', ({ expect }) => {
-      expect(router.serversForUri(undefined)).toEqual(['vtsls', 'css']);
+      expect(router.serversForUri(undefined)).toEqual([nameA, nameC]);
     });
 
     it('primaryForUri returns first of allServers', ({ expect }) => {
-      expect(router.primaryForUri(undefined)).toBe('vtsls');
+      expect(router.primaryForUri(undefined)).toBe(nameA);
     });
   });
 
   describe('allServers', () => {
     it('returns all names in config order', ({ expect }) => {
       const router = createRouter([css, eslint, vtsls]);
-      expect(router.allServers).toEqual(['css', 'eslint', 'vtsls']);
+      expect(router.allServers).toEqual([nameC, nameB, nameA]);
     });
   });
 
@@ -91,42 +97,46 @@ describe('router', () => {
     const router = createRouter([vtsls]);
 
     it('handles URIs with query strings', ({ expect }) => {
-      expect(router.serversForUri('file:///project/src/foo.ts?version=2')).toEqual(['vtsls']);
+      expect(router.serversForUri(`${fakeUri('.ts')}?version=${String(faker.number.int())}`)).toEqual([nameA]);
     });
 
     it('handles URIs with fragments', ({ expect }) => {
-      expect(router.serversForUri('file:///project/src/foo.ts#L10')).toEqual(['vtsls']);
+      expect(router.serversForUri(`${fakeUri('.ts')}#L${String(faker.number.int())}`)).toEqual([nameA]);
     });
 
     it('handles URIs with no extension', ({ expect }) => {
-      expect(router.serversForUri('file:///project/Makefile')).toEqual(['vtsls']);
+      expect(router.serversForUri(fakeUri(''))).toEqual([nameA]);
     });
   });
 });
 
 describe('extractUri', () => {
   it('extracts from params.textDocument.uri', ({ expect }) => {
-    const msg = { jsonrpc: '2.0' as const, id: 1, method: 'textDocument/hover', params: { textDocument: { uri: 'file:///a.ts' }, position: { line: 0, character: 0 } } };
-    expect(extractUri(msg)).toBe('file:///a.ts');
+    const uri = fakeUri();
+    const msg = { jsonrpc: '2.0' as const, id: faker.number.int(), method: 'textDocument/hover', params: { textDocument: { uri }, position: { line: 0, character: 0 } } };
+    expect(extractUri(msg)).toBe(uri);
   });
 
   it('extracts from params.uri (e.g. publishDiagnostics)', ({ expect }) => {
-    const msg = { jsonrpc: '2.0' as const, method: 'textDocument/publishDiagnostics', params: { uri: 'file:///b.ts', diagnostics: [] } };
-    expect(extractUri(msg)).toBe('file:///b.ts');
+    const uri = fakeUri();
+    const msg = { jsonrpc: '2.0' as const, method: 'textDocument/publishDiagnostics', params: { uri, diagnostics: [] } };
+    expect(extractUri(msg)).toBe(uri);
   });
 
   it('returns undefined when no URI present', ({ expect }) => {
-    const msg = { jsonrpc: '2.0' as const, id: 1, method: 'shutdown' };
+    const msg = { jsonrpc: '2.0' as const, id: faker.number.int(), method: 'shutdown' };
     expect(extractUri(msg)).toBeUndefined();
   });
 
   it('returns undefined for response messages', ({ expect }) => {
-    const msg = { jsonrpc: '2.0' as const, id: 1, result: {} };
+    const msg = { jsonrpc: '2.0' as const, id: faker.number.int(), result: {} };
     expect(extractUri(msg)).toBeUndefined();
   });
 
   it('prefers textDocument.uri over params.uri', ({ expect }) => {
-    const msg = { jsonrpc: '2.0' as const, id: 1, method: 'test', params: { textDocument: { uri: 'file:///td.ts' }, uri: 'file:///other.ts' } };
-    expect(extractUri(msg)).toBe('file:///td.ts');
+    const tdUri = fakeUri();
+    const otherUri = fakeUri();
+    const msg = { jsonrpc: '2.0' as const, id: faker.number.int(), method: faker.string.alpha(8), params: { textDocument: { uri: tdUri }, uri: otherUri } };
+    expect(extractUri(msg)).toBe(tdUri);
   });
 });

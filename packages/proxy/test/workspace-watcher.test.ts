@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { describe, it, vi, beforeEach } from 'vitest';
+import { faker } from '@faker-js/faker';
 
 vi.mock('node:fs/promises', () => ({
   stat: vi.fn(),
@@ -65,7 +66,7 @@ beforeEach(() => {
   vi.mocked(fw.resolveRoot).mockResolvedValue(WORKSPACE);
   vi.mocked(fw.isWithinRoot).mockResolvedValue(true);
   vi.mocked(stat).mockResolvedValue({ size: 100 } as ReturnType<typeof stat> extends Promise<infer T> ? T : never);
-  vi.mocked(readFile).mockResolvedValue('file content');
+  vi.mocked(readFile).mockResolvedValue(faker.lorem.sentence());
 
   vi.mocked(watch).mockImplementation((...args: unknown[]) => {
     watchCallback = args[2] as typeof watchCallback;
@@ -158,8 +159,10 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('resyncs tracked files on change', async ({ expect }) => {
-      const doc = { uri: toUri('tracked.ts'), languageId: 'typescript', version: 1, content: 'old' };
-      vi.mocked(readFile).mockResolvedValue('new content');
+      const oldContent = faker.lorem.sentence();
+      const newContent = faker.lorem.sentence();
+      const doc = { uri: toUri('tracked.ts'), languageId: 'typescript', version: 1, content: oldContent };
+      vi.mocked(readFile).mockResolvedValue(newContent);
 
       const delegate = createDelegate({
         getDocument: vi.fn(() => doc),
@@ -170,7 +173,7 @@ describe.sequential('WorkspaceWatcher', () => {
       addEvent('tracked.ts');
       await onFlush();
 
-      expect(delegate.resyncDocument).toHaveBeenCalledWith(toUri('tracked.ts'), 1, 'new content');
+      expect(delegate.resyncDocument).toHaveBeenCalledWith(toUri('tracked.ts'), 1, newContent);
     });
 
     it('handles per-file errors without aborting batch', async ({ expect }) => {
@@ -207,8 +210,9 @@ describe.sequential('WorkspaceWatcher', () => {
 
   describe('resyncTrackedFile', () => {
     it('returns unchanged when content matches disk', async ({ expect }) => {
-      const doc = { uri: toUri('same.ts'), languageId: 'typescript', version: 1, content: 'same' };
-      vi.mocked(readFile).mockResolvedValue('same');
+      const content = faker.lorem.sentence();
+      const doc = { uri: toUri('same.ts'), languageId: 'typescript', version: 1, content };
+      vi.mocked(readFile).mockResolvedValue(content);
       const delegate = createDelegate({ getDocument: vi.fn(() => doc) });
 
       await startWatcher(delegate);
@@ -229,7 +233,7 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('returns deleted on stat ENOENT', async ({ expect }) => {
-      const doc = { uri: toUri('vanished.ts'), languageId: 'typescript', version: 1, content: 'old' };
+      const doc = { uri: toUri('vanished.ts'), languageId: 'typescript', version: 1, content: faker.lorem.sentence() };
       // First stat (flush existence check) succeeds, second stat (resync) fails
       vi.mocked(stat)
         .mockResolvedValueOnce({ size: 10 } as Awaited<ReturnType<typeof stat>>)
@@ -248,7 +252,7 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('returns unchanged on stat non-ENOENT error', async ({ expect }) => {
-      const doc = { uri: toUri('perm.ts'), languageId: 'typescript', version: 1, content: 'old' };
+      const doc = { uri: toUri('perm.ts'), languageId: 'typescript', version: 1, content: faker.lorem.sentence() };
       vi.mocked(stat)
         .mockResolvedValueOnce({ size: 10 } as Awaited<ReturnType<typeof stat>>)
         .mockRejectedValueOnce(nodeError('EACCES'));
@@ -266,7 +270,7 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('returns deleted on readFile ENOENT', async ({ expect }) => {
-      const doc = { uri: toUri('gone.ts'), languageId: 'typescript', version: 1, content: 'old' };
+      const doc = { uri: toUri('gone.ts'), languageId: 'typescript', version: 1, content: faker.lorem.sentence() };
       vi.mocked(readFile).mockRejectedValue(nodeError('ENOENT'));
       const delegate = createDelegate({ getDocument: vi.fn(() => doc) });
 
@@ -281,7 +285,7 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('skips files exceeding stat 2x pre-filter', async ({ expect }) => {
-      const doc = { uri: toUri('huge.ts'), languageId: 'typescript', version: 1, content: 'old' };
+      const doc = { uri: toUri('huge.ts'), languageId: 'typescript', version: 1, content: faker.lorem.sentence() };
       vi.mocked(stat).mockResolvedValue({ size: 300 } as Awaited<ReturnType<typeof stat>>);
       const delegate = createDelegate({ getDocument: vi.fn(() => doc) });
 
@@ -295,7 +299,7 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('skips files exceeding byteLength threshold', async ({ expect }) => {
-      const doc = { uri: toUri('big.ts'), languageId: 'typescript', version: 1, content: 'old' };
+      const doc = { uri: toUri('big.ts'), languageId: 'typescript', version: 1, content: faker.lorem.sentence() };
       // stat.size passes 2x filter (150 < 200) but byteLength (150) > maxResyncBytes (100)
       vi.mocked(stat).mockResolvedValue({ size: 150 } as Awaited<ReturnType<typeof stat>>);
       vi.mocked(readFile).mockResolvedValue('x'.repeat(150));
@@ -310,9 +314,12 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('skips when version changed during read (optimistic concurrency)', async ({ expect }) => {
-      const v1 = { uri: toUri('race.ts'), languageId: 'typescript', version: 1, content: 'old' };
-      const v2 = { uri: toUri('race.ts'), languageId: 'typescript', version: 2, content: 'client edit' };
-      vi.mocked(readFile).mockResolvedValue('disk content');
+      const oldContent = faker.lorem.sentence();
+      const clientContent = faker.lorem.sentence();
+      const diskContent = faker.lorem.sentence();
+      const v1 = { uri: toUri('race.ts'), languageId: 'typescript', version: 1, content: oldContent };
+      const v2 = { uri: toUri('race.ts'), languageId: 'typescript', version: 2, content: clientContent };
+      vi.mocked(readFile).mockResolvedValue(diskContent);
 
       // Call order: flush isTracked → resync initial → resync re-check
       const getDocument = vi.fn()

@@ -29,6 +29,7 @@ catalogs:
     '@vtsls/language-server': 0.3.0
     vscode-langservers-extracted: 4.10.0
   test:
+    '@faker-js/faker': 10.4.0
     '@sinonjs/fake-timers': 15.1.1
     '@vitest/coverage-v8': 4.1.2
     '@vitest/ui': 4.1.2

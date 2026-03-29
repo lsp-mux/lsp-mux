@@ -1,4 +1,5 @@
 import { describe, it } from 'vitest';
+import { faker } from '@faker-js/faker';
 import { mergeCapabilities } from '../src/capabilities.js';
 
 describe('mergeCapabilities', () => {
@@ -61,10 +62,11 @@ describe('mergeCapabilities', () => {
   });
 
   it('concatenates array values', ({ expect }) => {
+    const [a, b, c] = [faker.string.alpha(4), faker.string.alpha(4), faker.string.alpha(4)];
     expect(mergeCapabilities([
-      { experimental: ['a', 'b'] },
-      { experimental: ['c'] },
-    ])).toEqual({ experimental: ['a', 'b', 'c'] });
+      { experimental: [a, b] },
+      { experimental: [c] },
+    ])).toEqual({ experimental: [a, b, c] });
   });
 
   it('uses later value when types differ (fallback)', ({ expect }) => {

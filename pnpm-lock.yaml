@@ -73,6 +73,9 @@ catalogs:
       specifier: 4.10.0
       version: 4.10.0
   test:
+    '@faker-js/faker':
+      specifier: 10.4.0
+      version: 10.4.0
     '@sinonjs/fake-timers':
       specifier: 15.1.1
       version: 15.1.1
@@ -93,6 +96,9 @@ importers:
 
   .:
     devDependencies:
+      '@faker-js/faker':
+        specifier: catalog:test
+        version: 10.4.0
       '@sinonjs/fake-timers':
         specifier: catalog:test
         version: 15.1.1
@@ -398,6 +404,10 @@ packages:
   '@eslint/plugin-kit@0.6.1':
     resolution: {integrity: sha512-iH1B076HoAshH1mLpHMgwdGeTs0CYwL0SPMkGuSebZrwBp16v415e9NZXg2jtrqPVQjf6IANe2Vtlr5KswtcZQ==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
+
+  '@faker-js/faker@10.4.0':
+    resolution: {integrity: sha512-sDBWI3yLy8EcDzgobvJTWq1MJYzAkQdpjXuPukga9wXonhpMRvd1Izuo2Qgwey2OiEoRIBr35RMU9HJRoOHzpw==}
+    engines: {node: ^20.19.0 || ^22.13.0 || ^23.5.0 || >=24.0.0, npm: '>=10'}
 
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
@@ -1845,6 +1855,8 @@ snapshots:
     dependencies:
       '@eslint/core': 1.1.1
       levn: 0.4.1
+
+  '@faker-js/faker@10.4.0': {}
 
   '@humanfs/core@0.19.1': {}
 

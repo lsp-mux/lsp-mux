@@ -1,9 +1,16 @@
 import { describe, it } from 'vitest';
 import { empty, update, merge, clearServer } from '../src/diagnostics-store.js';
+import { faker } from '@faker-js/faker';
+import { fakeUri } from './helpers/fake.js';
 
-const diagA = { message: 'error from A', severity: 1 };
-const diagB = { message: 'warning from B', severity: 2 };
-const diagC = { message: 'info from A', severity: 3 };
+const serverA = faker.string.alpha(8);
+const serverB = faker.string.alpha(8);
+const uriA = fakeUri();
+const uriB = fakeUri();
+
+const diagA = { message: faker.lorem.words(2), severity: 1 };
+const diagB = { message: faker.lorem.words(2), severity: 2 };
+const diagC = { message: faker.lorem.words(2), severity: 3 };
 
 describe('diagnostics-store', () => {
   describe('empty', () => {
@@ -14,76 +21,76 @@ describe('diagnostics-store', () => {
 
   describe('update + merge', () => {
     it('single server, single URI → merge returns those diagnostics', ({ expect }) => {
-      const store = update(empty(), 'vtsls', 'file:///a.ts', [diagA]);
-      expect(merge(store, 'file:///a.ts')).toEqual([diagA]);
+      const store = update(empty(), serverA, uriA, [diagA]);
+      expect(merge(store, uriA)).toEqual([diagA]);
     });
 
     it('two servers, same URI → merge returns union', ({ expect }) => {
-      let store = update(empty(), 'vtsls', 'file:///a.ts', [diagA]);
-      store = update(store, 'eslint', 'file:///a.ts', [diagB]);
-      expect(merge(store, 'file:///a.ts')).toEqual([diagA, diagB]);
+      let store = update(empty(), serverA, uriA, [diagA]);
+      store = update(store, serverB, uriA, [diagB]);
+      expect(merge(store, uriA)).toEqual([diagA, diagB]);
     });
 
     it('update with empty array removes server entry; merge returns only other server', ({ expect }) => {
-      let store = update(empty(), 'vtsls', 'file:///a.ts', [diagA]);
-      store = update(store, 'eslint', 'file:///a.ts', [diagB]);
-      store = update(store, 'vtsls', 'file:///a.ts', []);
-      expect(merge(store, 'file:///a.ts')).toEqual([diagB]);
+      let store = update(empty(), serverA, uriA, [diagA]);
+      store = update(store, serverB, uriA, [diagB]);
+      store = update(store, serverA, uriA, []);
+      expect(merge(store, uriA)).toEqual([diagB]);
     });
 
     it('update with empty array when last server removes URI entirely', ({ expect }) => {
-      let store = update(empty(), 'vtsls', 'file:///a.ts', [diagA]);
-      store = update(store, 'vtsls', 'file:///a.ts', []);
-      expect(store.has('file:///a.ts')).toBe(false);
-      expect(merge(store, 'file:///a.ts')).toEqual([]);
+      let store = update(empty(), serverA, uriA, [diagA]);
+      store = update(store, serverA, uriA, []);
+      expect(store.has(uriA)).toBe(false);
+      expect(merge(store, uriA)).toEqual([]);
     });
 
     it('merge on unknown URI returns empty array', ({ expect }) => {
-      expect(merge(empty(), 'file:///unknown.ts')).toEqual([]);
+      expect(merge(empty(), fakeUri())).toEqual([]);
     });
 
     it('replaces previous diagnostics for same server + URI', ({ expect }) => {
-      let store = update(empty(), 'vtsls', 'file:///a.ts', [diagA]);
-      store = update(store, 'vtsls', 'file:///a.ts', [diagC]);
-      expect(merge(store, 'file:///a.ts')).toEqual([diagC]);
+      let store = update(empty(), serverA, uriA, [diagA]);
+      store = update(store, serverA, uriA, [diagC]);
+      expect(merge(store, uriA)).toEqual([diagC]);
     });
   });
 
   describe('clearServer', () => {
     it('returns affected URIs and removes server from all', ({ expect }) => {
-      let store = update(empty(), 'vtsls', 'file:///a.ts', [diagA]);
-      store = update(store, 'vtsls', 'file:///b.ts', [diagC]);
-      store = update(store, 'eslint', 'file:///a.ts', [diagB]);
+      let store = update(empty(), serverA, uriA, [diagA]);
+      store = update(store, serverA, uriB, [diagC]);
+      store = update(store, serverB, uriA, [diagB]);
 
-      const result = clearServer(store, 'vtsls');
-      expect(result.affectedUris).toEqual(['file:///a.ts', 'file:///b.ts']);
-      // a.ts still has eslint diagnostics
-      expect(merge(result.store, 'file:///a.ts')).toEqual([diagB]);
-      // b.ts had only vtsls — URI removed entirely
-      expect(result.store.has('file:///b.ts')).toBe(false);
+      const result = clearServer(store, serverA);
+      expect(result.affectedUris).toEqual([uriA, uriB]);
+      // uriA still has serverB diagnostics
+      expect(merge(result.store, uriA)).toEqual([diagB]);
+      // uriB had only serverA — URI removed entirely
+      expect(result.store.has(uriB)).toBe(false);
     });
 
     it('is a no-op for server with no entries', ({ expect }) => {
-      const store = update(empty(), 'vtsls', 'file:///a.ts', [diagA]);
-      const result = clearServer(store, 'eslint');
+      const store = update(empty(), serverA, uriA, [diagA]);
+      const result = clearServer(store, serverB);
       expect(result.affectedUris).toEqual([]);
-      expect(merge(result.store, 'file:///a.ts')).toEqual([diagA]);
+      expect(merge(result.store, uriA)).toEqual([diagA]);
     });
   });
 
   describe('immutability', () => {
     it('original store unchanged after update', ({ expect }) => {
       const before = empty();
-      const after = update(before, 'vtsls', 'file:///a.ts', [diagA]);
+      const after = update(before, serverA, uriA, [diagA]);
       expect(before.size).toBe(0);
       expect(after.size).toBe(1);
     });
 
     it('original store unchanged after clearServer', ({ expect }) => {
-      const before = update(empty(), 'vtsls', 'file:///a.ts', [diagA]);
-      const result = clearServer(before, 'vtsls');
-      expect(merge(before, 'file:///a.ts')).toEqual([diagA]);
-      expect(merge(result.store, 'file:///a.ts')).toEqual([]);
+      const before = update(empty(), serverA, uriA, [diagA]);
+      const result = clearServer(before, serverA);
+      expect(merge(before, uriA)).toEqual([diagA]);
+      expect(merge(result.store, uriA)).toEqual([]);
     });
   });
 });

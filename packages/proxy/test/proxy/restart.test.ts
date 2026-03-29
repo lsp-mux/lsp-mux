@@ -1,7 +1,12 @@
 import { describe } from 'vitest';
 import type { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import { request, notify, initializeProxy } from '../helpers/test-client.js';
+import { faker } from '@faker-js/faker';
+import { fakeUri } from '../helpers/fake.js';
 import { it, type ServerConfig } from './harness.js';
+
+const testUri = fakeUri();
+const replayedUri = fakeUri();
 
 const crashAndWait = (w: StreamMessageWriter, r: StreamMessageReader, id: number) =>
   request(w, r, id, '$/crash');
@@ -16,7 +21,7 @@ describe('LspProxy restart behavior', () => {
     expect(crashRes).toMatchObject({ error: expect.objectContaining({}) as unknown });
 
     const hover = await request(writer, reader, 20, 'textDocument/hover', {
-      textDocument: { uri: 'file:///test.ts' },
+      textDocument: { uri: testUri },
       position: { line: 0, character: 0 },
     });
     expect(hover).toMatchObject({ result: { echo: 'textDocument/hover' } });
@@ -29,10 +34,10 @@ describe('LspProxy restart behavior', () => {
 
     await notify(writer, 'textDocument/didOpen', {
       textDocument: {
-        uri: 'file:///replayed.ts',
+        uri: replayedUri,
         languageId: 'typescript',
         version: 1,
-        text: 'const x = 1;',
+        text: faker.lorem.sentence(),
       },
     });
 
@@ -41,7 +46,7 @@ describe('LspProxy restart behavior', () => {
 
     const docsRes = await request(writer, reader, 26, '$/documents');
     expect(docsRes).toMatchObject({
-      result: [{ uri: 'file:///replayed.ts', languageId: 'typescript', version: 1 }],
+      result: [{ uri: replayedUri, languageId: 'typescript', version: 1 }],
     });
   });
 
@@ -66,7 +71,7 @@ describe('LspProxy restart behavior', () => {
     await initializeProxy(writer, reader);
 
     const res = await request(writer, reader, 1, 'textDocument/hover', {
-      textDocument: { uri: 'file:///test.ts' },
+      textDocument: { uri: testUri },
       position: { line: 0, character: 0 },
     });
     expect(res).toMatchObject({ error: expect.objectContaining({}) as unknown });
@@ -81,7 +86,7 @@ describe('LspProxy restart behavior', () => {
     expect(crashRes).toMatchObject({ error: expect.objectContaining({}) as unknown });
 
     const res = await request(writer, reader, 41, 'textDocument/hover', {
-      textDocument: { uri: 'file:///test.ts' },
+      textDocument: { uri: testUri },
       position: { line: 0, character: 0 },
     });
     expect(res).toMatchObject({ error: { code: -32002 } });
@@ -129,7 +134,7 @@ describe('LspProxy restart behavior', () => {
     expect(crashRes).toMatchObject({ error: expect.objectContaining({}) as unknown });
 
     const hoverPromise = request(writer, reader, 60, 'textDocument/hover', {
-      textDocument: { uri: 'file:///test.ts' },
+      textDocument: { uri: testUri },
       position: { line: 0, character: 0 },
     });
     await notify(writer, '$/cancelRequest', { id: 60 });

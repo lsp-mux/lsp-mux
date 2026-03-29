@@ -1,12 +1,13 @@
 import { describe, it } from 'vitest';
+import { faker } from '@faker-js/faker';
 import { createMessageBuffer } from '../src/message-buffer.js';
 import { createRequest, createNotification } from '../src/types.js';
 
 describe('MessageBuffer', () => {
   it('buffers and flushes messages in order', ({ expect }) => {
     const buf = createMessageBuffer(10);
-    const r1 = createRequest(1, 'a');
-    const r2 = createRequest(2, 'b');
+    const r1 = createRequest(faker.number.int(), faker.string.alpha(8));
+    const r2 = createRequest(faker.number.int(), faker.string.alpha(8));
     expect(buf.push(r1)).toBe(true);
     expect(buf.push(r2)).toBe(true);
     expect(buf.length).toBe(2);
@@ -18,39 +19,44 @@ describe('MessageBuffer', () => {
 
   it('rejects when full', ({ expect }) => {
     const buf = createMessageBuffer(2);
-    expect(buf.push(createRequest(1, 'a'))).toBe(true);
-    expect(buf.push(createRequest(2, 'b'))).toBe(true);
-    expect(buf.push(createRequest(3, 'c'))).toBe(false);
+    expect(buf.push(createRequest(faker.number.int(), faker.string.alpha(8)))).toBe(true);
+    expect(buf.push(createRequest(faker.number.int(), faker.string.alpha(8)))).toBe(true);
+    expect(buf.push(createRequest(faker.number.int(), faker.string.alpha(8)))).toBe(false);
     expect(buf.length).toBe(2);
   });
 
   it('cancels a buffered request by ID', ({ expect }) => {
     const buf = createMessageBuffer(10);
-    buf.push(createRequest(1, 'a'));
-    buf.push(createRequest(2, 'b'));
-    buf.push(createRequest(3, 'c'));
+    const id1 = faker.number.int();
+    const id2 = faker.number.int();
+    const id3 = faker.number.int();
+    buf.push(createRequest(id1, faker.string.alpha(8)));
+    buf.push(createRequest(id2, faker.string.alpha(8)));
+    buf.push(createRequest(id3, faker.string.alpha(8)));
 
-    expect(buf.cancel(2)).toBe(true);
+    expect(buf.cancel(id2)).toBe(true);
     expect(buf.length).toBe(2);
 
     const flushed = buf.flush();
-    expect(flushed.map(m => 'id' in m ? m.id : undefined)).toEqual([1, 3]);
+    expect(flushed.map(m => 'id' in m ? m.id : undefined)).toEqual([id1, id3]);
   });
 
   it('returns false when cancelling non-existent ID', ({ expect }) => {
     const buf = createMessageBuffer(10);
-    buf.push(createRequest(1, 'a'));
-    expect(buf.cancel(99)).toBe(false);
+    const id = faker.number.int();
+    buf.push(createRequest(id, faker.string.alpha(8)));
+    expect(buf.cancel(id + 1)).toBe(false);
     expect(buf.length).toBe(1);
   });
 
   it('does not cancel notifications (only requests)', ({ expect }) => {
     const buf = createMessageBuffer(10);
-    buf.push(createNotification('textDocument/hover'));
-    buf.push(createRequest(1, 'a'));
+    const id = faker.number.int();
+    buf.push(createNotification(faker.string.alpha(10)));
+    buf.push(createRequest(id, faker.string.alpha(8)));
 
-    // notifications have no id — cancel(1) should only match the request
-    expect(buf.cancel(1)).toBe(true);
+    // notifications have no id — cancel(id) should only match the request
+    expect(buf.cancel(id)).toBe(true);
     expect(buf.length).toBe(1);
   });
 

@@ -16,6 +16,7 @@
     "watch": "concurrently -g pnpm:compile:watch pnpm:test:watch"
   },
   "devDependencies": {
+    "@faker-js/faker": "catalog:test",
     "@sinonjs/fake-timers": "catalog:test",
     "@stylistic/eslint-plugin": "catalog:lint",
     "@tsconfig/strictest": "catalog:build",

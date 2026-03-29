@@ -1,6 +1,11 @@
 import { describe } from 'vitest';
 import { request, notify, initializeProxy } from '../helpers/test-client.js';
+import { faker } from '@faker-js/faker';
+import { fakeUri } from '../helpers/fake.js';
 import { it } from './harness.js';
+
+const lazyUri = fakeUri();
+const testUri = fakeUri();
 
 describe('LspProxy lifecycle', () => {
   describe('lazy initialization', () => {
@@ -20,15 +25,15 @@ describe('LspProxy lifecycle', () => {
 
       await notify(writer, 'textDocument/didOpen', {
         textDocument: {
-          uri: 'file:///lazy.ts',
+          uri: lazyUri,
           languageId: 'typescript',
           version: 1,
-          text: 'const x = 1;',
+          text: faker.lorem.sentence(),
         },
       });
 
       const hover = await request(writer, reader, 10, 'textDocument/hover', {
-        textDocument: { uri: 'file:///lazy.ts' },
+        textDocument: { uri: lazyUri },
         position: { line: 0, character: 0 },
       });
       expect(hover).toMatchObject({ result: { echo: 'textDocument/hover' } });
@@ -39,7 +44,7 @@ describe('LspProxy lifecycle', () => {
     const { writer, reader } = createProxy();
 
     const res = await request(writer, reader, 1, 'textDocument/hover', {
-      textDocument: { uri: 'file:///test.ts' },
+      textDocument: { uri: testUri },
       position: { line: 0, character: 0 },
     });
     expect(res).toMatchObject({ error: { code: -32002 } });
@@ -70,15 +75,15 @@ describe('LspProxy lifecycle', () => {
 
     await notify(writer, 'textDocument/didOpen', {
       textDocument: {
-        uri: 'file:///test.ts',
+        uri: testUri,
         languageId: 'typescript',
         version: 1,
-        text: 'const x = 1;',
+        text: faker.lorem.sentence(),
       },
     });
 
     const hover = await request(writer, reader, 10, 'textDocument/hover', {
-      textDocument: { uri: 'file:///test.ts' },
+      textDocument: { uri: testUri },
       position: { line: 0, character: 6 },
     });
 
