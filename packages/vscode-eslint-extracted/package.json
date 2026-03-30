@@ -1,0 +1,19 @@
+{
+  "name": "vscode-eslint-extracted",
+  "version": "3.0.24",
+  "private": true,
+  "description": "VS Code ESLint language server extracted from the vscode-eslint extension",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.6.0"
+  },
+  "scripts": {
+    "postinstall": "node --experimental-strip-types scripts/download.ts"
+  },
+  "dependencies": {
+    "yauzl": "catalog:"
+  },
+  "devDependencies": {
+    "@types/yauzl": "catalog:build"
+  }
+}

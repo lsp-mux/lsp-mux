@@ -18,6 +18,9 @@ catalogs:
     '@types/sinonjs__fake-timers':
       specifier: 15.0.1
       version: 15.0.1
+    '@types/yauzl':
+      specifier: 2.10.3
+      version: 2.10.3
     concurrently:
       specifier: 9.2.1
       version: 9.2.1
@@ -37,6 +40,9 @@ catalogs:
     vscode-jsonrpc:
       specifier: 8.2.1
       version: 8.2.1
+    yauzl:
+      specifier: 3.2.1
+      version: 3.2.1
   lint:
     '@stylistic/eslint-plugin':
       specifier: 5.10.0
@@ -69,9 +75,6 @@ catalogs:
     '@vtsls/language-server':
       specifier: 0.3.0
       version: 0.3.0
-    vscode-langservers-extracted:
-      specifier: 4.10.0
-      version: 4.10.0
   test:
     '@faker-js/faker':
       specifier: 10.4.0
@@ -171,9 +174,9 @@ importers:
       claude-lsp-proxy:
         specifier: workspace:*
         version: link:../proxy
-      vscode-langservers-extracted:
-        specifier: catalog:lsp
-        version: 4.10.0
+      vscode-eslint-extracted:
+        specifier: workspace:*
+        version: link:../vscode-eslint-extracted
 
   packages/proxy:
     dependencies:
@@ -186,6 +189,16 @@ importers:
       vscode-jsonrpc:
         specifier: 'catalog:'
         version: 8.2.1
+
+  packages/vscode-eslint-extracted:
+    dependencies:
+      yauzl:
+        specifier: 'catalog:'
+        version: 3.2.1
+    devDependencies:
+      '@types/yauzl':
+        specifier: catalog:build
+        version: 2.10.3
 
 packages:
 
@@ -627,6 +640,9 @@ packages:
   '@types/sinonjs__fake-timers@15.0.1':
     resolution: {integrity: sha512-Ko2tjWJq8oozHzHV+reuvS5KYIRAokHnGbDwGh/J64LntgpbuylF74ipEL24HCyRjf9FOlBiBHWBR1RlVKsI1w==}
 
+  '@types/yauzl@2.10.3':
+    resolution: {integrity: sha512-oJoftv0LSuaDZE3Le4DbKX+KS9G36NzOeSap90UIK0yMA/NhKJhqlSGtNDORNRaIbQfzjXDrQa0ytJ6mNRGz/Q==}
+
   '@typescript-eslint/eslint-plugin@8.57.2':
     resolution: {integrity: sha512-NZZgp0Fm2IkD+La5PR81sd+g+8oS6JwJje+aRWsDocxHkjyRw0J5L5ZTlN3LI1LlOcGL7ph3eaIUmTXMIjLk0w==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
@@ -848,9 +864,6 @@ packages:
   '@vitest/utils@4.1.2':
     resolution: {integrity: sha512-xw2/TiX82lQHA06cgbqRKFb5lCAy3axQ4H4SoUFhUsg+wztiet+co86IAMDtF6Vm1hc7J6j09oh/rgDn+JdKIQ==}
 
-  '@vscode/l10n@0.0.10':
-    resolution: {integrity: sha512-E1OCmDcDWa0Ya7vtSjp/XfHFGqYJfh+YPC1RkATU71fTac+j1JjCcB3qwSzmlKAighx2WxhLlfhS0RwAN++PFQ==}
-
   '@vscode/l10n@0.0.18':
     resolution: {integrity: sha512-KYSIHVmslkaCDyw013pphY+d7x1qV8IZupYfeIfzNA+nsaWHbn5uPuQRvdRFsa9zFzGeudPuoGoZ1Op4jrJXIQ==}
 
@@ -898,12 +911,12 @@ packages:
     resolution: {integrity: sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==}
     engines: {node: 18 || 20 || >=22}
 
-  boolbase@1.0.0:
-    resolution: {integrity: sha512-JZOSA7Mo9sNGB8+UjSgzdLtokWAky1zbztM3WRLCbZ70/3cTANmQmOdR7y2g+J0e2WXywy1yS468tY+IruqEww==}
-
   brace-expansion@5.0.5:
     resolution: {integrity: sha512-VZznLgtwhn+Mact9tfiwx64fA9erHH/MCXEUfB/0bX/6Fz6ny5EGTXYltMocqg4xFAQZtnO3DHWWXi8RiuN7cQ==}
     engines: {node: 18 || 20 || >=22}
+
+  buffer-crc32@0.2.13:
+    resolution: {integrity: sha512-VO9Ht/+p3SN7SKWqcrgEzjGbRSJYTx+Q1pTQC0wrWqHx0vpJraQ6GtHx8tvcg1rlK1byhU5gccxgOgj7B0TDkQ==}
 
   chai@6.2.2:
     resolution: {integrity: sha512-NUPRluOfOiTKBKvWPtSD4PhFvWCqOi0BGStNWs57X9js7XGTprSmFoz5F0tWhR4WPjNeR9jXqdC7/UpSJTnlRg==}
@@ -940,19 +953,9 @@ packages:
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
 
-  core-js@3.49.0:
-    resolution: {integrity: sha512-es1U2+YTtzpwkxVLwAFdSpaIMyQaq0PBgm3YD1W3Qpsn1NAmO3KSgZfu+oGSWVu6NvLHoHCV/aYcsE5wiB7ALg==}
-
   cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
     engines: {node: '>= 8'}
-
-  css-select@5.2.2:
-    resolution: {integrity: sha512-TizTzUddG/xYLA3NXodFM0fSbNizXjOKhqiQQwvhlspadZokn1KDy0NZFS0wuEubIYAV5/c1/lAr0TaaFXEXzw==}
-
-  css-what@6.2.2:
-    resolution: {integrity: sha512-u/O3vwbptzhMs3L1fQE82ZSLHQQfto5gyZzwteVIEyeaY5Fc7R4dapF/BvRoSYFeqfBk4m0V1Vafq5Pjv25wvA==}
-    engines: {node: '>= 6'}
 
   debug@4.4.3:
     resolution: {integrity: sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==}
@@ -966,19 +969,6 @@ packages:
   deep-is@0.1.4:
     resolution: {integrity: sha512-oIPzksmTg4/MriiaYGO+okXDT7ztn/w3Eptv/+gSIdMdKsJo0u4CfYNFJPy+4SKMuCqGw2wxnA+URMg3t8a/bQ==}
 
-  dom-serializer@2.0.0:
-    resolution: {integrity: sha512-wIkAryiqt/nV5EQKqQpo3SToSOV9J0DnbJqwK7Wv/Trc92zIAYZ4FlMu+JPFW1DfGFt81ZTCGgDEabffXeLyJg==}
-
-  domelementtype@2.3.0:
-    resolution: {integrity: sha512-OLETBj6w0OsagBwdXnPdN0cnMfF9opN69co+7ZrbfPGrdpPVNBUj02spi6B1N7wChLQiPn4CSH/zJvXw56gmHw==}
-
-  domhandler@5.0.3:
-    resolution: {integrity: sha512-cgwlv/1iFQiFnU96XXgROh8xTeetsnJiDsTc7TYCLFd9+/WNkIqPTxiM/8pSd8VIrhXGTf1Ny1q1hquVqDJB5w==}
-    engines: {node: '>= 4'}
-
-  domutils@3.2.2:
-    resolution: {integrity: sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw==}
-
   emoji-regex@8.0.0:
     resolution: {integrity: sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==}
 
@@ -989,10 +979,6 @@ packages:
   enhanced-resolve@5.20.1:
     resolution: {integrity: sha512-Qohcme7V1inbAfvjItgw0EaxVX5q2rdVEZHRBrEQdRZTssLDGsL8Lwrznl8oQ/6kuTJONLaDcGjkNP247XEhcA==}
     engines: {node: '>=10.13.0'}
-
-  entities@4.5.0:
-    resolution: {integrity: sha512-V0hjH4dGPh9Ao5p0MoRY6BVqtwCjhz6vI5LT8AJ55H+4g9/4vbHx1I54fS0XuclLhDHArPQCiMjDxjaL8fPxhw==}
-    engines: {node: '>=0.12'}
 
   es-module-lexer@2.0.0:
     resolution: {integrity: sha512-5POEcUuZybH7IdmGsD8wlf0AI55wMecM9rVBTI/qEAy2c1kTOm3DjFYjrBdI2K3BaJjJYfYFeRtM0t9ssnRuxw==}
@@ -1194,10 +1180,6 @@ packages:
     resolution: {integrity: sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==}
     engines: {node: '>=8'}
 
-  he@1.2.0:
-    resolution: {integrity: sha512-F/1DnUGPopORZi0ni+CvrCgHQ5FyEAHRLSApuYWMmrbSwoN2Mn/7k+Gl38gJnR7yyDZk6WLXwiGod1JOWNDKGw==}
-    hasBin: true
-
   html-escaper@2.0.2:
     resolution: {integrity: sha512-H2iMtd0I4Mt5eYiapRdIDjp+XzelXQ0tFE4JS7YFwFevXXMmOp9myNrUvCg0D6ws8iqkRPBfKHgbwig1SmlLfg==}
 
@@ -1311,12 +1293,6 @@ packages:
   natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
 
-  node-html-parser@6.1.13:
-    resolution: {integrity: sha512-qIsTMOY4C/dAa5Q5vsobRpOOvPfC4pB61UVW2uSwZNUp0QU/jCekTal1vMmbO0DgdHeLUJpv/ARmDqErVxA3Sg==}
-
-  nth-check@2.1.1:
-    resolution: {integrity: sha512-lqjrjmaOoAnWfMmBPL+XNnynZh2+swxiX3WUE0s4yEHI6m+AwrK2UZOimIRl3X/4QctVqS8AiZjFqyOGrMXb/w==}
-
   obug@2.1.1:
     resolution: {integrity: sha512-uTqF9MuPraAQ+IsnPf366RG4cP9RtUi7MLO1N3KEc+wb0a6yKpeL0lmk2IB1jY5KHPAlTc6T/JRdC/YqxHNwkQ==}
 
@@ -1343,12 +1319,11 @@ packages:
   pathe@2.0.3:
     resolution: {integrity: sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w==}
 
+  pend@1.2.0:
+    resolution: {integrity: sha512-F3asv42UuXchdzt+xXqfW1OGlVBe+mxa2mqI0pg5yAHZPvFmY3Y6drSf/GQ1A86WgWEN9Kzh/WrgKa6iGcHXLg==}
+
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
-
-  picomatch@2.3.2:
-    resolution: {integrity: sha512-V7+vQEJ06Z+c5tSye8S+nHUfI51xoXIXjHQ99cQtKUkQqqO1kO/KCJUfZXuB47h/YBlDhah2H3hdUGXn8ie0oA==}
-    engines: {node: '>=8.6'}
 
   picomatch@4.0.4:
     resolution: {integrity: sha512-QP88BAKvMam/3NxH6vj2o21R6MjxZUAd6nlwAS/pnGvN9IVLocLHxGYIzFhg6fUQ+5th6P4dv4eW9jX3DSIj7A==}
@@ -1368,12 +1343,6 @@ packages:
   punycode@2.3.1:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
-
-  regenerator-runtime@0.13.11:
-    resolution: {integrity: sha512-kY1AZVr2Ra+t+piVaJ4gxaFaReZVH40AKNo7UCX6W+dEwBo/2oZJzqfuN1qLq1oL45o56cPaTXELwrTh8Fpggg==}
-
-  request-light@0.7.0:
-    resolution: {integrity: sha512-lMbBMrDoxgsyO+yB3sDcrDuX85yYt7sS8BfQd11jtbW/z5ZWgLZRcEGLsLoYw7I0WSUGQBs8CC8ScIxkTX1+6Q==}
 
   require-directory@2.1.1:
     resolution: {integrity: sha512-fGxEI7+wsG9xrvdjsrlmL22OMTTiHRwAMroiEeMgq8gzoLC/PQr7RsRDSTLUg/bZAZtF+TVIkHc6/4RIKrui+Q==}
@@ -1510,11 +1479,6 @@ packages:
       eslint: ^8.57.0 || ^9.0.0 || ^10.0.0
       typescript: '>=4.8.4 <6.0.0'
 
-  typescript@4.9.5:
-    resolution: {integrity: sha512-1FXk9E2Hm+QzZQ7z+McJiHL4NW1F2EzMu9Nq9i3zAaGqibafqYwCVU6WyWAuyQRRzOlxou8xZSyXLEN8oKj24g==}
-    engines: {node: '>=4.2.0'}
-    hasBin: true
-
   typescript@5.9.3:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
     engines: {node: '>=14.17'}
@@ -1612,15 +1576,6 @@ packages:
       jsdom:
         optional: true
 
-  vscode-css-languageservice@6.3.10:
-    resolution: {integrity: sha512-eq5N9Er3fC4vA9zd9EFhyBG90wtCCuXgRSpAndaOgXMh1Wgep5lBgRIeDgjZBW9pa+332yC9+49cZMW8jcL3MA==}
-
-  vscode-html-languageservice@5.6.2:
-    resolution: {integrity: sha512-ulCrSnFnfQ16YzvwnYUgEbUEl/ZG7u2eV27YhvLObSHKkb8fw1Z9cgsnUwjTEeDIdJDoTDTDpxuhQwoenoLNMg==}
-
-  vscode-json-languageservice@5.7.2:
-    resolution: {integrity: sha512-WtKRDtJfFEmLrgtu+ODexOHm/6/krRF0k6t+uvkKIKW1Jh9ZIyxZQwJJwB3qhrEgvAxa37zbUg+vn+UyUK/U2w==}
-
   vscode-jsonrpc@8.2.0:
     resolution: {integrity: sha512-C+r0eKJUIfiDIfwJhria30+TYWPtuHJXHtI7J0YlOmKAo7ogxP20T0zxB7HZQIFhIyvoBPwWskjxrvAtfjyZfA==}
     engines: {node: '>=14.0.0'}
@@ -1629,19 +1584,8 @@ packages:
     resolution: {integrity: sha512-kdjOSJ2lLIn7r1rtrMbbNCHjyMPfRnowdKjBQ+mGq6NAW5QY2bEZC/khaC5OR8svbbjvLEaIXkOq45e2X9BIbQ==}
     engines: {node: '>=14.0.0'}
 
-  vscode-jsonrpc@9.0.0-next.11:
-    resolution: {integrity: sha512-u6LElQNbSiE9OugEEmrUKwH6+8BpPz2S5MDHvQUqHL//I4Q8GPikKLOUf856UnbLkZdhxaPrExac1lA3XwpIPA==}
-    engines: {node: '>=14.0.0'}
-
-  vscode-langservers-extracted@4.10.0:
-    resolution: {integrity: sha512-EFf9uQI4dAKbzMQFjDvVm1xJq1DXAQvBEuEfPGrK/xzfsL5xWTfIuRr90NgfmqwO+IEt6vLZm9EOj6R66xIifg==}
-    hasBin: true
-
   vscode-languageserver-protocol@3.17.5:
     resolution: {integrity: sha512-mb1bvRJN8SVznADSGWM9u/b07H7Ecg0I3OgXDuLdn307rl/J3A9YD6/eYOssqhecL27hK1IPZAsaqh00i/Jljg==}
-
-  vscode-languageserver-protocol@3.17.6-next.17:
-    resolution: {integrity: sha512-HW72YcFsuckfK6oPVuysRXhKiIFJoUvXgspPHvCMWpwe2x9aq2oGZDUSvKx4m/qUGB27+iu8ijAxsFlljYl2IQ==}
 
   vscode-languageserver-textdocument@1.0.12:
     resolution: {integrity: sha512-cxWNPesCnQCcMPeenjKKsOCKQZ/L6Tv19DTRIGuLWe32lyzWhihGVJ/rcckZXJxfdKCFvRLS3fpBIsV/ZGX4zA==}
@@ -1649,22 +1593,9 @@ packages:
   vscode-languageserver-types@3.17.5:
     resolution: {integrity: sha512-Ld1VelNuX9pdF39h2Hgaeb5hEZM2Z3jUrrMgWQAu82jMtZp7p3vJT3BzToKtZI7NgQssZje5o0zryOrhQvzQAg==}
 
-  vscode-languageserver-types@3.17.6-next.6:
-    resolution: {integrity: sha512-aiJY5/yW+xzw7KPNlwi3gQtddq/3EIn5z8X8nCgJfaiAij2R1APKePngv+MUdLdYJBVTLu+Qa0ODsT+pHgYguQ==}
-
-  vscode-languageserver@10.0.0-next.17:
-    resolution: {integrity: sha512-/bwO/E3RUzIkQ1BQ70gcLdZeM8xvK0JS7gMvtug7yiH0dzTjciqqQTUh3H9NEXsqYEjLzGwiXgRUkt6Z8fQV0Q==}
-    hasBin: true
-
   vscode-languageserver@9.0.1:
     resolution: {integrity: sha512-woByF3PDpkHFUreUa7Hos7+pUWdeWMXRd26+ZX2A8cFx6v/JPTtd4/uN0/jB6XQHYaOlHbio03NTHCqrgG5n7g==}
     hasBin: true
-
-  vscode-markdown-languageservice@0.5.0-alpha.11:
-    resolution: {integrity: sha512-P1uBMAD5iylgpcweWCU1kQwk8SZngktnljXsZk1vFPorXv1mrEI7BkBpOUU0fhVssKgvFlCNLkI7KmwZLC7pdA==}
-
-  vscode-nls@5.2.0:
-    resolution: {integrity: sha512-RAaHx7B14ZU04EU31pT+rKz2/zSl7xMsfIZuo8pd+KZO6PXtQmpevpq3vxvWNcrGbdmhM/rr5Uw5Mz+NBfhVng==}
 
   vscode-uri@3.1.0:
     resolution: {integrity: sha512-/BpdSx+yCQGnCvecbyXdxHDkuk55/G3xwnC0GqY4gmQ3j+A+g8kzzgB4Nk/SINjqn6+waqw3EgbVF2QKExkRxQ==}
@@ -1709,6 +1640,10 @@ packages:
 
   yargs@17.7.2:
     resolution: {integrity: sha512-7dSzzRQ++CKnNI/krKnYRV7JKKPUXMEh61soaHKg9mrWEhzFWhFnxPxGl+69cD1Ou63C13NUPCnmIcrvqCuM6w==}
+    engines: {node: '>=12'}
+
+  yauzl@3.2.1:
+    resolution: {integrity: sha512-k1isifdbpNSFEHFJ1ZY4YDewv0IH9FR61lDetaRMD3j2ae3bIXGV+7c+LHCqtQGofSd8PIyV4X6+dHMAnSr60A==}
     engines: {node: '>=12'}
 
   yocto-queue@0.1.0:
@@ -2012,6 +1947,10 @@ snapshots:
 
   '@types/sinonjs__fake-timers@15.0.1': {}
 
+  '@types/yauzl@2.10.3':
+    dependencies:
+      '@types/node': 22.16.0
+
   '@typescript-eslint/eslint-plugin@8.57.2(@typescript-eslint/parser@8.57.2(eslint@10.1.0)(typescript@5.9.3))(eslint@10.1.0)(typescript@5.9.3)':
     dependencies:
       '@eslint-community/regexpp': 4.12.2
@@ -2240,8 +2179,6 @@ snapshots:
       convert-source-map: 2.0.0
       tinyrainbow: 3.1.0
 
-  '@vscode/l10n@0.0.10': {}
-
   '@vscode/l10n@0.0.18': {}
 
   '@vtsls/language-server@0.3.0':
@@ -2292,11 +2229,11 @@ snapshots:
 
   balanced-match@4.0.4: {}
 
-  boolbase@1.0.0: {}
-
   brace-expansion@5.0.5:
     dependencies:
       balanced-match: 4.0.4
+
+  buffer-crc32@0.2.13: {}
 
   chai@6.2.2: {}
 
@@ -2332,47 +2269,17 @@ snapshots:
 
   convert-source-map@2.0.0: {}
 
-  core-js@3.49.0: {}
-
   cross-spawn@7.0.6:
     dependencies:
       path-key: 3.1.1
       shebang-command: 2.0.0
       which: 2.0.2
 
-  css-select@5.2.2:
-    dependencies:
-      boolbase: 1.0.0
-      css-what: 6.2.2
-      domhandler: 5.0.3
-      domutils: 3.2.2
-      nth-check: 2.1.1
-
-  css-what@6.2.2: {}
-
   debug@4.4.3:
     dependencies:
       ms: 2.1.3
 
   deep-is@0.1.4: {}
-
-  dom-serializer@2.0.0:
-    dependencies:
-      domelementtype: 2.3.0
-      domhandler: 5.0.3
-      entities: 4.5.0
-
-  domelementtype@2.3.0: {}
-
-  domhandler@5.0.3:
-    dependencies:
-      domelementtype: 2.3.0
-
-  domutils@3.2.2:
-    dependencies:
-      dom-serializer: 2.0.0
-      domelementtype: 2.3.0
-      domhandler: 5.0.3
 
   emoji-regex@8.0.0: {}
 
@@ -2382,8 +2289,6 @@ snapshots:
     dependencies:
       graceful-fs: 4.2.11
       tapable: 2.3.2
-
-  entities@4.5.0: {}
 
   es-module-lexer@2.0.0: {}
 
@@ -2627,8 +2532,6 @@ snapshots:
 
   has-flag@4.0.0: {}
 
-  he@1.2.0: {}
-
   html-escaper@2.0.2: {}
 
   ignore@5.3.2: {}
@@ -2725,15 +2628,6 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
-  node-html-parser@6.1.13:
-    dependencies:
-      css-select: 5.2.2
-      he: 1.2.0
-
-  nth-check@2.1.1:
-    dependencies:
-      boolbase: 1.0.0
-
   obug@2.1.1: {}
 
   optionator@0.9.4:
@@ -2759,9 +2653,9 @@ snapshots:
 
   pathe@2.0.3: {}
 
-  picocolors@1.1.1: {}
+  pend@1.2.0: {}
 
-  picomatch@2.3.2: {}
+  picocolors@1.1.1: {}
 
   picomatch@4.0.4: {}
 
@@ -2778,10 +2672,6 @@ snapshots:
   prelude-ls@1.2.1: {}
 
   punycode@2.3.1: {}
-
-  regenerator-runtime@0.13.11: {}
-
-  request-light@0.7.0: {}
 
   require-directory@2.1.1: {}
 
@@ -2922,8 +2812,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  typescript@4.9.5: {}
-
   typescript@5.9.3: {}
 
   undici-types@6.21.0: {}
@@ -3002,87 +2890,22 @@ snapshots:
     transitivePeerDependencies:
       - msw
 
-  vscode-css-languageservice@6.3.10:
-    dependencies:
-      '@vscode/l10n': 0.0.18
-      vscode-languageserver-textdocument: 1.0.12
-      vscode-languageserver-types: 3.17.5
-      vscode-uri: 3.1.0
-
-  vscode-html-languageservice@5.6.2:
-    dependencies:
-      '@vscode/l10n': 0.0.18
-      vscode-languageserver-textdocument: 1.0.12
-      vscode-languageserver-types: 3.17.5
-      vscode-uri: 3.1.0
-
-  vscode-json-languageservice@5.7.2:
-    dependencies:
-      '@vscode/l10n': 0.0.18
-      jsonc-parser: 3.3.1
-      vscode-languageserver-textdocument: 1.0.12
-      vscode-languageserver-types: 3.17.5
-      vscode-uri: 3.1.0
-
   vscode-jsonrpc@8.2.0: {}
 
   vscode-jsonrpc@8.2.1: {}
-
-  vscode-jsonrpc@9.0.0-next.11: {}
-
-  vscode-langservers-extracted@4.10.0:
-    dependencies:
-      '@vscode/l10n': 0.0.18
-      core-js: 3.49.0
-      jsonc-parser: 3.3.1
-      regenerator-runtime: 0.13.11
-      request-light: 0.7.0
-      semver: 7.7.4
-      typescript: 4.9.5
-      vscode-css-languageservice: 6.3.10
-      vscode-html-languageservice: 5.6.2
-      vscode-json-languageservice: 5.7.2
-      vscode-languageserver: 10.0.0-next.17
-      vscode-languageserver-textdocument: 1.0.12
-      vscode-languageserver-types: 3.17.5
-      vscode-markdown-languageservice: 0.5.0-alpha.11
-      vscode-nls: 5.2.0
-      vscode-uri: 3.1.0
 
   vscode-languageserver-protocol@3.17.5:
     dependencies:
       vscode-jsonrpc: 8.2.0
       vscode-languageserver-types: 3.17.5
 
-  vscode-languageserver-protocol@3.17.6-next.17:
-    dependencies:
-      vscode-jsonrpc: 9.0.0-next.11
-      vscode-languageserver-types: 3.17.6-next.6
-
   vscode-languageserver-textdocument@1.0.12: {}
 
   vscode-languageserver-types@3.17.5: {}
 
-  vscode-languageserver-types@3.17.6-next.6: {}
-
-  vscode-languageserver@10.0.0-next.17:
-    dependencies:
-      vscode-languageserver-protocol: 3.17.6-next.17
-
   vscode-languageserver@9.0.1:
     dependencies:
       vscode-languageserver-protocol: 3.17.5
-
-  vscode-markdown-languageservice@0.5.0-alpha.11:
-    dependencies:
-      '@vscode/l10n': 0.0.10
-      node-html-parser: 6.1.13
-      picomatch: 2.3.2
-      vscode-languageserver-protocol: 3.17.5
-      vscode-languageserver-textdocument: 1.0.12
-      vscode-uri: 3.1.0
-
-  vscode-nls@5.2.0: {}
 
   vscode-uri@3.1.0: {}
 
@@ -3125,5 +2948,10 @@ snapshots:
       string-width: 4.2.3
       y18n: 5.0.8
       yargs-parser: 21.1.1
+
+  yauzl@3.2.1:
+    dependencies:
+      buffer-crc32: 0.2.13
+      pend: 1.2.0
 
   yocto-queue@0.1.0: {}

@@ -7,8 +7,8 @@
     "generate-plugin": "generate-lsp-plugin"
   },
   "dependencies": {
-    "claude-lsp-proxy": "workspace:*",
     "@vtsls/language-server": "catalog:lsp",
-    "vscode-langservers-extracted": "catalog:lsp"
+    "claude-lsp-proxy": "workspace:*",
+    "vscode-eslint-extracted": "workspace:*"
   }
 }

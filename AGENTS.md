@@ -17,13 +17,17 @@ Claude Code's LSP plugin system has limitations:
 
 ## Project Structure
 
-pnpm workspace monorepo with two packages:
+pnpm workspace monorepo with three packages:
 
 - **`packages/proxy`** — the multiplexing proxy core. Dependencies:
   `vscode-jsonrpc`, `picomatch`, `valibot`. Exposes `generate-lsp-plugin` bin.
 - **`packages/config-default`** — default server configs (vtsls + eslint for
   TS/JS). Depends on the proxy package and LSP server packages. Users can
   create their own config package with different servers.
+- **`packages/vscode-eslint-extracted`** — ESLint language server extracted
+  from the VS Code ESLint extension VSIX. Downloads the pre-built server on
+  `postinstall`. Needed because `vscode-langservers-extracted` doesn't
+  support ESLint 10 flat config.
 
 The proxy accepts `--config-dir` to locate `proxy.config.json` and
 `servers/*.json`. The `generate-lsp-plugin` bin reads configs from `cwd` and

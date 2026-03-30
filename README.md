@@ -32,6 +32,7 @@ Claude Code (stdio) <--> claude-lsp-proxy <--> vtsls
 |---------|-------------|
 | [`packages/proxy`](packages/proxy) | The multiplexing proxy core |
 | [`packages/config-default`](packages/config-default) | Default server configs (vtsls + eslint for TS/JS) |
+| [`packages/vscode-eslint-extracted`](packages/vscode-eslint-extracted) | ESLint language server extracted from the VS Code extension |
 
 ## Quick Start
 
@@ -116,7 +117,7 @@ to `workspace/configuration` pulls:
 ```json
 {
   "command": "node",
-  "args": ["./node_modules/eslint-server/dist/eslintServer.js", "--stdio"],
+  "args": ["./node_modules/vscode-eslint-extracted/dist/eslintServer.js", "--stdio"],
   "languages": { "typescript": [".ts"] },
   "transport": "stdio",
   "settings": {

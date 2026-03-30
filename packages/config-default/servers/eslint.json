@@ -1,11 +1,24 @@
 {
   "command": "node",
-  "args": ["./node_modules/vscode-langservers-extracted/bin/vscode-eslint-language-server", "--stdio"],
+  "args": ["./node_modules/vscode-eslint-extracted/dist/eslintServer.js", "--stdio"],
   "languages": {
     "typescript": [".ts", ".mts", ".cts"],
     "typescriptreact": [".tsx"],
     "javascript": [".js", ".mjs", ".cjs"],
     "javascriptreact": [".jsx"]
   },
-  "transport": "stdio"
+  "transport": "stdio",
+  "settings": {
+    "validate": "on",
+    "useESLintClass": true,
+    "run": "onType",
+    "nodePath": null,
+    "rulesCustomizations": [],
+    "problems": {
+      "shortenToSingleLine": false
+    },
+    "workingDirectory": {
+      "mode": "location"
+    }
+  }
 }
