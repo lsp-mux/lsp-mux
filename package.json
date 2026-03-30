@@ -1,5 +1,5 @@
 {
-  "name": "claude-lsp-proxy-root",
+  "name": "lsp-proxy-root",
   "private": true,
   "type": "module",
   "engines": {

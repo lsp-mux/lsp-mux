@@ -1,7 +1,7 @@
-# claude-lsp-proxy
+# lsp-proxy
 
-A multiplexing LSP proxy for Claude Code. Presents as a single LSP server
-while internally managing multiple language servers per file type.
+A multiplexing LSP proxy. Presents as a single LSP server while
+internally managing multiple language servers per file type.
 
 ## Problem
 
@@ -17,23 +17,26 @@ Claude Code's LSP plugin system has limitations:
 
 ## Project Structure
 
-pnpm workspace monorepo with three packages:
+pnpm workspace monorepo:
 
 - **`packages/proxy`** — the multiplexing proxy core. Dependencies:
-  `vscode-jsonrpc`, `picomatch`, `valibot`. Exposes `generate-lsp-plugin` bin.
-- **`packages/config-default`** — default server configs (vtsls + eslint for
-  TS/JS). Depends on the proxy package and LSP server packages. Users can
-  create their own config package with different servers.
+  `vscode-jsonrpc`, `picomatch`, `valibot`.
+- **`packages/claude-code`** — Claude Code editor integration. Provides
+  `generate-claude-plugin` bin that produces `.lsp.json` and
+  `.claude-plugin/` artifacts from a config directory.
+- **`packages/config-default`** — example server configs (vtsls + eslint
+  for TS/JS). Depends on the proxy, claude-code, and LSP server packages.
+  Users create their own config package with different servers.
 - **`packages/vscode-eslint-extracted`** — ESLint language server extracted
   from the VS Code ESLint extension VSIX. Downloads the pre-built server on
   `postinstall`. Needed because `vscode-langservers-extracted` doesn't
   support ESLint 10 flat config.
 
 The proxy accepts `--config-dir` to locate `proxy.config.json` and
-`servers/*.json`. The `generate-lsp-plugin` bin reads configs from `cwd` and
-writes `.lsp.json` / `.claude-plugin/plugin.json` there. Relative paths in
-server configs (e.g., `./node_modules/...`) are resolved to absolute paths
-at config load time so child servers inherit the workspace cwd.
+`servers/*.json`. The `generate-claude-plugin` bin reads configs from `cwd`
+and writes `.lsp.json` / `.claude-plugin/plugin.json` there. Relative paths
+in server configs (e.g., `./node_modules/...`) are resolved to absolute
+paths at config load time so child servers inherit the workspace cwd.
 
 ## Design
 
@@ -54,7 +57,7 @@ A Node.js process that:
 Claude Code (stdio)
     |
     v
-claude-lsp-proxy (generic multiplexer)
+lsp-proxy (generic multiplexer)
     |--- vtsls
     |--- vue-language-server v3  (planned — requires bridging)
     |       |-- tsserver/request --> vtsls  (bridge)

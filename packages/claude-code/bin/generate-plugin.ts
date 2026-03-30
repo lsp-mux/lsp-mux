@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { loadProxyConfig, loadServerConfig, ownPackageDir } from './config.js';
-import { createLogger } from './logger.js';
+import { loadProxyConfig, loadServerConfig, ownPackageDir } from 'lsp-proxy/config';
+import { createLogger } from 'lsp-proxy/logger';
 
 const log = createLogger();
 
@@ -45,8 +45,8 @@ const main = async (): Promise<void> => {
   };
 
   const marketplaceJson = {
-    name: 'claude-lsp-proxy',
-    owner: { name: 'claude-lsp-proxy' },
+    name: 'lsp-proxy',
+    owner: { name: 'lsp-proxy' },
     plugins: [{ name: 'lsp-proxy', source: './', description: pluginJson.description }],
   };
 

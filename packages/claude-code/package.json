@@ -1,0 +1,15 @@
+{
+  "name": "lsp-proxy-claude-code",
+  "version": "0.1.0",
+  "description": "Claude Code editor integration for lsp-proxy",
+  "type": "module",
+  "bin": {
+    "generate-claude-plugin": "bin/generate-plugin.ts"
+  },
+  "engines": {
+    "node": ">=22.16"
+  },
+  "dependencies": {
+    "lsp-proxy": "workspace:*"
+  }
+}

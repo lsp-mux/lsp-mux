@@ -69,6 +69,16 @@ export default defineConfig(
     },
   },
   {
+    name: 'root/entry-points',
+    files: ['**/bin/**/*.ts', '**/main.ts'],
+    rules: {
+      // Justification: Entry points — process.exit() is the correct shutdown mechanism
+      'n/no-process-exit': 'off',
+      // Justification: Shebang preserved for bin entries
+      'n/hashbang': 'off',
+    },
+  },
+  {
     name: 'root/ignores',
     ignores: ['**/dist/**'],
   },

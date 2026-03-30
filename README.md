@@ -1,18 +1,28 @@
-# claude-lsp-proxy
+# lsp-proxy
 
-A multiplexing LSP proxy for Claude Code. Presents as a single LSP server
-while internally managing multiple language servers per file type, with
-transparent crash recovery and document state replay.
+A multiplexing LSP proxy. Presents as a single LSP server while internally
+managing multiple language servers per file type, with transparent crash
+recovery and document state replay. Works with any LSP client — compensates
+automatically for clients with incomplete LSP implementations.
 
-## Problem
+## Motivation
 
-Claude Code's LSP plugin system has limitations:
+LSP clients that only support a single server per file type can't combine
+complementary servers (e.g., vtsls for TypeScript intelligence + ESLint for
+linting). The proxy solves this by multiplexing multiple servers behind a
+single LSP interface, with crash recovery and capability compensation for
+clients with incomplete LSP implementations.
 
-- [**One server per file type**](https://github.com/anthropics/claude-code/issues/27692) — can't run vtsls + ESLint for `.ts` files
-- **No lifecycle recovery** — a crashed LSP server requires restarting Claude
-- **No inter-server communication** — Volar 3 requires forwarding between servers
-  (bridging is [planned](./AGENTS.md) but not yet implemented)
-- [**Windows `.cmd` spawn**](https://github.com/anthropics/claude-code/issues/16751) — npm shim resolution fails on Windows
+### Claude Code
+
+This project was originally built for Claude Code, which has several
+limitations the proxy addresses:
+
+- [One server per file type](https://github.com/anthropics/claude-code/issues/27692)
+- No lifecycle recovery for crashed servers
+- No `workspace/didChangeWatchedFiles` support
+- No pull diagnostic (`textDocument/diagnostic`) support
+- [Windows `.cmd` spawn failures](https://github.com/anthropics/claude-code/issues/16751)
 
 ## How It Works
 
@@ -21,9 +31,14 @@ servers, routes requests by file type, merges diagnostics, and tracks document
 state. If a child server crashes, the proxy restarts it with exponential
 backoff and replays open documents.
 
+During `initialize`, the proxy inspects client capabilities and compensates
+for missing features (e.g., local file watching when the client lacks
+`didChangeWatchedFiles`, proactive pull diagnostics when the client lacks
+`textDocument/diagnostic`).
+
 ```
-Claude Code (stdio) <--> claude-lsp-proxy <--> vtsls
-                                           \-> eslint
+Client (stdio) <--> lsp-proxy <--> vtsls
+                               \-> eslint
 ```
 
 ## Packages
@@ -31,7 +46,8 @@ Claude Code (stdio) <--> claude-lsp-proxy <--> vtsls
 | Package | Description |
 |---------|-------------|
 | [`packages/proxy`](packages/proxy) | The multiplexing proxy core |
-| [`packages/config-default`](packages/config-default) | Default server configs (vtsls + eslint for TS/JS) |
+| [`packages/claude-code`](packages/claude-code) | Claude Code editor integration |
+| [`packages/config-default`](packages/config-default) | Example server configs (vtsls + eslint for TS/JS) |
 | [`packages/vscode-eslint-extracted`](packages/vscode-eslint-extracted) | ESLint language server extracted from the VS Code extension |
 
 ## Quick Start
@@ -56,7 +72,7 @@ re-run this command if you move the directory.
 ### Dev/testing (current session only)
 
 ```sh
-claude --plugin-dir /path/to/claude-lsp-proxy/packages/config-default
+claude --plugin-dir /path/to/packages/config-default
 ```
 
 ### Persistent (local marketplace)
@@ -65,7 +81,7 @@ In Claude Code:
 
 ```
 /plugin marketplace add /absolute/path/to/packages/config-default
-/plugin install lsp-proxy@claude-lsp-proxy
+/plugin install lsp-proxy@lsp-proxy
 ```
 
 ### Conflicting plugins
@@ -83,7 +99,7 @@ To use different LSP servers, create your own config package:
 ```sh
 mkdir my-lsp-config && cd my-lsp-config
 pnpm init
-pnpm add claude-lsp-proxy
+pnpm add lsp-proxy lsp-proxy-claude-code
 pnpm add vscode-langservers-extracted  # or whatever servers you need
 ```
 
@@ -130,14 +146,16 @@ to `workspace/configuration` pulls:
 Generate and register:
 
 ```sh
-pnpm dlx generate-lsp-plugin
+pnpm exec generate-claude-plugin
 claude --plugin-dir /path/to/my-lsp-config
 ```
 
 ## Logging
 
-The proxy logs to `~/.claude/lsp-proxy/logs/<timestamp>.log`. The default level is
-INFO.
+The proxy logs to `<logDir>/<timestamp>-<pid>.log`. The log directory is
+resolved via `--log-dir` CLI flag > `logDir` in `proxy.config.json` >
+platform default (`$XDG_DATA_HOME/lsp-proxy/logs` on Linux/macOS,
+`%LOCALAPPDATA%\lsp-proxy\logs` on Windows). The default level is INFO.
 
 To change the level at runtime (no restart needed), add `logLevel` to your
 `proxy.config.json`:

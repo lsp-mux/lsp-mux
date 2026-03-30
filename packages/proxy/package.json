@@ -1,11 +1,13 @@
 {
-  "name": "claude-lsp-proxy",
+  "name": "lsp-proxy",
   "version": "0.1.0",
-  "description": "Multiplexing LSP proxy for Claude Code",
+  "description": "Multiplexing LSP proxy",
   "type": "module",
   "main": "dist/main.js",
-  "bin": {
-    "generate-lsp-plugin": "dist/generate-plugin.js"
+  "exports": {
+    ".": "./dist/main.js",
+    "./config": "./dist/config.js",
+    "./logger": "./dist/logger.js"
   },
   "engines": {
     "node": ">=22.16"
