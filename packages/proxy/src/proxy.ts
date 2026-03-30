@@ -358,6 +358,12 @@ export class LspProxy {
     if (Msg.isResponse(msg) && msg.id !== null) {
       this.requestRouting.delete(msg.id);
     }
+
+    // Track server-to-client requests so the client's response can be routed back
+    if (Msg.isRequest(msg)) {
+      this.serverRequestRouting.set(msg.id, serverName);
+    }
+
     this.writeToClient(msg);
   }
 

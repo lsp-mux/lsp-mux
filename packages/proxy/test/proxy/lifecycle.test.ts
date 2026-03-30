@@ -1,8 +1,10 @@
 import { describe } from 'vitest';
-import { request, notify, initializeProxy } from '../helpers/test-client.js';
+import type { ResponseMessage } from 'vscode-jsonrpc';
+import { Message as Msg } from '../../src/types.js';
+import { request, notify, waitForMessage, initializeProxy } from '../helpers/test-client.js';
 import { faker } from '@faker-js/faker';
 import { fakeUri } from '../helpers/fake.js';
-import { it } from './harness.js';
+import { it, mockServerConfig, type ServerConfig } from './harness.js';
 
 const lazyUri = fakeUri();
 const testUri = fakeUri();
@@ -140,6 +142,46 @@ describe('LspProxy lifecycle', () => {
           },
         },
       },
+    });
+  });
+
+  it('routes client response back to the server that sent the request', async ({ createProxy, expect }) => {
+    const config: ServerConfig = {
+      ...mockServerConfig,
+      args: [...mockServerConfig.args, '--send-custom-request'],
+    };
+    const { writer, reader } = createProxy({ config });
+
+    await initializeProxy(writer, reader);
+
+    // Server sends window/showMessageRequest on initialized — wait for it
+    await notify(writer, 'textDocument/didOpen', {
+      textDocument: { uri: fakeUri(), languageId: 'typescript', version: 1, text: faker.lorem.word() },
+    });
+
+    const serverReq = await waitForMessage(
+      reader,
+      msg => Msg.isRequest(msg) && msg.method === 'window/showMessageRequest',
+    );
+
+    // Client responds
+    if (Msg.isRequest(serverReq)) {
+      const ack: ResponseMessage = { jsonrpc: '2.0', id: serverReq.id, result: null };
+      await writer.write(ack);
+    }
+
+    // Fence: round-trip to ensure the response was delivered
+    await request(writer, reader, 500, 'textDocument/hover', {
+      textDocument: { uri: fakeUri() },
+      position: { line: 0, character: 0 },
+    });
+
+    // Server should have received the response
+    const responses = await request(writer, reader, 501, '$/receivedResponses');
+    expect(responses).toMatchObject({
+      result: expect.arrayContaining([
+        expect.objectContaining({ result: null }),
+      ]) as unknown,
     });
   });
 

@@ -18,6 +18,7 @@ const registerWatchers = process.argv.includes('--register-watchers');
 const registerMixed = process.argv.includes('--register-mixed');
 const incrementalSync = process.argv.includes('--incremental-sync');
 const unregisterOnCommand = process.argv.includes('--unregister-on-command');
+const sendCustomRequest = process.argv.includes('--send-custom-request');
 
 const reader = new StreamMessageReader(process.stdin);
 const writer = new StreamMessageWriter(process.stdout);
@@ -112,6 +113,12 @@ reader.listen((msg) => {
 
     switch (msg.method) {
       case 'initialized': {
+        if (sendCustomRequest) {
+          void writer.write(createRequest(serverRequestSeq++, 'window/showMessageRequest', {
+            type: 3,
+            message: 'Test request from server',
+          }));
+        }
         if (registerWatchers) {
           void writer.write(createRequest(serverRequestSeq++, 'client/registerCapability', {
             registrations: [{

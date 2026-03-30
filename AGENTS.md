@@ -117,6 +117,9 @@ Future config fields (not yet implemented):
   mapping; a file can fan out to multiple servers
 - **Response merging** — diagnostics merged via union; other methods routed
   to primary server only (full merging planned for M4)
+- **Server-to-client request routing** — all server-initiated requests
+  are tracked so client responses are delivered back to the originating
+  server (not just register/unregister)
 - **Notification bridging** — declarative config for forwarding custom
   notifications between servers (planned for M3)
 - **Request ID namespacing** — proxy rewrites IDs to avoid collisions
