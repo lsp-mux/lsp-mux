@@ -1,6 +1,4 @@
 import { writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { describe, vi } from 'vitest';
 import { request, notify, initializeProxy } from '../helpers/test-client.js';
 import { it } from './harness.js';
@@ -9,8 +7,7 @@ describe('LspProxy file resync', () => {
   it('resyncs document when file changes on disk', async ({ createProxy, workspace, expect }) => {
     const { writer, reader } = createProxy();
 
-    const tmpFile = join(workspace.dir, 'resync-test.ts');
-    const tmpUri = pathToFileURL(tmpFile).href;
+    const { path: tmpFile, uri: tmpUri } = workspace.file('resync-test.ts');
 
     await initializeProxy(writer, reader, workspace.uri);
 
@@ -39,8 +36,7 @@ describe('LspProxy file resync', () => {
   it('maintains monotonically increasing versions after resync', async ({ createProxy, workspace, expect }) => {
     const { writer, reader } = createProxy();
 
-    const tmpFile = join(workspace.dir, 'resync-test.ts');
-    const tmpUri = pathToFileURL(tmpFile).href;
+    const { path: tmpFile, uri: tmpUri } = workspace.file('resync-test.ts');
 
     await initializeProxy(writer, reader, workspace.uri);
 
@@ -80,8 +76,7 @@ describe('LspProxy file resync', () => {
   it('resets version offset on close and reopen', async ({ createProxy, workspace, expect }) => {
     const { writer, reader } = createProxy();
 
-    const tmpFile = join(workspace.dir, 'resync-test.ts');
-    const tmpUri = pathToFileURL(tmpFile).href;
+    const { path: tmpFile, uri: tmpUri } = workspace.file('resync-test.ts');
 
     await initializeProxy(writer, reader, workspace.uri);
 
@@ -124,8 +119,7 @@ describe('LspProxy file resync', () => {
   it('server receives correct version after close and reopen post-resync', async ({ createProxy, workspace, expect }) => {
     const { writer, reader } = createProxy();
 
-    const tmpFile = join(workspace.dir, 'resync-test.ts');
-    const tmpUri = pathToFileURL(tmpFile).href;
+    const { path: tmpFile, uri: tmpUri } = workspace.file('resync-test.ts');
 
     await initializeProxy(writer, reader, workspace.uri);
 
@@ -167,8 +161,7 @@ describe('LspProxy file resync', () => {
   it('multiple resyncs produce monotonically increasing versions', async ({ createProxy, workspace, expect }) => {
     const { writer, reader } = createProxy();
 
-    const tmpFile = join(workspace.dir, 'resync-test.ts');
-    const tmpUri = pathToFileURL(tmpFile).href;
+    const { path: tmpFile, uri: tmpUri } = workspace.file('resync-test.ts');
 
     await initializeProxy(writer, reader, workspace.uri);
 
@@ -219,8 +212,7 @@ describe('LspProxy file resync', () => {
   it('converges to final content after rapid successive writes', async ({ createProxy, workspace, expect }) => {
     const { writer, reader } = createProxy();
 
-    const tmpFile = join(workspace.dir, 'resync-test.ts');
-    const tmpUri = pathToFileURL(tmpFile).href;
+    const { path: tmpFile, uri: tmpUri } = workspace.file('resync-test.ts');
 
     await initializeProxy(writer, reader, workspace.uri);
 
@@ -248,8 +240,7 @@ describe('LspProxy file resync', () => {
   it('skips resync for files exceeding maxResyncBytes', async ({ createProxy, workspace, expect }) => {
     const { writer, reader } = createProxy({ maxResyncBytes: 10 });
 
-    const tmpFile = join(workspace.dir, 'resync-test.ts');
-    const tmpUri = pathToFileURL(tmpFile).href;
+    const { path: tmpFile, uri: tmpUri } = workspace.file('resync-test.ts');
 
     await initializeProxy(writer, reader, workspace.uri);
 
@@ -259,8 +250,7 @@ describe('LspProxy file resync', () => {
       textDocument: { uri: tmpUri, languageId: 'typescript', version: 1, text: 'small' },
     });
 
-    const fenceFile = join(workspace.dir, 'fence.ts');
-    const fenceUri = pathToFileURL(fenceFile).href;
+    const { path: fenceFile, uri: fenceUri } = workspace.file('fence.ts');
     await writeFile(fenceFile, 'original');
     await notify(writer, 'textDocument/didOpen', {
       textDocument: { uri: fenceUri, languageId: 'typescript', version: 1, text: 'original' },

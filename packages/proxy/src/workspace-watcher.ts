@@ -2,6 +2,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { watch, type FSWatcher } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { normalizeFileUri } from './uri.js';
 import type { TrackedDocument } from './types.js';
 import * as fw from './file-watcher.js';
 import { createFlushScheduler } from './flush-scheduler.js';
@@ -135,7 +136,7 @@ export class WorkspaceWatcher {
           continue;
         }
 
-        const fileUri = pathToFileURL(fullPath).href;
+        const fileUri = normalizeFileUri(pathToFileURL(fullPath).href);
         const isTracked = this.delegate.getDocument(fileUri) !== undefined;
 
         let fileExists: boolean;

@@ -1,5 +1,6 @@
 import * as v from 'valibot';
 import type { TrackedDocument } from './types.js';
+import { normalizeFileUri } from './uri.js';
 
 export type DocumentMap = ReadonlyMap<string, TrackedDocument>;
 
@@ -58,7 +59,8 @@ export const empty = (): DocumentMap => new Map();
 export const trackOpen = (docs: DocumentMap, rawParams: unknown): DocumentMap => {
   const result = v.safeParse(DidOpenParamsSchema, rawParams);
   if (!result.success) return docs;
-  const { uri, languageId, version, text } = result.output.textDocument;
+  const { languageId, version, text } = result.output.textDocument;
+  const uri = normalizeFileUri(result.output.textDocument.uri);
   const next = new Map(docs);
   next.set(uri, { uri, languageId, version, content: text });
   return next;
@@ -68,7 +70,7 @@ export const trackChange = (docs: DocumentMap, rawParams: unknown): DocumentMap 
   const result = v.safeParse(DidChangeParamsSchema, rawParams);
   if (!result.success) return docs;
   const params = result.output;
-  const doc = docs.get(params.textDocument.uri);
+  const doc = docs.get(normalizeFileUri(params.textDocument.uri));
   if (!doc) return docs;
 
   const content = params.contentChanges.reduce(
@@ -86,7 +88,7 @@ export const trackClose = (docs: DocumentMap, rawParams: unknown): DocumentMap =
   const result = v.safeParse(DidCloseParamsSchema, rawParams);
   if (!result.success) return docs;
   const next = new Map(docs);
-  next.delete(result.output.textDocument.uri);
+  next.delete(normalizeFileUri(result.output.textDocument.uri));
   return next;
 };
 

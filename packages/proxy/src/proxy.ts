@@ -9,6 +9,7 @@ import type { ManagedServer, ServerState } from './managed-server.js';
 import { createRouter, extractUri } from './router.js';
 import type { Router } from './router.js';
 import { isPlainObject, STATIC_CAPABILITIES } from './capabilities.js';
+import { normalizeFileUri } from './uri.js';
 import { analyzeClientCapabilities } from './client-capabilities.js';
 import type { CompensationFlags } from './client-capabilities.js';
 import * as diag from './diagnostics-store.js';
@@ -286,14 +287,18 @@ export class LspProxy {
     }
 
     if (Msg.isNotification(msg) && DOCUMENT_SYNC_METHODS.has(msg.method)) {
-      const uri = extractUri(msg);
+      const rawUri = extractUri(msg);
+      const uri = rawUri ? normalizeFileUri(rawUri) : undefined;
+      const normalized = uri && uri !== rawUri
+        ? this.rewriteDocSyncUri(msg, uri)
+        : msg;
 
       // Reset version offset on open/close — client version is authoritative
       if (msg.method === 'textDocument/didOpen' || msg.method === 'textDocument/didClose') {
         if (uri) this.versionOffsets.delete(uri);
       }
 
-      const rewritten = this.rewriteDocSyncVersion(msg, uri);
+      const rewritten = this.rewriteDocSyncVersion(normalized, uri);
       for (const name of this.router.serversForUri(uri)) {
         this.servers.get(name)?.send(rewritten);
       }
@@ -398,8 +403,9 @@ export class LspProxy {
     if (Msg.isNotification(msg) && msg.method === 'textDocument/publishDiagnostics') {
       const result = v.safeParse(PublishDiagnosticsSchema, msg.params);
       if (result.success) {
-        this.diagnosticsStore = diag.update(this.diagnosticsStore, serverName, result.output.uri, result.output.diagnostics);
-        this.publishMergedDiagnostics(result.output.uri);
+        const uri = normalizeFileUri(result.output.uri);
+        this.diagnosticsStore = diag.update(this.diagnosticsStore, serverName, uri, result.output.diagnostics);
+        this.publishMergedDiagnostics(uri);
         return;
       }
     }
@@ -652,7 +658,20 @@ export class LspProxy {
     await this.watcher.start();
   }
 
-  // ── Version Rewriting ─────────────────────────────────────────────────
+  // ── URI / Version Rewriting ──────────────────────────────────────────
+
+  /** Rewrite the textDocument.uri in a document sync notification to a
+   *  normalized form. Used when the client sends non-standard file URIs. */
+  private rewriteDocSyncUri(msg: NotificationMessage, normalizedUri: string): NotificationMessage {
+    const params = msg.params;
+    if (!isPlainObject(params)) return msg;
+    const td = params['textDocument'];
+    if (!isPlainObject(td)) return msg;
+    return createNotification(msg.method, {
+      ...params,
+      textDocument: { ...td, uri: normalizedUri },
+    });
+  }
 
   /** Rewrite the textDocument.version in a document sync notification if a
    *  version offset exists for the URI (due to prior resync). */

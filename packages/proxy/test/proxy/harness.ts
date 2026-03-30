@@ -3,6 +3,7 @@ import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { PassThrough, Writable } from 'node:stream';
 import { pathToFileURL } from 'node:url';
+import { normalizeFileUri } from '../../src/uri.js';
 import { test } from 'vitest';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import { LspProxy } from '../../src/proxy.js';
@@ -65,9 +66,15 @@ export const createTestProxy = ({
   return { proxy, writer, reader, clientToProxy, proxyToClient };
 };
 
+export interface WorkspaceFile {
+  path: string;
+  uri: string;
+}
+
 export interface Workspace {
   dir: string;
   uri: string;
+  file: (relativePath: string) => WorkspaceFile;
   nextSeq: () => number;
 }
 
@@ -106,7 +113,12 @@ export const it = test.extend<{
     const dir = join(import.meta.dirname, '..', '..', 'dist', 'test-workspaces', randomUUID().slice(0, 8));
     await mkdir(dir, { recursive: true });
     let seq = 100;
-    await use({ dir, uri: pathToFileURL(dir).href, nextSeq: () => seq++ });
+    const uri = normalizeFileUri(pathToFileURL(dir).href);
+    const file = (rel: string) => {
+      const p = join(dir, rel);
+      return { path: p, uri: normalizeFileUri(pathToFileURL(p).href) };
+    };
+    await use({ dir, uri, file, nextSeq: () => seq++ });
     await rm(dir, { recursive: true, force: true }).catch(() => { /* ignore */ });
   },
 });

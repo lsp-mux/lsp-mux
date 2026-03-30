@@ -34,7 +34,9 @@ backoff and replays open documents.
 During `initialize`, the proxy inspects client capabilities and compensates
 for missing features (e.g., local file watching when the client lacks
 `didChangeWatchedFiles`, proactive pull diagnostics when the client lacks
-`textDocument/diagnostic`).
+`textDocument/diagnostic`). File URIs are normalized to standard `file:///`
+format to ensure consistent behavior across servers that emit non-standard
+URIs.
 
 ```
 Client (stdio) <--> lsp-proxy <--> vtsls

@@ -1,0 +1,40 @@
+import { describe, it } from 'vitest';
+import { normalizeFileUri } from '../src/uri.js';
+
+describe('normalizeFileUri', () => {
+  it('normalizes backslash URIs to forward slashes', ({ expect }) => {
+    expect(normalizeFileUri('file://C:\\Users\\test\\file.ts'))
+      .toBe('file:///c:/Users/test/file.ts');
+  });
+
+  it('canonicalizes uppercase drive letter to lowercase', ({ expect }) => {
+    expect(normalizeFileUri('file:///C:/Users/test/file.ts'))
+      .toBe('file:///c:/Users/test/file.ts');
+  });
+
+  it('preserves already-lowercase drive letter', ({ expect }) => {
+    expect(normalizeFileUri('file:///c:/Users/test/file.ts'))
+      .toBe('file:///c:/Users/test/file.ts');
+  });
+
+  it('returns non-file URIs unchanged', ({ expect }) => {
+    expect(normalizeFileUri('untitled:Untitled-1'))
+      .toBe('untitled:Untitled-1');
+  });
+
+  it('returns malformed URIs unchanged', ({ expect }) => {
+    expect(normalizeFileUri('file:not-a-uri'))
+      .toBe('file:not-a-uri');
+  });
+
+  it('preserves percent-encoded paths', ({ expect }) => {
+    const uri = normalizeFileUri('file:///C:/My%20Project/file.ts');
+    expect(uri).toContain('My%20Project');
+    expect(uri).toBe('file:///c:/My%20Project/file.ts');
+  });
+
+  it('is a no-op for Unix-style file URIs', ({ expect }) => {
+    expect(normalizeFileUri('file:///home/user/file.ts'))
+      .toBe('file:///home/user/file.ts');
+  });
+});

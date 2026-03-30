@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { normalizeFileUri } from '../src/uri.js';
 import { describe, it, vi, beforeEach } from 'vitest';
 import { faker } from '@faker-js/faker';
 
@@ -37,7 +38,7 @@ import { WorkspaceWatcher, type WatcherDelegate, type WorkspaceWatcherOptions } 
 const WORKSPACE = join(import.meta.dirname, 'fake-workspace');
 
 const toUri = (relativePath: string) =>
-  pathToFileURL(join(WORKSPACE, relativePath)).href;
+  normalizeFileUri(pathToFileURL(join(WORKSPACE, relativePath)).href);
 
 const createDelegate = (overrides?: Partial<WatcherDelegate>): WatcherDelegate => ({
   isStopped: vi.fn(() => false),

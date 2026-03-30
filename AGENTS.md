@@ -146,6 +146,13 @@ Future config fields (not yet implemented):
   transparent to the client
 - **Document state tracking** — proxy tracks `didOpen`/`didChange`/`didClose`
   and replays current state to servers that restart mid-session
+- **URI normalization** — file URIs from clients and servers are
+  normalized to standard `file:///` format on ingest. Some LSP
+  implementations (e.g., vtsls on Windows) emit non-standard URIs
+  with backslashes or missing authority slashes, which breaks
+  cross-server features like diagnostics merging and configuration
+  resolution. Round-trip through `fileURLToPath`/`pathToFileURL`
+  ensures consistent keying across the proxy.
 - **Client capability compensation** — during `initialize`, the proxy
   inspects the client's `ClientCapabilities` and compensates for missing
   features. Currently the only compensation is local file watching
