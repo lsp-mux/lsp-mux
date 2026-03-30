@@ -129,7 +129,7 @@ export class LspProxy {
   private readonly log: Logger;
 
   private state: ProxyState = 'idle';
-  private compensations: CompensationFlags = { localFileWatching: true };
+  private compensations: CompensationFlags = { localFileWatching: true, proactivePullDiagnostics: true };
   private documents: docs.DocumentMap = docs.empty();
   private diagnosticsStore: diag.DiagnosticsStore = diag.empty();
   private watchRegistrations: fw.WatchRegistrations = fw.empty();
@@ -245,7 +245,7 @@ export class LspProxy {
 
   private async initializeAllServers(clientRequestId: number | string | null): Promise<void> {
     this.compensations = analyzeClientCapabilities(this.initParams);
-    this.log.info(`Client capability compensation: localFileWatching=${String(this.compensations.localFileWatching)}`);
+    this.log.info(`Client capability compensation: localFileWatching=${String(this.compensations.localFileWatching)}, proactivePullDiagnostics=${String(this.compensations.proactivePullDiagnostics)}`);
 
     // Servers check this to decide whether to use dynamic registration.
     const serverInitParams = injectProxyCapabilities(this.initParams, this.compensations);
@@ -299,8 +299,9 @@ export class LspProxy {
       }
 
       // Pull diagnostics from servers that use the pull model (e.g., ESLint).
-      // Only publishes if at least one server returns diagnostic items.
-      if (uri && msg.method !== 'textDocument/didClose') {
+      // Only needed when the client lacks native pull diagnostic support —
+      // converts pull results to push notifications the client can consume.
+      if (this.compensations.proactivePullDiagnostics && uri && msg.method !== 'textDocument/didClose') {
         const allStarting = this.router.serversForUri(uri)
           .every((n) => {
             const s = this.servers.get(n)?.state;
@@ -403,12 +404,19 @@ export class LspProxy {
       }
     }
 
-    // Intercept workspace/diagnostic/refresh — re-pull diagnostics for tracked documents
+    // workspace/diagnostic/refresh: when compensating, re-pull diagnostics
+    // for tracked documents; otherwise forward to client so it re-pulls.
     if (Msg.isRequest(msg) && msg.method === 'workspace/diagnostic/refresh') {
-      this.ackToServer(serverName, msg.id);
-      for (const uri of this.documents.keys()) {
-        void this.pullDiagnostics(uri);
+      if (this.compensations.proactivePullDiagnostics) {
+        this.ackToServer(serverName, msg.id);
+        for (const uri of this.documents.keys()) {
+          void this.pullDiagnostics(uri);
+        }
+        return;
       }
+      // Forward to client — track for response routing
+      this.serverRequestRouting.set(msg.id, serverName);
+      this.writeToClient(msg);
       return;
     }
 

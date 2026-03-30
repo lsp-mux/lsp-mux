@@ -1,7 +1,7 @@
 import * as v from 'valibot';
 import { describe } from 'vitest';
 import type { Message } from 'vscode-jsonrpc';
-import { notify, collectMessages, initializeProxy } from '../helpers/test-client.js';
+import { request, notify, collectMessages, initializeProxy } from '../helpers/test-client.js';
 import { faker } from '@faker-js/faker';
 import { fakeUri } from '../helpers/fake.js';
 import { it, namedConfig, mockServerConfig, type ServerConfig } from './harness.js';
@@ -52,6 +52,53 @@ describe('Pull diagnostics', () => {
         expect.objectContaining({ source: 'mock' }),
       ]),
     );
+  });
+
+  it('skips proactive pull when client supports pull diagnostics natively', async ({ createProxy, expect }) => {
+    const config: ServerConfig = {
+      ...mockServerConfig,
+      args: [...mockServerConfig.args, '--pull-diagnostics'],
+    };
+    const { writer, reader } = createProxy({ config });
+
+    // Initialize with pull diagnostic support — proxy should NOT proactively pull
+    await request(writer, reader, 0, 'initialize', {
+      processId: process.pid,
+      rootUri: null,
+      capabilities: {
+        textDocument: {
+          diagnostic: { dynamicRegistration: true },
+        },
+      },
+    });
+    await notify(writer, 'initialized', {});
+
+    const uri = fakeUri();
+
+    // Wait for the push diagnostic (server always publishes on didOpen).
+    // collectMessages owns the reader listener — no concurrent listeners.
+    const diagPromise = collectMessages(
+      reader,
+      msg => isDiagnosticForUri(msg, uri),
+      1,
+    );
+
+    await notify(writer, 'textDocument/didOpen', {
+      textDocument: { uri, languageId: 'typescript', version: 1, text: faker.lorem.word() },
+    });
+
+    const pushMsgs = await diagPromise;
+    expect(getDiagnostics(pushMsgs[0])).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'mock' }),
+      ]),
+    );
+
+    // If proactive pull had fired, a second diagnostic publication would arrive
+    // shortly after the push one (~100ms). Wait and verify none arrives.
+    await expect(
+      collectMessages(reader, msg => isDiagnosticForUri(msg, uri), 1, 1000),
+    ).rejects.toThrow(/[Tt]imeout/);
   });
 
   it('merges pull diagnostics from multiple servers', async ({ createProxy, expect }) => {
