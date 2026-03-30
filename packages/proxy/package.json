@@ -13,6 +13,7 @@
     "node": ">=22.16"
   },
   "dependencies": {
+    "lsp-proxy-registry": "workspace:*",
     "picomatch": "catalog:",
     "valibot": "catalog:",
     "vscode-jsonrpc": "catalog:"

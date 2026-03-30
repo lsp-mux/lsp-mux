@@ -1,4 +1,5 @@
 {
+  "npm": "@vtsls/language-server",
   "command": "node",
   "args": ["./node_modules/@vtsls/language-server/bin/vtsls.js", "--stdio"],
   "languages": {

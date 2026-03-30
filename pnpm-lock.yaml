@@ -186,6 +186,9 @@ importers:
 
   packages/proxy:
     dependencies:
+      lsp-proxy-registry:
+        specifier: workspace:*
+        version: link:../registry
       picomatch:
         specifier: 'catalog:'
         version: 4.0.4
@@ -195,6 +198,8 @@ importers:
       vscode-jsonrpc:
         specifier: 'catalog:'
         version: 8.2.1
+
+  packages/registry: {}
 
   packages/vscode-eslint-extracted:
     dependencies:

@@ -1,6 +1,7 @@
 {
   "files": [],
   "references": [
+    { "path": "packages/registry" },
     { "path": "packages/proxy" },
     { "path": "test" }
   ]

@@ -1,4 +1,5 @@
 {
+  "npm": "vscode-eslint-extracted",
   "command": "node",
   "args": ["./node_modules/vscode-eslint-extracted/dist/eslintServer.js", "--stdio"],
   "languages": {

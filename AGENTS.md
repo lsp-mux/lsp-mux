@@ -21,6 +21,9 @@ pnpm workspace monorepo:
 
 - **`packages/proxy`** — the multiplexing proxy core. Dependencies:
   `vscode-jsonrpc`, `picomatch`, `valibot`.
+- **`packages/registry`** — server config registry. Pre-defined configs
+  for common LSP servers (vtsls, eslint). The proxy resolves server names
+  from the registry, deep-merges user overrides, and validates npm deps.
 - **`packages/claude-code`** — Claude Code editor integration. Provides
   `generate-claude-plugin` bin that produces `.lsp.json` and
   `.claude-plugin/` artifacts from a config directory.

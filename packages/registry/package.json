@@ -1,0 +1,12 @@
+{
+  "name": "lsp-proxy-registry",
+  "version": "0.1.0",
+  "description": "Server config registry for lsp-proxy",
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "engines": {
+    "node": ">=22.16"
+  }
+}
