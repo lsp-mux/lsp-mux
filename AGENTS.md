@@ -39,6 +39,7 @@ A Node.js process that:
 - Spawns and manages child LSP servers
 - Routes requests by file type / language ID to the appropriate server(s)
 - Merges diagnostics from multiple servers (union)
+- Delivers per-server settings and responds to configuration pulls
 - Auto-restarts crashed servers transparently
 - Watches workspace files and resyncs document state on external changes
 - Logs to `~/.claude/lsp-proxy/logs/<timestamp>.log` with runtime-configurable level
@@ -117,6 +118,10 @@ Future config fields (not yet implemented):
   mapping; a file can fan out to multiple servers
 - **Response merging** — diagnostics merged via union; other methods routed
   to primary server only (full merging planned for M4)
+- **Settings delivery** — per-server `settings` in server configs are
+  pushed via `workspace/didChangeConfiguration` after init and returned
+  in response to `workspace/configuration` pulls, with `workspaceFolder`
+  injected from the proxy's workspace root
 - **Server-to-client request routing** — all server-initiated requests
   are tracked so client responses are delivered back to the originating
   server (not just register/unregister)

@@ -213,6 +213,11 @@ export const createManagedServer = (
       }
 
       child.write(createNotification('initialized', {}));
+      if (config.settings) {
+        child.write(createNotification('workspace/didChangeConfiguration', {
+          settings: config.settings,
+        }));
+      }
       everInitialized = true;
 
       // Replay tracked document state

@@ -109,6 +109,23 @@ Create `servers/css.json`:
 }
 ```
 
+Servers that need configuration can include a `settings` field. The proxy
+delivers these via `workspace/didChangeConfiguration` after init and responds
+to `workspace/configuration` pulls:
+
+```json
+{
+  "command": "node",
+  "args": ["./node_modules/eslint-server/dist/eslintServer.js", "--stdio"],
+  "languages": { "typescript": [".ts"] },
+  "transport": "stdio",
+  "settings": {
+    "validate": "on",
+    "run": "onType"
+  }
+}
+```
+
 Generate and register:
 
 ```sh

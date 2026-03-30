@@ -128,7 +128,7 @@ describe('LspProxy lifecycle', () => {
     });
   });
 
-  it('injects dynamicRegistration for didChangeWatchedFiles into server init params', async ({ createProxy, expect }) => {
+  it('injects dynamicRegistration for didChangeWatchedFiles and didChangeConfiguration', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
     await initializeProxy(writer, reader);
@@ -139,9 +139,103 @@ describe('LspProxy lifecycle', () => {
         capabilities: {
           workspace: {
             didChangeWatchedFiles: { dynamicRegistration: true },
+            didChangeConfiguration: { dynamicRegistration: true },
           },
         },
       },
+    });
+  });
+
+  it('intercepts didChangeConfiguration registration without forwarding to client', async ({ createProxy, expect }) => {
+    const config: ServerConfig = {
+      ...mockServerConfig,
+      args: [...mockServerConfig.args, '--register-config'],
+    };
+    const { writer, reader } = createProxy({ config });
+
+    await initializeProxy(writer, reader);
+
+    // Trigger lazy start — server registers for didChangeConfiguration on initialized
+    await notify(writer, 'textDocument/didOpen', {
+      textDocument: { uri: fakeUri(), languageId: 'typescript', version: 1, text: faker.lorem.word() },
+    });
+
+    // Fence to ensure registration was processed
+    const hover = await request(writer, reader, 10, 'textDocument/hover', {
+      textDocument: { uri: fakeUri() },
+      position: { line: 0, character: 0 },
+    });
+    expect(hover).toMatchObject({ result: { echo: 'textDocument/hover' } });
+
+    // Server should have received an ack (not an error) for the registration
+    const responses = await request(writer, reader, 11, '$/receivedResponses');
+    expect(responses).toMatchObject({
+      result: expect.arrayContaining([
+        expect.objectContaining({ result: null }),
+      ]) as unknown,
+    });
+  });
+
+  it('sends didChangeConfiguration with settings after server init', async ({ createProxy, expect }) => {
+    const config: ServerConfig = {
+      ...mockServerConfig,
+      args: [...mockServerConfig.args, '--track-config'],
+      settings: { validate: 'on', run: 'onType' },
+    };
+    const { writer, reader } = createProxy({ config });
+
+    await initializeProxy(writer, reader);
+
+    // Trigger lazy start
+    await notify(writer, 'textDocument/didOpen', {
+      textDocument: { uri: fakeUri(), languageId: 'typescript', version: 1, text: faker.lorem.word() },
+    });
+
+    // Fence to ensure init sequence completed
+    await request(writer, reader, 10, 'textDocument/hover', {
+      textDocument: { uri: fakeUri() },
+      position: { line: 0, character: 0 },
+    });
+
+    const res = await request(writer, reader, 11, '$/configNotifications');
+    expect(res).toMatchObject({
+      result: [{ settings: { validate: 'on', run: 'onType' } }],
+    });
+  });
+
+  it('responds to workspace/configuration with server settings and workspaceFolder', async ({ createProxy, workspace, expect }) => {
+    const config: ServerConfig = {
+      ...mockServerConfig,
+      args: [...mockServerConfig.args, '--request-config'],
+      settings: { validate: 'on', nodePath: null },
+    };
+    const { writer, reader } = createProxy({ config });
+
+    await initializeProxy(writer, reader, workspace.uri);
+
+    // Trigger lazy start — server sends workspace/configuration on initialized
+    await notify(writer, 'textDocument/didOpen', {
+      textDocument: { uri: fakeUri(), languageId: 'typescript', version: 1, text: faker.lorem.word() },
+    });
+
+    // Fence to ensure config request/response round-trip completed
+    await request(writer, reader, 10, 'textDocument/hover', {
+      textDocument: { uri: fakeUri() },
+      position: { line: 0, character: 0 },
+    });
+
+    // Server should have received settings with workspaceFolder injected
+    const responses = await request(writer, reader, 11, '$/receivedResponses');
+    expect(responses).toMatchObject({
+      result: expect.arrayContaining([
+        expect.objectContaining({
+          result: [expect.objectContaining({
+            validate: 'on',
+            nodePath: null,
+            workspaceFolder: expect.objectContaining({ uri: workspace.uri }) as unknown,
+          })],
+        }),
+      ]) as unknown,
     });
   });
 

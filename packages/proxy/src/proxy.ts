@@ -1,5 +1,5 @@
 import { stat } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import type { Message, NotificationMessage, RequestMessage, ResponseMessage, ServerConfig } from './types.js';
 import * as v from 'valibot';
@@ -45,6 +45,13 @@ const UnregisterCapabilitySchema = v.object({
   })),
 });
 
+const WorkspaceConfigurationSchema = v.object({
+  items: v.array(v.object({
+    scopeUri: v.optional(v.nullable(v.string())),
+    section: v.optional(v.nullable(v.string())),
+  })),
+});
+
 const LogMessageSchema = v.object({
   type: v.pipe(
     v.number(),
@@ -57,13 +64,16 @@ const LogMessageSchema = v.object({
   message: v.string(),
 });
 
-/** Ensures child servers see capabilities the proxy handles (e.g., file watching). */
+/** Ensures child servers see capabilities the proxy handles (e.g., file watching, config push). */
 const injectProxyCapabilities = (params: unknown): object => {
   const base = isPlainObject(params) ? params : {};
   const caps = isPlainObject(base['capabilities']) ? base['capabilities'] : {};
   const workspace = isPlainObject(caps['workspace']) ? caps['workspace'] : {};
   const dcwf = isPlainObject(workspace['didChangeWatchedFiles'])
     ? workspace['didChangeWatchedFiles']
+    : {};
+  const dcc = isPlainObject(workspace['didChangeConfiguration'])
+    ? workspace['didChangeConfiguration']
     : {};
 
   return {
@@ -73,6 +83,7 @@ const injectProxyCapabilities = (params: unknown): object => {
       workspace: {
         ...workspace,
         didChangeWatchedFiles: { ...dcwf, dynamicRegistration: true },
+        didChangeConfiguration: { ...dcc, dynamicRegistration: true },
       },
     },
   };
@@ -114,6 +125,7 @@ export class LspProxy {
   get isWatcherDegraded(): boolean { return this.watcher?.isDegraded ?? false; }
 
   private readonly servers: Map<string, ManagedServer>;
+  private readonly serverConfigs: ReadonlyMap<string, ServerConfig>;
   private readonly router: Router;
   private readonly proxyOptions: ProxyOptions | undefined;
 
@@ -134,6 +146,7 @@ export class LspProxy {
     this.clientWriter = new StreamMessageWriter(options?.output ?? process.stdout);
     this.log = options?.logger ?? createLogger();
     this.proxyOptions = options;
+    this.serverConfigs = serverConfigs;
 
     this.servers = new Map<string, ManagedServer>();
     const serverEntries = [...serverConfigs].map(([name, config]) => ({ name, config }));
@@ -343,6 +356,15 @@ export class LspProxy {
       }
     }
 
+    // Intercept workspace/configuration — respond with server-specific settings
+    if (Msg.isRequest(msg) && msg.method === 'workspace/configuration') {
+      const settings = this.serverConfigs.get(serverName)?.settings;
+      if (settings) {
+        this.handleWorkspaceConfiguration(serverName, msg, settings);
+        return;
+      }
+    }
+
     // Intercept client/registerCapability for file watching
     if (Msg.isRequest(msg) && msg.method === 'client/registerCapability') {
       this.handleRegisterCapability(serverName, msg);
@@ -391,6 +413,12 @@ export class LspProxy {
         }
         // Malformed watcher registration — log and count as handled (don't forward)
         this.log.warn(`${serverName}: malformed watcher registration ${reg.id} — skipping`);
+        handledCount++;
+        continue;
+      }
+      // The proxy manages config delivery — ack didChangeConfiguration registrations
+      // directly so they don't reach the client (which may not support them).
+      if (reg.method === 'workspace/didChangeConfiguration') {
         handledCount++;
         continue;
       }
@@ -446,6 +474,33 @@ export class LspProxy {
     else {
       this.writeToClient(msg);
     }
+  }
+
+  private handleWorkspaceConfiguration(
+    serverName: string,
+    msg: RequestMessage,
+    settings: Record<string, unknown>,
+  ): void {
+    const parsed = v.safeParse(WorkspaceConfigurationSchema, msg.params);
+    if (!parsed.success) {
+      this.log.warn(`${serverName}: malformed workspace/configuration request — responding with empty array`);
+      const response: ResponseMessage = { jsonrpc: '2.0', id: msg.id, result: [] };
+      this.servers.get(serverName)?.send(response);
+      return;
+    }
+
+    const workspaceFolder = this.workspaceRoot
+      ? { uri: pathToFileURL(this.workspaceRoot).href, name: '' }
+      : undefined;
+
+    const result = parsed.output.items.map((item) => {
+      const section = item.section;
+      if (section && section in settings) return settings[section];
+      return { ...settings, workspaceFolder };
+    });
+
+    const response: ResponseMessage = { jsonrpc: '2.0', id: msg.id, result };
+    this.servers.get(serverName)?.send(response);
   }
 
   private handlePendingErrors(_serverName: string, ids: ReadonlySet<number | string | null>, message: string): void {

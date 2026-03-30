@@ -19,6 +19,9 @@ const registerMixed = process.argv.includes('--register-mixed');
 const incrementalSync = process.argv.includes('--incremental-sync');
 const unregisterOnCommand = process.argv.includes('--unregister-on-command');
 const sendCustomRequest = process.argv.includes('--send-custom-request');
+const trackConfig = process.argv.includes('--track-config');
+const requestConfig = process.argv.includes('--request-config');
+const registerConfig = process.argv.includes('--register-config');
 
 const reader = new StreamMessageReader(process.stdin);
 const writer = new StreamMessageWriter(process.stdout);
@@ -26,6 +29,7 @@ const writer = new StreamMessageWriter(process.stdout);
 let initializeParams: unknown = null;
 const openDocuments = new Map<string, { uri: string; languageId: string; version: number; text: string }>();
 const watcherEvents: unknown[] = [];
+const configNotifications: unknown[] = [];
 const receivedResponses: unknown[] = [];
 let serverRequestSeq = 1000;
 
@@ -89,6 +93,10 @@ reader.listen((msg) => {
         respond(msg.id, receivedResponses);
         return;
       }
+      case '$/configNotifications': {
+        respond(msg.id, configNotifications);
+        return;
+      }
       case '$/unregisterWatchers': {
         if (unregisterOnCommand) {
           void writer.write(createRequest(serverRequestSeq++, 'client/unregisterCapability', {
@@ -113,6 +121,19 @@ reader.listen((msg) => {
 
     switch (msg.method) {
       case 'initialized': {
+        if (registerConfig) {
+          void writer.write(createRequest(serverRequestSeq++, 'client/registerCapability', {
+            registrations: [{
+              id: `${serverName}-config`,
+              method: 'workspace/didChangeConfiguration',
+            }],
+          }));
+        }
+        if (requestConfig) {
+          void writer.write(createRequest(serverRequestSeq++, 'workspace/configuration', {
+            items: [{ scopeUri: 'file:///test.ts', section: '' }],
+          }));
+        }
         if (sendCustomRequest) {
           void writer.write(createRequest(serverRequestSeq++, 'window/showMessageRequest', {
             type: 3,
@@ -148,6 +169,10 @@ reader.listen((msg) => {
             ],
           }));
         }
+        break;
+      }
+      case 'workspace/didChangeConfiguration': {
+        if (trackConfig) configNotifications.push(msg.params);
         break;
       }
       case 'workspace/didChangeWatchedFiles': {
