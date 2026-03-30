@@ -59,6 +59,16 @@ describe('ProxyConfigSchema', () => {
   it('rejects invalid logLevel', ({ expect }) => {
     expect(() => v.parse(ProxyConfigSchema, { servers: ['vtsls'], logLevel: 'TRACE' })).toThrow();
   });
+
+  it('accepts valid logDir', ({ expect }) => {
+    const result = v.parse(ProxyConfigSchema, { servers: ['vtsls'], logDir: '/tmp/logs' });
+    expect(result.logDir).toBe('/tmp/logs');
+  });
+
+  it('defaults logDir to undefined when omitted', ({ expect }) => {
+    const result = v.parse(ProxyConfigSchema, { servers: ['vtsls'] });
+    expect(result.logDir).toBeUndefined();
+  });
 });
 
 describe('ServerConfigSchema', () => {

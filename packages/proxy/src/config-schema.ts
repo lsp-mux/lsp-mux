@@ -37,6 +37,7 @@ export const ProxyConfigSchema = v.pipe(
     ),
     watcherExclude: v.optional(v.array(v.string())),
     logLevel: v.optional(LevelSchema),
+    logDir: v.optional(v.string()),
   }),
   v.transform(cfg => ({
     ...cfg,

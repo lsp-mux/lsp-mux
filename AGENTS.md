@@ -46,7 +46,7 @@ A Node.js process that:
 - Delivers per-server settings and responds to configuration pulls
 - Auto-restarts crashed servers transparently
 - Watches workspace files and resyncs document state on external changes
-- Logs to `~/.claude/lsp-proxy/logs/<timestamp>.log` with runtime-configurable level
+- Logs to `<logDir>/<timestamp>.log` with runtime-configurable level
 
 ### Architecture
 
@@ -155,10 +155,13 @@ Future config fields (not yet implemented):
 - **Config/proxy separation** — the proxy package is server-agnostic; which
   servers to run is determined by the config package. Users create their own
   config package with different servers without forking the proxy.
-- **Logging** — file-based (`~/.claude/lsp-proxy/logs/<timestamp>.log`), not
-  stderr, so logs persist and don't interfere with stdio transport.
-  Runtime level changes via `logLevel` in `proxy.config.json` (file
-  watched). Server `window/logMessage` forwarded at appropriate severity.
+- **Logging** — file-based, not stderr, so logs persist and don't
+  interfere with stdio transport. Log directory resolved via
+  `--log-dir` CLI flag > `logDir` in `proxy.config.json` >
+  platform default (`$XDG_DATA_HOME/lsp-proxy/logs` on Linux/macOS,
+  `%LOCALAPPDATA%\lsp-proxy\logs` on Windows). Runtime level changes
+  via `logLevel` in `proxy.config.json` (file watched). Server
+  `window/logMessage` forwarded at appropriate severity.
 
 ### Volar 3 Forwarding (Example)
 

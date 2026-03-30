@@ -10,8 +10,8 @@ import { LspProxy } from './proxy.js';
 import { createLogger } from './logger.js';
 import type { Logger } from './logger.js';
 
-const parseConfigDir = (): string | undefined => {
-  const idx = process.argv.indexOf('--config-dir');
+const parseArg = (flag: string): string | undefined => {
+  const idx = process.argv.indexOf(flag);
   const arg = process.argv[idx + 1];
   if (idx < 0 || !arg) return undefined;
   return resolve(arg);
@@ -40,15 +40,24 @@ const watchConfigForLogLevel = (configDir: string, log: Logger): Disposable => {
   };
 };
 
-const main = async (): Promise<void> => {
-  const logDir = join(homedir(), '.claude', 'lsp-proxy', 'logs');
-  mkdirSync(logDir, { recursive: true });
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const logFile = createWriteStream(join(logDir, `${timestamp}.log`));
-  const log = createLogger(logFile);
+const defaultLogDir = (): string => {
+  if (process.platform === 'win32') {
+    return join(process.env['LOCALAPPDATA'] ?? join(homedir(), 'AppData', 'Local'), 'lsp-proxy', 'logs');
+  }
+  return join(process.env['XDG_DATA_HOME'] ?? join(homedir(), '.local', 'share'), 'lsp-proxy', 'logs');
+};
 
-  const configDir = parseConfigDir();
+const main = async (): Promise<void> => {
+  const configDir = parseArg('--config-dir');
   const proxyConfig = await loadProxyConfig(configDir);
+
+  // Priority: --log-dir CLI flag > logDir in config > default
+  const logDir = parseArg('--log-dir') ?? proxyConfig.logDir ?? defaultLogDir();
+  mkdirSync(logDir, { recursive: true });
+  // Timestamp + PID: multiple editors may launch proxies in the same second.
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const logFile = createWriteStream(join(logDir, `${timestamp}-${String(process.pid)}.log`));
+  const log = createLogger(logFile);
 
   log.setLevel(proxyConfig.logLevel);
 
