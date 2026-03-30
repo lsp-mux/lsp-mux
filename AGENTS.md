@@ -38,7 +38,7 @@ A Node.js process that:
 - Accepts stdio from Claude Code as a single LSP server
 - Spawns and manages child LSP servers
 - Routes requests by file type / language ID to the appropriate server(s)
-- Merges diagnostics from multiple servers (union)
+- Merges diagnostics from multiple servers (union of push and pull models)
 - Delivers per-server settings and responds to configuration pulls
 - Auto-restarts crashed servers transparently
 - Watches workspace files and resyncs document state on external changes
@@ -118,6 +118,9 @@ Future config fields (not yet implemented):
   mapping; a file can fan out to multiple servers
 - **Response merging** — diagnostics merged via union; other methods routed
   to primary server only (full merging planned for M4)
+- **Pull diagnostics** — servers that advertise `diagnosticProvider` are
+  proactively queried after document sync events and on
+  `workspace/diagnostic/refresh`; results are stored and published via push
 - **Settings delivery** — per-server `settings` in server configs are
   pushed via `workspace/didChangeConfiguration` after init and returned
   in response to `workspace/configuration` pulls, with `workspaceFolder`

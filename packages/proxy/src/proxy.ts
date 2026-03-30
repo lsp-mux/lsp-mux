@@ -274,6 +274,25 @@ export class LspProxy {
       for (const name of this.router.serversForUri(uri)) {
         this.servers.get(name)?.send(rewritten);
       }
+
+      // Pull diagnostics from servers that use the pull model (e.g., ESLint).
+      // Only publishes if at least one server returns diagnostic items.
+      if (uri && msg.method !== 'textDocument/didClose') {
+        const allStarting = this.router.serversForUri(uri)
+          .every((n) => {
+            const s = this.servers.get(n)?.state;
+            return s === 'starting' || s === 'idle';
+          });
+        if (allStarting) {
+          setTimeout(() => {
+            if (this.isStopped()) return;
+            void this.pullDiagnostics(uri);
+          }, 3000);
+        }
+        else {
+          void this.pullDiagnostics(uri);
+        }
+      }
       return;
     }
 
@@ -305,6 +324,11 @@ export class LspProxy {
       if (targetServer) {
         this.servers.get(targetServer)?.send(msg);
       }
+      return;
+    }
+
+    if (Msg.isRequest(msg) && msg.method === 'textDocument/diagnostic') {
+      void this.handleDiagnosticPull(msg);
       return;
     }
 
@@ -354,6 +378,15 @@ export class LspProxy {
         this.publishMergedDiagnostics(result.output.uri);
         return;
       }
+    }
+
+    // Intercept workspace/diagnostic/refresh — re-pull diagnostics for tracked documents
+    if (Msg.isRequest(msg) && msg.method === 'workspace/diagnostic/refresh') {
+      this.ackToServer(serverName, msg.id);
+      for (const uri of this.documents.keys()) {
+        void this.pullDiagnostics(uri);
+      }
+      return;
     }
 
     // Intercept workspace/configuration — respond with server-specific settings
@@ -610,6 +643,61 @@ export class LspProxy {
       const offset = this.versionOffsets.get(doc.uri) ?? 0;
       return offset > 0 ? { ...doc, version: doc.version + offset } : doc;
     });
+  }
+
+  /** Fan out textDocument/diagnostic to all matching servers and merge results. */
+  private async handleDiagnosticPull(msg: RequestMessage): Promise<void> {
+    const uri = extractUri(msg);
+    const serverNames = this.router.serversForUri(uri);
+
+    const requests = serverNames
+      .map(name => this.servers.get(name))
+      .filter(s => s !== undefined)
+      .map(s => s.sendRequest('textDocument/diagnostic', msg.params));
+
+    const responses = await Promise.all(requests);
+
+    const allItems: unknown[] = [];
+    for (const res of responses) {
+      if (!res.result || !isPlainObject(res.result)) continue;
+      const items = res.result['items'];
+      if (Array.isArray(items)) {
+        for (const item of items) allItems.push(item);
+      }
+    }
+
+    this.respondToClient(msg.id, { kind: 'full', items: allItems });
+  }
+
+  /** Pull diagnostics from all matching servers and store results.
+   *  Only publishes if at least one server returns items — avoids
+   *  spurious re-publications that race with push-based servers. */
+  private async pullDiagnostics(uri: string): Promise<void> {
+    const serverNames = this.router.serversForUri(uri);
+    const params = { textDocument: { uri } };
+
+    const responses = await Promise.all(
+      serverNames
+        .map(name => this.servers.get(name))
+        .filter(s => s !== undefined)
+        .map(async (s) => {
+          const res = await s.sendRequest('textDocument/diagnostic', params);
+          return { name: s.name, res };
+        }),
+    );
+
+    let updated = false;
+    for (const { name, res } of responses) {
+      if (!res.result || !isPlainObject(res.result)) continue;
+      const items = res.result['items'];
+      if (!Array.isArray(items)) continue;
+      this.diagnosticsStore = diag.update(this.diagnosticsStore, name, uri, items);
+      updated = true;
+    }
+
+    if (updated) {
+      this.publishMergedDiagnostics(uri);
+    }
   }
 
   // ── Logging ──────────────────────────────────────────────────────────

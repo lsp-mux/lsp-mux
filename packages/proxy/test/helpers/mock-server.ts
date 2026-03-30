@@ -22,6 +22,7 @@ const sendCustomRequest = process.argv.includes('--send-custom-request');
 const trackConfig = process.argv.includes('--track-config');
 const requestConfig = process.argv.includes('--request-config');
 const registerConfig = process.argv.includes('--register-config');
+const pullDiagnostics = process.argv.includes('--pull-diagnostics');
 
 const reader = new StreamMessageReader(process.stdin);
 const writer = new StreamMessageWriter(process.stdout);
@@ -107,6 +108,23 @@ reader.listen((msg) => {
           }));
         }
         respond(msg.id, { ok: true });
+        return;
+      }
+      case 'textDocument/diagnostic': {
+        if (pullDiagnostics) {
+          respond(msg.id, {
+            kind: 'full',
+            items: [{
+              range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+              message: `${serverName}: pull diagnostic`,
+              source: serverName,
+              severity: 2,
+            }],
+          });
+        }
+        else {
+          respond(msg.id, { kind: 'full', items: [] });
+        }
         return;
       }
       default: {

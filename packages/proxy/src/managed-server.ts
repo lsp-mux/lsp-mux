@@ -35,6 +35,8 @@ export interface ManagedServer {
   send(msg: Message): boolean;
   /** Try to cancel a buffered request by ID. Returns true if found and removed. */
   cancelBuffered(id: number | string): boolean;
+  /** Send a proxy-internal request and return the response. Only works when running. */
+  sendRequest(method: string, params: RequestMessage['params']): Promise<ResponseMessage>;
   /** Send shutdown request. Resolves with the response. */
   shutdown(): Promise<ResponseMessage>;
   /** Clean up all resources. */
@@ -340,6 +342,17 @@ export const createManagedServer = (
 
     cancelBuffered(id) {
       return buffer.cancel(id);
+    },
+
+    sendRequest(method, params) {
+      if (state !== 'running' || !server) {
+        return Promise.resolve({
+          jsonrpc: '2.0' as const,
+          id: null,
+          error: { code: LSP_ERROR_CODES.InternalError, message: 'Server not running' },
+        });
+      }
+      return sendProxyRequest(server, method, params);
     },
 
     async shutdown() {

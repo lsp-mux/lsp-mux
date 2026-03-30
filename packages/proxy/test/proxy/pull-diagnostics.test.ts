@@ -1,0 +1,94 @@
+import * as v from 'valibot';
+import { describe } from 'vitest';
+import type { Message } from 'vscode-jsonrpc';
+import { notify, collectMessages, initializeProxy } from '../helpers/test-client.js';
+import { faker } from '@faker-js/faker';
+import { fakeUri } from '../helpers/fake.js';
+import { it, namedConfig, mockServerConfig, type ServerConfig } from './harness.js';
+
+const DiagNotificationSchema = v.object({
+  params: v.object({
+    uri: v.string(),
+    diagnostics: v.array(v.object({ source: v.optional(v.string()) })),
+  }),
+});
+
+const isDiagnosticForUri = (msg: Message | undefined, uri: string): boolean => {
+  const result = v.safeParse(DiagNotificationSchema, msg);
+  return result.success && result.output.params.uri === uri;
+};
+
+const getDiagnostics = (msg: Message | undefined) => {
+  const result = v.safeParse(DiagNotificationSchema, msg);
+  return result.success ? result.output.params.diagnostics : [];
+};
+
+describe('Pull diagnostics', () => {
+  it('proactively pulls and publishes diagnostics after didOpen', async ({ createProxy, expect }) => {
+    const config: ServerConfig = {
+      ...mockServerConfig,
+      args: [...mockServerConfig.args, '--pull-diagnostics'],
+    };
+    const { writer, reader } = createProxy({ config });
+
+    await initializeProxy(writer, reader);
+
+    const uri = fakeUri();
+    const diagPromise = collectMessages(
+      reader,
+      msg => isDiagnosticForUri(msg, uri),
+      1,
+    );
+
+    await notify(writer, 'textDocument/didOpen', {
+      textDocument: { uri, languageId: 'typescript', version: 1, text: faker.lorem.word() },
+    });
+
+    // The proxy should proactively pull diagnostics and publish them
+    const msgs = await diagPromise;
+    const diags = getDiagnostics(msgs[0]);
+    expect(diags).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'mock' }),
+      ]),
+    );
+  });
+
+  it('merges pull diagnostics from multiple servers', async ({ createProxy, expect }) => {
+    const configs = new Map([
+      ['alpha', { ...namedConfig('alpha'), args: [...namedConfig('alpha').args, '--pull-diagnostics'] }],
+      ['beta', { ...namedConfig('beta'), args: [...namedConfig('beta').args, '--pull-diagnostics'] }],
+    ]);
+
+    const { writer, reader } = createProxy({ configs });
+
+    await initializeProxy(writer, reader);
+
+    const uri = fakeUri();
+
+    await notify(writer, 'textDocument/didOpen', {
+      textDocument: { uri, languageId: 'typescript', version: 1, text: faker.lorem.word() },
+    });
+
+    // Wait for merged diagnostics containing both servers' pull results
+    // plus the push diagnostics from didOpen
+    const msgs = await collectMessages(
+      reader,
+      (msg) => {
+        if (!isDiagnosticForUri(msg, uri)) return false;
+        const diags = getDiagnostics(msg);
+        return diags.some(d => d.source === 'alpha')
+          && diags.some(d => d.source === 'beta');
+      },
+      1,
+    );
+
+    const diags = getDiagnostics(msgs[0]);
+    expect(diags).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'alpha' }),
+        expect.objectContaining({ source: 'beta' }),
+      ]),
+    );
+  });
+});
