@@ -45,6 +45,20 @@ describe('ProxyConfigSchema', () => {
   it('rejects duplicate server names', ({ expect }) => {
     expect(() => v.parse(ProxyConfigSchema, { servers: ['vtsls', 'vtsls'] })).toThrow();
   });
+
+  it('accepts valid logLevel', ({ expect }) => {
+    const result = v.parse(ProxyConfigSchema, { servers: ['vtsls'], logLevel: 'DEBUG' });
+    expect(result.logLevel).toBe('DEBUG');
+  });
+
+  it('defaults logLevel to undefined when omitted', ({ expect }) => {
+    const result = v.parse(ProxyConfigSchema, { servers: ['vtsls'] });
+    expect(result.logLevel).toBeUndefined();
+  });
+
+  it('rejects invalid logLevel', ({ expect }) => {
+    expect(() => v.parse(ProxyConfigSchema, { servers: ['vtsls'], logLevel: 'TRACE' })).toThrow();
+  });
 });
 
 describe('ServerConfigSchema', () => {

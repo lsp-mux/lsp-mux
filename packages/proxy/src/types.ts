@@ -65,3 +65,10 @@ export const LSP_ERROR_CODES = {
   RequestCancelled: -32800,
   InternalError: -32603,
 } as const;
+
+export const LSP_MESSAGE_TYPE = {
+  Error: 1,
+  Warning: 2,
+  Info: 3,
+  Log: 4,
+} as const;

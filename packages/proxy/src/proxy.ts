@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import type { Message, NotificationMessage, RequestMessage, ResponseMessage, ServerConfig } from './types.js';
 import * as v from 'valibot';
-import { Message as Msg, createNotification, DOCUMENT_SYNC_METHODS, LSP_ERROR_CODES } from './types.js';
+import { Message as Msg, createNotification, DOCUMENT_SYNC_METHODS, LSP_ERROR_CODES, LSP_MESSAGE_TYPE } from './types.js';
 import { createManagedServer } from './managed-server.js';
 import type { ManagedServer, ServerState } from './managed-server.js';
 import { createRouter, extractUri } from './router.js';
@@ -43,6 +43,18 @@ const UnregisterCapabilitySchema = v.object({
     id: v.string(),
     method: v.string(),
   })),
+});
+
+const LogMessageSchema = v.object({
+  type: v.pipe(
+    v.number(),
+    v.transform((n): 'error' | 'warn' | 'info' | 'debug' => {
+      if (n === LSP_MESSAGE_TYPE.Error) return 'error';
+      if (n === LSP_MESSAGE_TYPE.Warning) return 'warn';
+      return n === LSP_MESSAGE_TYPE.Info ? 'info' : 'debug';
+    }),
+  ),
+  message: v.string(),
 });
 
 /** Ensures child servers see capabilities the proxy handles (e.g., file watching). */
@@ -164,6 +176,10 @@ export class LspProxy {
   // ── Client → Server ──────────────────────────────────────────────────
 
   private handleClientMessage(msg: Message): void {
+    if (Msg.isRequest(msg)) this.log.debug(`client → proxy: request ${msg.method} (id: ${String(msg.id)})`);
+    else if (Msg.isNotification(msg)) this.log.debug(`client → proxy: notification ${msg.method}`);
+    else if (Msg.isResponse(msg)) this.log.debug(`client → proxy: response (id: ${String(msg.id)})`);
+
     if (Msg.isNotification(msg) && DOCUMENT_SYNC_METHODS.has(msg.method)) {
       this.documents = docs.apply(this.documents, msg.method, msg.params);
     }
@@ -314,6 +330,10 @@ export class LspProxy {
   // ── Server → Client ──────────────────────────────────────────────────
 
   private handleServerMessage(serverName: string, msg: Message): void {
+    if (Msg.isRequest(msg)) this.log.debug(`${serverName} → proxy: request ${msg.method}`);
+    else if (Msg.isResponse(msg)) this.log.debug(`${serverName} → proxy: response (id: ${String(msg.id)})`);
+    else if (Msg.isNotification(msg)) this.logServerNotification(serverName, msg);
+
     if (Msg.isNotification(msg) && msg.method === 'textDocument/publishDiagnostics') {
       const result = v.safeParse(PublishDiagnosticsSchema, msg.params);
       if (result.success) {
@@ -430,6 +450,7 @@ export class LspProxy {
   }
 
   private handleServerStateChange(serverName: string, serverState: ServerState): void {
+    this.log.debug(`${serverName}: state → ${serverState}`);
     if (serverState === 'restarting' || serverState === 'starting') {
       const { store, affectedUris } = diag.clearServer(this.diagnosticsStore, serverName);
       this.diagnosticsStore = store;
@@ -530,6 +551,20 @@ export class LspProxy {
     });
   }
 
+  // ── Logging ──────────────────────────────────────────────────────────
+
+  /** Forward server window/logMessage at appropriate level; log others at DEBUG. */
+  private logServerNotification(serverName: string, msg: NotificationMessage): void {
+    if (msg.method === 'window/logMessage') {
+      const parsed = v.safeParse(LogMessageSchema, msg.params);
+      if (parsed.success) {
+        this.log[parsed.output.type](`${serverName}:`, parsed.output.message);
+      }
+      return;
+    }
+    this.log.debug(`${serverName} → proxy: notification ${msg.method}`);
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────
 
   /** Safe check that avoids TS narrowing issues across async boundaries. */
@@ -537,6 +572,7 @@ export class LspProxy {
 
   private publishMergedDiagnostics(uri: string): void {
     const merged = diag.merge(this.diagnosticsStore, uri);
+    this.log.debug(`Publishing ${String(merged.length)} merged diagnostics for ${uri}`);
     this.writeToClient(createNotification('textDocument/publishDiagnostics', {
       uri,
       diagnostics: merged,

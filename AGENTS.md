@@ -41,6 +41,7 @@ A Node.js process that:
 - Merges diagnostics from multiple servers (union)
 - Auto-restarts crashed servers transparently
 - Watches workspace files and resyncs document state on external changes
+- Logs to `~/.claude/lsp-proxy/logs/<timestamp>.log` with runtime-configurable level
 
 ### Architecture
 
@@ -68,6 +69,9 @@ A separate `proxy.config.json` defines which servers to load:
 ```jsonc
 {
   "servers": ["vtsls", "eslint"],
+  // Optional — DEBUG, INFO (default), WARN, ERROR.
+  // Change at runtime without restarting (file is watched).
+  "logLevel": "INFO",
   // Glob patterns to exclude from workspace file watching.
   // Matches against paths relative to the workspace root.
   // Defaults shown below — override to customize.
@@ -130,6 +134,10 @@ Future config fields (not yet implemented):
 - **Config/proxy separation** — the proxy package is server-agnostic; which
   servers to run is determined by the config package. Users create their own
   config package with different servers without forking the proxy.
+- **Logging** — file-based (`~/.claude/lsp-proxy/logs/<timestamp>.log`), not
+  stderr, so logs persist and don't interfere with stdio transport.
+  Runtime level changes via `logLevel` in `proxy.config.json` (file
+  watched). Server `window/logMessage` forwarded at appropriate severity.
 
 ### Volar 3 Forwarding (Example)
 

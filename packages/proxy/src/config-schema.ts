@@ -1,4 +1,5 @@
 import * as v from 'valibot';
+import { LevelSchema } from './logger.js';
 
 export const ServerConfigSchema = v.object({
   command: v.pipe(v.string(), v.nonEmpty('command must not be empty')),
@@ -35,6 +36,7 @@ export const ProxyConfigSchema = v.pipe(
       ),
     ),
     watcherExclude: v.optional(v.array(v.string())),
+    logLevel: v.optional(LevelSchema),
   }),
   v.transform(cfg => ({
     ...cfg,

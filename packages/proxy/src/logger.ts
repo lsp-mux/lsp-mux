@@ -1,23 +1,26 @@
 import * as v from 'valibot';
 
 const LEVELS = ['DEBUG', 'INFO', 'WARN', 'ERROR'] as const;
-const LevelSchema = v.picklist(LEVELS);
-type Level = v.InferOutput<typeof LevelSchema>;
+const LEVEL_INDEX: Record<string, number> = Object.fromEntries(LEVELS.map((l, i) => [l, i]));
+export const LevelSchema = v.picklist(LEVELS);
+export type Level = v.InferOutput<typeof LevelSchema>;
 
 export interface Logger {
   debug(...args: unknown[]): void;
   info(...args: unknown[]): void;
   warn(...args: unknown[]): void;
   error(...args: unknown[]): void;
+  setLevel(level: Level | undefined): void;
 }
 
-export const createLogger = (output: NodeJS.WritableStream = process.stderr): Logger => {
-  const parsed = v.safeParse(LevelSchema, process.env['LOG_LEVEL']);
-  const minLevel: Level = parsed.success ? parsed.output : 'INFO';
-  const minIndex = LEVELS.indexOf(minLevel);
+export const createLogger = (
+  output: NodeJS.WritableStream = process.stderr,
+  initialLevel: Level = 'INFO',
+): Logger => {
+  let minIndex = LEVEL_INDEX[initialLevel] ?? 0;
 
   const write = (level: Level, ...args: unknown[]): void => {
-    if (LEVELS.indexOf(level) < minIndex) return;
+    if ((LEVEL_INDEX[level] ?? 0) < minIndex) return;
     const ts = new Date().toISOString();
     const msg = args
       .map(a => (a instanceof Error ? (a.stack ?? a.message) : String(a)))
@@ -30,5 +33,12 @@ export const createLogger = (output: NodeJS.WritableStream = process.stderr): Lo
     info: (...args: unknown[]) => { write('INFO', ...args); },
     warn: (...args: unknown[]) => { write('WARN', ...args); },
     error: (...args: unknown[]) => { write('ERROR', ...args); },
+    setLevel: (level: Level | undefined) => {
+      const effective = level ?? initialLevel;
+      const newIndex = LEVEL_INDEX[effective] ?? 0;
+      if (newIndex === minIndex) return;
+      minIndex = newIndex;
+      write('INFO', `Log level changed to ${effective}`);
+    },
   };
 };

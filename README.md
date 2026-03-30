@@ -116,6 +116,27 @@ pnpm dlx generate-lsp-plugin
 claude --plugin-dir /path/to/my-lsp-config
 ```
 
+## Logging
+
+The proxy logs to `~/.claude/lsp-proxy/logs/<timestamp>.log`. The default level is
+INFO.
+
+To change the level at runtime (no restart needed), add `logLevel` to your
+`proxy.config.json`:
+
+```json
+{
+  "servers": ["vtsls", "eslint"],
+  "logLevel": "DEBUG"
+}
+```
+
+Valid levels: `DEBUG`, `INFO`, `WARN`, `ERROR`. Remove the field to reset to
+INFO.
+
+Server `window/logMessage` notifications are forwarded at the appropriate
+severity (Error → error, Warning → warn, Info/Log → debug).
+
 ## Testing
 
 ```sh
