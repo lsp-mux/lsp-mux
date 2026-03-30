@@ -39,7 +39,7 @@ at config load time so child servers inherit the workspace cwd.
 
 A Node.js process that:
 
-- Accepts stdio from Claude Code as a single LSP server
+- Accepts stdio from any LSP client as a single LSP server
 - Spawns and manages child LSP servers
 - Routes requests by file type / language ID to the appropriate server(s)
 - Merges diagnostics from multiple servers (union of push and pull models)
@@ -140,12 +140,18 @@ Future config fields (not yet implemented):
   transparent to the client
 - **Document state tracking** — proxy tracks `didOpen`/`didChange`/`didClose`
   and replays current state to servers that restart mid-session
-- **File watching** — Claude Code doesn't send
-  `workspace/didChangeWatchedFiles`, so the proxy watches tracked files
-  with `fs.watch` (like VS Code's built-in file watcher). When an
-  external tool (e.g., ESLint `--fix`, `git checkout`) modifies a file,
-  the proxy reads from disk, compares with tracked content, and sends
-  `didClose`/`didOpen` with fresh content to the relevant child servers.
+- **Client capability compensation** — during `initialize`, the proxy
+  inspects the client's `ClientCapabilities` and compensates for missing
+  features. Currently the only compensation is local file watching
+  (activated when `workspace.didChangeWatchedFiles.dynamicRegistration`
+  is absent or `false`). Clients that support file watching natively
+  receive forwarded watcher registrations instead.
+- **File watching** (compensation) — when the client lacks native file
+  watching support, the proxy watches tracked files with `fs.watch`
+  (like VS Code's built-in file watcher). When an external tool (e.g.,
+  ESLint `--fix`, `git checkout`) modifies a file, the proxy reads from
+  disk, compares with tracked content, and sends `didClose`/`didOpen`
+  with fresh content to the relevant child servers.
 - **Config/proxy separation** — the proxy package is server-agnostic; which
   servers to run is determined by the config package. Users create their own
   config package with different servers without forking the proxy.

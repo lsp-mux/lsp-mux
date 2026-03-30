@@ -146,6 +146,34 @@ describe('LspProxy lifecycle', () => {
     });
   });
 
+  it('preserves client didChangeWatchedFiles when client supports file watching', async ({ createProxy, expect }) => {
+    const { writer, reader } = createProxy();
+
+    await request(writer, reader, 0, 'initialize', {
+      processId: process.pid,
+      rootUri: null,
+      capabilities: {
+        workspace: {
+          didChangeWatchedFiles: { dynamicRegistration: true, relativePatternSupport: true },
+        },
+      },
+    });
+    await notify(writer, 'initialized', {});
+
+    const res = await request(writer, reader, 5, '$/initParams');
+    // Proxy passes through client's didChangeWatchedFiles without overriding
+    expect(res).toMatchObject({
+      result: {
+        capabilities: {
+          workspace: {
+            didChangeWatchedFiles: { dynamicRegistration: true, relativePatternSupport: true },
+            didChangeConfiguration: { dynamicRegistration: true },
+          },
+        },
+      },
+    });
+  });
+
   it('intercepts didChangeConfiguration registration without forwarding to client', async ({ createProxy, expect }) => {
     const config: ServerConfig = {
       ...mockServerConfig,

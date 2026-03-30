@@ -9,6 +9,8 @@ import type { ManagedServer, ServerState } from './managed-server.js';
 import { createRouter, extractUri } from './router.js';
 import type { Router } from './router.js';
 import { isPlainObject, STATIC_CAPABILITIES } from './capabilities.js';
+import { analyzeClientCapabilities } from './client-capabilities.js';
+import type { CompensationFlags } from './client-capabilities.js';
 import * as diag from './diagnostics-store.js';
 import * as docs from './document-tracker.js';
 import * as fw from './file-watcher.js';
@@ -64,27 +66,39 @@ const LogMessageSchema = v.object({
   message: v.string(),
 });
 
-/** Ensures child servers see capabilities the proxy handles (e.g., file watching, config push). */
-const injectProxyCapabilities = (params: unknown): object => {
+/**
+ * Ensures child servers see capabilities the proxy handles.
+ *
+ * - `didChangeConfiguration` is always injected — the proxy manages per-server
+ *   settings delivery regardless of client support.
+ * - `didChangeWatchedFiles` is only injected when the proxy compensates for a
+ *   client that lacks native file watching (localFileWatching).
+ */
+const injectProxyCapabilities = (params: unknown, compensations: CompensationFlags): object => {
   const base = isPlainObject(params) ? params : {};
   const caps = isPlainObject(base['capabilities']) ? base['capabilities'] : {};
   const workspace = isPlainObject(caps['workspace']) ? caps['workspace'] : {};
-  const dcwf = isPlainObject(workspace['didChangeWatchedFiles'])
-    ? workspace['didChangeWatchedFiles']
-    : {};
   const dcc = isPlainObject(workspace['didChangeConfiguration'])
     ? workspace['didChangeConfiguration']
     : {};
+
+  const workspaceOverrides: Record<string, unknown> = {
+    ...workspace,
+    didChangeConfiguration: { ...dcc, dynamicRegistration: true },
+  };
+
+  if (compensations.localFileWatching) {
+    const dcwf = isPlainObject(workspace['didChangeWatchedFiles'])
+      ? workspace['didChangeWatchedFiles']
+      : {};
+    workspaceOverrides['didChangeWatchedFiles'] = { ...dcwf, dynamicRegistration: true };
+  }
 
   return {
     ...base,
     capabilities: {
       ...caps,
-      workspace: {
-        ...workspace,
-        didChangeWatchedFiles: { ...dcwf, dynamicRegistration: true },
-        didChangeConfiguration: { ...dcc, dynamicRegistration: true },
-      },
+      workspace: workspaceOverrides,
     },
   };
 };
@@ -115,6 +129,7 @@ export class LspProxy {
   private readonly log: Logger;
 
   private state: ProxyState = 'idle';
+  private compensations: CompensationFlags = { localFileWatching: true };
   private documents: docs.DocumentMap = docs.empty();
   private diagnosticsStore: diag.DiagnosticsStore = diag.empty();
   private watchRegistrations: fw.WatchRegistrations = fw.empty();
@@ -229,8 +244,11 @@ export class LspProxy {
   }
 
   private async initializeAllServers(clientRequestId: number | string | null): Promise<void> {
+    this.compensations = analyzeClientCapabilities(this.initParams);
+    this.log.info(`Client capability compensation: localFileWatching=${String(this.compensations.localFileWatching)}`);
+
     // Servers check this to decide whether to use dynamic registration.
-    const serverInitParams = injectProxyCapabilities(this.initParams);
+    const serverInitParams = injectProxyCapabilities(this.initParams, this.compensations);
 
     // Store init params on each server for lazy start — no spawning yet.
     for (const server of this.servers.values()) {
@@ -239,7 +257,12 @@ export class LspProxy {
 
     this.respondToClient(clientRequestId, { capabilities: STATIC_CAPABILITIES });
     this.state = 'running';
-    await this.startWorkspaceWatcher();
+
+    await this.resolveWorkspaceRoot();
+
+    if (this.compensations.localFileWatching) {
+      await this.startWorkspaceWatcher();
+    }
   }
 
   private handleRunningMessage(msg: Message): void {
@@ -433,7 +456,7 @@ export class LspProxy {
     let handledCount = 0;
 
     for (const reg of parsed.output.registrations) {
-      if (reg.method === 'workspace/didChangeWatchedFiles') {
+      if (reg.method === 'workspace/didChangeWatchedFiles' && this.compensations.localFileWatching) {
         const opts = v.safeParse(fw.RegisterOptionsSchema, reg.registerOptions);
         if (opts.success) {
           this.watchRegistrations = fw.register(
@@ -486,7 +509,7 @@ export class LspProxy {
     let handledCount = 0;
 
     for (const unreg of parsed.output.unregisterations) {
-      if (unreg.method === 'workspace/didChangeWatchedFiles') {
+      if (unreg.method === 'workspace/didChangeWatchedFiles' && this.compensations.localFileWatching) {
         this.watchRegistrations = fw.unregister(this.watchRegistrations, unreg.id);
         handledCount++;
         this.log.info(`${serverName}: unregistered file watcher ${unreg.id}`);
@@ -560,22 +583,27 @@ export class LspProxy {
     }
   }
 
-  // ── File Watching ─────────────────────────────────────────────────────
+  // ── Workspace Root ───────────────────────────────────────────────────
 
-  private async startWorkspaceWatcher(): Promise<void> {
+  private async resolveWorkspaceRoot(): Promise<void> {
     const parsed = v.safeParse(InitializeParamsSchema, this.initParams);
     const rootUri = parsed.success ? parsed.output.rootUri : undefined;
     if (!rootUri) return;
 
     try {
-      this.workspaceRoot = fileURLToPath(rootUri);
+      const root = fileURLToPath(rootUri);
+      const exists = await stat(root).then(() => true, () => false);
+      if (exists) this.workspaceRoot = root;
     }
     catch {
-      return;
+      // Malformed URI — ignore
     }
+  }
 
-    const exists = await stat(this.workspaceRoot).then(() => true, () => false);
-    if (!exists) return;
+  // ── File Watching ─────────────────────────────────────────────────────
+
+  private async startWorkspaceWatcher(): Promise<void> {
+    if (!this.workspaceRoot) return;
 
     this.watcher = new WorkspaceWatcher(
       {

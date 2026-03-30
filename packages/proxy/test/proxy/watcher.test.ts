@@ -239,6 +239,51 @@ describe.sequential('LspProxy file watchers', () => {
     });
   });
 
+  describe('client-native file watching', () => {
+    it('forwards watcher registration to client when client supports file watching', async ({ createProxy, workspace, expect }) => {
+      const watcherConfig: ServerConfig = {
+        ...mockServerConfig,
+        args: [...mockServerConfig.args, '--register-watchers'],
+      };
+
+      const { writer, reader } = createProxy({ config: watcherConfig });
+
+      await request(writer, reader, 0, 'initialize', {
+        processId: process.pid,
+        rootUri: workspace.uri,
+        capabilities: {
+          workspace: {
+            didChangeWatchedFiles: { dynamicRegistration: true },
+          },
+        },
+      });
+
+      // Listen for forwarded registration BEFORE triggering lazy start
+      const forwardedPromise = waitForMessage(
+        reader,
+        msg => Msg.isRequest(msg) && msg.method === 'client/registerCapability',
+      );
+
+      await notify(writer, 'initialized', {});
+
+      // didOpen triggers lazy start — server registers watchers on initialized
+      await notify(writer, 'textDocument/didOpen', {
+        textDocument: { uri: 'file:///trigger.ts', languageId: 'typescript', version: 1, text: '' },
+      });
+
+      // Watcher registration should be forwarded to client (not intercepted)
+      const forwarded = await forwardedPromise;
+      expect(forwarded).toMatchObject({
+        method: 'client/registerCapability',
+        params: {
+          registrations: [
+            expect.objectContaining({ method: 'workspace/didChangeWatchedFiles' }),
+          ],
+        },
+      });
+    });
+  });
+
   describe('event batching', () => {
     it('batches multiple file changes into a single notification per server', async ({ createProxy, workspace, expect }) => {
       const watcherConfig: ServerConfig = {

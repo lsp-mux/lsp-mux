@@ -80,11 +80,12 @@ export const initializeProxy = async (
   writer: StreamMessageWriter,
   reader: StreamMessageReader,
   rootUri: string | null = null,
+  capabilities: object = {},
 ): Promise<Message> => {
   const res = await request(writer, reader, 0, 'initialize', {
     processId: process.pid,
     rootUri,
-    capabilities: {},
+    capabilities,
   });
   await notify(writer, 'initialized', {});
   return res;
