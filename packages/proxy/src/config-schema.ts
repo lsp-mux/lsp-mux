@@ -1,6 +1,16 @@
 import * as v from 'valibot';
 import { LevelSchema } from './logger.js';
 
+const NotificationConfigSchema = v.object({
+  logLevel: v.pipe(
+    LevelSchema,
+    v.transform((l): 'debug' | 'info' | 'warn' | 'error' => {
+      const map = { DEBUG: 'debug', INFO: 'info', WARN: 'warn', ERROR: 'error' } as const;
+      return map[l];
+    }),
+  ),
+});
+
 export const ServerConfigSchema = v.object({
   command: v.pipe(v.string(), v.nonEmpty('command must not be empty')),
   args: v.array(v.string()),
@@ -13,6 +23,7 @@ export const ServerConfigSchema = v.object({
   ),
   transport: v.picklist(['stdio']),
   settings: v.optional(v.record(v.string(), v.unknown())),
+  notifications: v.optional(v.record(v.string(), NotificationConfigSchema)),
 });
 
 export type ServerConfig = v.InferOutput<typeof ServerConfigSchema>;

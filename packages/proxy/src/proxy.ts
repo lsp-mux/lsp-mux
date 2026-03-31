@@ -757,13 +757,19 @@ export class LspProxy {
 
   // ── Logging ──────────────────────────────────────────────────────────
 
-  /** Forward server window/logMessage at appropriate level; log others at DEBUG. */
+  /** Forward server window/logMessage at appropriate level; log others at DEBUG
+   *  unless the server config declares a custom log level for the notification. */
   private logServerNotification(serverName: string, msg: NotificationMessage): void {
     if (msg.method === 'window/logMessage') {
       const parsed = v.safeParse(LogMessageSchema, msg.params);
       if (parsed.success) {
         this.log[parsed.output.type](`${serverName}:`, parsed.output.message);
       }
+      return;
+    }
+    const notifConfig = this.serverConfigs.get(serverName)?.notifications?.[msg.method];
+    if (notifConfig) {
+      this.log[notifConfig.logLevel](`${serverName}:`, msg.method, JSON.stringify(msg.params));
       return;
     }
     this.log.debug(`${serverName} → proxy: notification ${msg.method}`);

@@ -21,5 +21,8 @@
     "workingDirectory": {
       "mode": "location"
     }
+  },
+  "notifications": {
+    "eslint/status": { "logLevel": "DEBUG" }
   }
 }
