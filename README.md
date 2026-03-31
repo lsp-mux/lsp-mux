@@ -19,9 +19,15 @@ This project was originally built for Claude Code, which has several
 limitations the proxy addresses:
 
 - [One server per file type](https://github.com/anthropics/claude-code/issues/27692)
-- No lifecycle recovery for crashed servers
+- No transparent crash recovery — servers restart on next use but without
+  document state replay, so open files must be re-synced from disk
+- No `workspace/configuration` support — returns `null` for all config
+  items, so servers like vtsls receive no settings
+- No document version tracking — always sends `version: 1` for
+  `didChange`, violating the LSP spec's monotonic version requirement
 - No `workspace/didChangeWatchedFiles` support
 - No pull diagnostic (`textDocument/diagnostic`) support
+- No `didClose` integration — files opened on servers are never closed
 - [Windows `.cmd` spawn failures](https://github.com/anthropics/claude-code/issues/16751)
 
 ## How It Works
@@ -48,11 +54,14 @@ Client (stdio) <--> lsp-proxy <--> vtsls
 | Package | Description |
 |---------|-------------|
 | [`packages/proxy`](packages/proxy) | The multiplexing proxy core |
+| [`packages/registry`](packages/registry) | Server config registry with pre-defined configs |
 | [`packages/claude-code`](packages/claude-code) | Claude Code editor integration |
 | [`packages/config-default`](packages/config-default) | Example server configs (vtsls + eslint for TS/JS) |
 | [`packages/vscode-eslint-extracted`](packages/vscode-eslint-extracted) | ESLint language server extracted from the VS Code extension |
 
 ## Quick Start
+
+Requires Node.js >= 22.16.
 
 ```sh
 pnpm install
@@ -60,6 +69,20 @@ pnpm build
 ```
 
 ## Usage with Claude Code
+
+### Prerequisites
+
+Apply the `fix-lsp-support` patch from
+[tweakcc](https://github.com/Piebald-AI/tweakcc) before installing the proxy
+plugin. The patch removes validation guards that reject unimplemented config
+fields (`restartOnCrash`, `startupTimeout`, `shutdownTimeout`) and injects
+automatic `textDocument/didOpen` before LSP requests:
+
+```sh
+pnpm dlx tweakcc --apply --patches "fix-lsp-support"
+```
+
+### Generate plugin files
 
 Generate the plugin files from your config package:
 
@@ -96,61 +119,10 @@ Disable individual LSP plugins that handle the same file types:
 
 ## Custom Server Configuration
 
-To use different LSP servers, create your own config package:
-
-```sh
-mkdir my-lsp-config && cd my-lsp-config
-pnpm init
-pnpm add lsp-proxy lsp-proxy-claude-code
-pnpm add vscode-langservers-extracted  # or whatever servers you need
-```
-
-Create `.lsp-proxy.json`:
-
-```json
-{
-  "servers": ["css"]
-}
-```
-
-Create `servers/css.json`:
-
-```json
-{
-  "command": "node",
-  "args": ["./node_modules/vscode-langservers-extracted/bin/vscode-css-language-server", "--stdio"],
-  "languages": {
-    "css": [".css"],
-    "scss": [".scss"],
-    "less": [".less"]
-  },
-  "transport": "stdio"
-}
-```
-
-Servers that need configuration can include a `settings` field. The proxy
-delivers these via `workspace/didChangeConfiguration` after init and responds
-to `workspace/configuration` pulls:
-
-```json
-{
-  "command": "node",
-  "args": ["./node_modules/vscode-eslint-extracted/dist/eslintServer.js", "--stdio"],
-  "languages": { "typescript": [".ts"] },
-  "transport": "stdio",
-  "settings": {
-    "validate": "on",
-    "run": "onType"
-  }
-}
-```
-
-Generate and register:
-
-```sh
-pnpm exec generate-claude-plugin
-claude --plugin-dir /path/to/my-lsp-config
-```
+To use different LSP servers, create your own config package. See
+[`packages/config-default`](packages/config-default) for a step-by-step
+guide and the full server config schema in
+[`packages/proxy`](packages/proxy).
 
 ## Logging
 
@@ -184,4 +156,4 @@ pnpm build       # type-check + lint + test + generate plugin
 
 ## Roadmap
 
-See [AGENTS.md](./AGENTS.md) for the full design and milestone plan.
+See [AGENTS.md](./AGENTS.md) for milestones and design context.
