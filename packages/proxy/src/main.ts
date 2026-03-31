@@ -1,4 +1,5 @@
 import { createWriteStream, mkdirSync, watch } from 'node:fs';
+import { readdir, stat, unlink } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { loadProxyConfig, loadServerConfig, ownPackageDir } from './config.js';
@@ -47,6 +48,33 @@ const watchConfigForLogLevel = (configDir: string, log: Logger): Disposable => {
   };
 };
 
+const LOG_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+/** Delete log files older than LOG_MAX_AGE_MS. Safe for concurrent startup —
+ *  ENOENT from a parallel cleanup is silently ignored. */
+const pruneOldLogs = async (logDir: string): Promise<void> => {
+  const now = Date.now();
+  let files: string[];
+  try {
+    files = await readdir(logDir);
+  }
+  catch {
+    return;
+  }
+  await Promise.all(
+    files
+      .filter(f => f.endsWith('.log'))
+      .map(async (f) => {
+        const path = join(logDir, f);
+        try {
+          const s = await stat(path);
+          if (now - s.mtimeMs > LOG_MAX_AGE_MS) await unlink(path);
+        }
+        catch { /* ENOENT from concurrent cleanup or permission error — ignore */ }
+      }),
+  );
+};
+
 const defaultLogDir = (): string => {
   if (process.platform === 'win32') {
     return join(process.env['LOCALAPPDATA'] ?? join(homedir(), 'AppData', 'Local'), 'lsp-proxy', 'logs');
@@ -61,6 +89,7 @@ const main = async (): Promise<void> => {
   // Priority: --log-dir CLI flag > logDir in config > default
   const logDir = parseArg('--log-dir') ?? proxyConfig.logDir ?? defaultLogDir();
   mkdirSync(logDir, { recursive: true });
+  void pruneOldLogs(logDir);
   // Timestamp + PID: multiple editors may launch proxies in the same second.
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const logFile = createWriteStream(join(logDir, `${timestamp}-${String(process.pid)}.log`));
