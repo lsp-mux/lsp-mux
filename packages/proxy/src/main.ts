@@ -1,10 +1,7 @@
 import { createWriteStream, mkdirSync, watch } from 'node:fs';
-import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
-import * as v from 'valibot';
 import { loadProxyConfig, loadServerConfig, ownPackageDir } from './config.js';
-import { ProxyConfigSchema } from './config-schema.js';
 import type { ServerConfig } from './types.js';
 import { LspProxy } from './proxy.js';
 import { createLogger } from './logger.js';
@@ -18,24 +15,34 @@ const parseArg = (flag: string): string | undefined => {
 };
 
 const watchConfigForLogLevel = (configDir: string, log: Logger): Disposable => {
-  const configPath = join(configDir, 'proxy.config.json');
   let debounce: ReturnType<typeof setTimeout> | undefined;
 
-  const watcher = watch(configPath, () => {
+  const reload = () => {
     clearTimeout(debounce);
     debounce = setTimeout(() => {
-      void readFile(configPath, 'utf-8').then((text: string) => {
-        const parsed = v.safeParse(ProxyConfigSchema, JSON.parse(text));
-        if (!parsed.success) return;
-        log.setLevel(parsed.output.logLevel);
-      }).catch(() => { /* ignore read/parse errors during write */ });
+      void loadProxyConfig(configDir)
+        .then((cfg) => { log.setLevel(cfg.logLevel); })
+        .catch(() => { /* ignore read/parse errors during write */ });
     }, 200);
-  });
+  };
+
+  const tryWatch = (path: string) => {
+    try {
+      return watch(path, reload);
+    }
+    catch {
+      return undefined;
+    }
+  };
+  const watchers = [
+    tryWatch(join(configDir, '.lsp-proxy.json')),
+    tryWatch(join(configDir, '.lsp-proxy.local.json')),
+  ];
 
   return {
     [Symbol.dispose]() {
       clearTimeout(debounce);
-      watcher.close();
+      for (const w of watchers) w?.close();
     },
   };
 };

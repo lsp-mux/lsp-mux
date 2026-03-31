@@ -6,6 +6,9 @@ import {
   lookupRegistryEntry, serverConfigFromEntry,
   deepMerge, validateNpmPackage,
 } from 'lsp-proxy-registry';
+
+const CONFIG_FILE = '.lsp-proxy.json';
+const LOCAL_CONFIG_FILE = '.lsp-proxy.local.json';
 import { ProxyConfigSchema, ServerConfigSchema } from './config-schema.js';
 import type { ProxyConfig, ServerConfig } from './config-schema.js';
 
@@ -42,8 +45,12 @@ const resolveServerPaths = (config: ServerConfig, configDir: string): ServerConf
 
 export const loadProxyConfig = async (
   configDir = ownPackageDir,
-): Promise<ProxyConfig> =>
-  v.parse(ProxyConfigSchema, await parseJsonFile(join(configDir, 'proxy.config.json')));
+): Promise<ProxyConfig> => {
+  const base = await parseJsonFile(join(configDir, CONFIG_FILE));
+  const local = await tryLoadJsonFile(join(configDir, LOCAL_CONFIG_FILE));
+  const merged = local ? deepMerge(base as Record<string, unknown>, local) : base;
+  return v.parse(ProxyConfigSchema, merged);
+};
 
 export const loadServerConfig = async (
   name: string,

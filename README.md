@@ -105,7 +105,7 @@ pnpm add lsp-proxy lsp-proxy-claude-code
 pnpm add vscode-langservers-extracted  # or whatever servers you need
 ```
 
-Create `proxy.config.json`:
+Create `.lsp-proxy.json`:
 
 ```json
 {
@@ -155,12 +155,12 @@ claude --plugin-dir /path/to/my-lsp-config
 ## Logging
 
 The proxy logs to `<logDir>/<timestamp>-<pid>.log`. The log directory is
-resolved via `--log-dir` CLI flag > `logDir` in `proxy.config.json` >
+resolved via `--log-dir` CLI flag > `logDir` in `.lsp-proxy.json` >
 platform default (`$XDG_DATA_HOME/lsp-proxy/logs` on Linux/macOS,
 `%LOCALAPPDATA%\lsp-proxy\logs` on Windows). The default level is INFO.
 
 To change the level at runtime (no restart needed), add `logLevel` to your
-`proxy.config.json`:
+`.lsp-proxy.json`:
 
 ```json
 {

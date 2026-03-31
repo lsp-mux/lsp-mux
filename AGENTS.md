@@ -35,7 +35,7 @@ pnpm workspace monorepo:
   `postinstall`. Needed because `vscode-langservers-extracted` doesn't
   support ESLint 10 flat config.
 
-The proxy accepts `--config-dir` to locate `proxy.config.json` and
+The proxy accepts `--config-dir` to locate `.lsp-proxy.json` and
 `servers/*.json`. The `generate-claude-plugin` bin reads configs from `cwd`
 and writes `.lsp.json` / `.claude-plugin/plugin.json` there. Relative paths
 in server configs (e.g., `./node_modules/...`) are resolved to absolute
@@ -75,7 +75,7 @@ Each server is defined in its own JSON file in the config package's `servers/`
 directory (command, args, languages, transport, settings). The proxy loads
 configs from `--config-dir` (or its own package root as fallback).
 
-A separate `proxy.config.json` defines which servers to load:
+A separate `.lsp-proxy.json` defines which servers to load:
 
 ```jsonc
 {
@@ -170,10 +170,10 @@ Future config fields (not yet implemented):
   config package with different servers without forking the proxy.
 - **Logging** — file-based, not stderr, so logs persist and don't
   interfere with stdio transport. Log directory resolved via
-  `--log-dir` CLI flag > `logDir` in `proxy.config.json` >
+  `--log-dir` CLI flag > `logDir` in `.lsp-proxy.json` >
   platform default (`$XDG_DATA_HOME/lsp-proxy/logs` on Linux/macOS,
   `%LOCALAPPDATA%\lsp-proxy\logs` on Windows). Runtime level changes
-  via `logLevel` in `proxy.config.json` (file watched). Server
+  via `logLevel` in `.lsp-proxy.json` (file watched). Server
   `window/logMessage` forwarded at appropriate severity.
 
 ### Volar 3 Forwarding (Example)
