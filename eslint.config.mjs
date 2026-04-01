@@ -80,6 +80,6 @@ export default defineConfig(
   },
   {
     name: 'root/ignores',
-    ignores: ['**/dist/**'],
+    ignores: ['**/dist/**', '**/*.generated.ts'],
   },
 );

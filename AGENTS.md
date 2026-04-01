@@ -29,17 +29,20 @@ pnpm workspace monorepo:
 - **`packages/proxy`** — the multiplexing proxy core. Dependencies:
   `vscode-jsonrpc`, `picomatch`, `valibot`.
 - **`packages/registry`** — server config registry. Pre-defined configs
-  for common LSP servers (vtsls, eslint). The proxy resolves server names
-  from the registry, deep-merges user overrides, and validates npm deps.
+  for common LSP servers (vtsls, eslint) embedded via build-time codegen
+  from `entries/*.json`. The proxy resolves server names from the registry,
+  deep-merges user overrides, and validates npm deps.
 - **`packages/claude-code`** — Claude Code editor integration. Provides
   `generate-claude-plugin` bin that produces `.lsp.json` and
   `.claude-plugin/` artifacts from a config directory.
-- **`packages/config-default`** — example server configs (vtsls + eslint
-  for TS/JS). Depends on the proxy, claude-code, and LSP server packages.
-  Users create their own config package with different servers.
+- **`packages/config-default`** — default server configs (vtsls + eslint
+  for TS/JS). Installable standalone from npm — `postinstall` generates
+  plugin files automatically. Users can create their own config package
+  with different servers.
 - **`packages/vscode-eslint-extracted`** — ESLint language server extracted
   from the VS Code ESLint extension VSIX. Downloads the pre-built server on
-  `postinstall`. Needed because `vscode-langservers-extracted` doesn't
+  `postinstall`. Provides `vscode-eslint-extract` bin for manual
+  re-download. Needed because `vscode-langservers-extracted` doesn't
   support ESLint 10 flat config.
 
 ## Architecture
@@ -88,6 +91,9 @@ timeout/fallback, and capability-aware routing.
 - `valibot` for config schema validation
 - `picomatch` for glob pattern matching (file watcher exclusions)
 - Distributed as a Claude Code LSP plugin (`.lsp.json` + `plugin.json`)
+- All packages publish from `dist/source/` via `publishConfig.directory`
+- `scripts/prepare-publish.ts` copies manifests and merges
+  `publishConfig.scripts` (not natively supported by pnpm)
 - Server-agnostic — works with any `.lsp.json`-compatible server
 
 ## References

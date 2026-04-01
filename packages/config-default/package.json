@@ -3,8 +3,20 @@
   "version": "0.1.0",
   "description": "Default server configs (vtsls, eslint) for lsp-proxy",
   "type": "module",
+  "files": [
+    ".lsp-proxy.json",
+    "README.md"
+  ],
+  "publishConfig": {
+    "directory": "dist/source",
+    "linkDirectory": false,
+    "scripts": {
+      "postinstall": "generate-claude-plugin"
+    }
+  },
   "scripts": {
-    "generate-plugin": "generate-claude-plugin"
+    "generate-plugin": "generate-claude-plugin",
+    "prepack": "cpy .lsp-proxy.json README.md dist/source/"
   },
   "dependencies": {
     "@vtsls/language-server": "catalog:lsp",

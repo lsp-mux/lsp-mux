@@ -12,7 +12,10 @@ const LOCAL_CONFIG_FILE = '.lsp-proxy.local.json';
 import { ProxyConfigSchema, ServerConfigSchema } from './config-schema.js';
 import type { ProxyConfig, ServerConfig } from './config-schema.js';
 
-export const ownPackageDir = join(dirname(fileURLToPath(import.meta.url)), '..');
+export const ownPackageDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+
+/** Resolved path to the proxy entry point (main.js), stable across workspace and published layouts. */
+export const proxyMainEntry = join(dirname(fileURLToPath(import.meta.url)), 'main.js');
 
 const parseJsonFile = async (path: string): Promise<unknown> =>
   JSON.parse(await readFile(path, 'utf-8'));
@@ -61,10 +64,8 @@ export const loadServerConfig = async (
     throw new Error(`Invalid server name: ${name}`);
   }
 
-  const [registryEntry, userOverride] = await Promise.all([
-    lookupRegistryEntry(name),
-    tryLoadJsonFile(join(configDir, 'servers', `${name}.json`)),
-  ]);
+  const registryEntry = lookupRegistryEntry(name);
+  const userOverride = await tryLoadJsonFile(join(configDir, 'servers', `${name}.json`));
 
   const base = registryEntry
     ? serverConfigFromEntry(registryEntry)

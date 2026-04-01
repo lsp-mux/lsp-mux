@@ -1,6 +1,7 @@
 node_modules/
 dist/
 *.tsbuildinfo
+*.generated.ts
 .lsp.json
 .lsp-proxy.local.json
 .claude-plugin/

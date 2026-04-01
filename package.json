@@ -6,11 +6,13 @@
     "node": ">=22.16"
   },
   "scripts": {
-    "build": "concurrently -g pnpm:compile pnpm:lint pnpm:test && pnpm generate-plugin",
+    "build": "pnpm -r --if-present generate && concurrently -g pnpm:compile pnpm:prepare-publish pnpm:lint pnpm:test && pnpm generate-plugin && pnpm run pack",
     "compile": "tsc -b",
-    "compile:watch": "pnpm compile --watch",
+    "compile:watch": "tsc -b --watch",
     "generate-plugin": "pnpm -C packages/config-default generate-plugin",
     "lint": "eslint --max-warnings=0 .",
+    "pack": "node --experimental-strip-types scripts/pack-all.ts",
+    "prepare-publish": "node --experimental-strip-types scripts/prepare-publish.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "watch": "concurrently -g pnpm:compile:watch pnpm:test:watch"
@@ -28,6 +30,7 @@
     "@vitest/ui": "catalog:test",
     "concurrently": "catalog:build",
     "console-fail-test": "catalog:test",
+    "cpy-cli": "catalog:",
     "eslint": "catalog:lint",
     "eslint-import-resolver-typescript": "catalog:lint",
     "eslint-plugin-import-x": "catalog:lint",
@@ -37,6 +40,7 @@
     "tsx": "catalog:build",
     "typescript": "catalog:build",
     "typescript-eslint": "catalog:lint",
+    "valibot": "catalog:",
     "vitest": "catalog:test"
   }
 }

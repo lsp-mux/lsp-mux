@@ -3,11 +3,21 @@
   "version": "0.1.0",
   "description": "Multiplexing LSP proxy",
   "type": "module",
-  "main": "dist/main.js",
+  "main": "dist/source/main.js",
   "exports": {
-    ".": "./dist/main.js",
-    "./config": "./dist/config.js",
-    "./logger": "./dist/logger.js"
+    ".": "./dist/source/main.js",
+    "./config": "./dist/source/config.js",
+    "./logger": "./dist/source/logger.js"
+  },
+  "publishConfig": {
+    "directory": "dist/source",
+    "linkDirectory": false,
+    "main": "main.js",
+    "exports": {
+      ".": "./main.js",
+      "./config": "./config.js",
+      "./logger": "./logger.js"
+    }
   },
   "engines": {
     "node": ">=22.16"

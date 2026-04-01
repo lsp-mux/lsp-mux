@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { loadProxyConfig, loadServerConfig, ownPackageDir } from 'lsp-proxy/config';
+import { loadProxyConfig, loadServerConfig, proxyMainEntry } from 'lsp-proxy/config';
 import { createLogger } from 'lsp-proxy/logger';
 
 const log = createLogger();
@@ -29,7 +29,7 @@ const main = async (): Promise<void> => {
   const lspJson = {
     'lsp-proxy': {
       command: 'node',
-      args: [join(ownPackageDir, 'dist', 'main.js'), '--config-dir', configDir],
+      args: [proxyMainEntry, '--config-dir', configDir],
       extensionToLanguage,
       transport: 'stdio',
       initializationOptions: {},

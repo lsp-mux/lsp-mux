@@ -6,6 +6,13 @@
   "bin": {
     "generate-claude-plugin": "bin/generate-plugin.ts"
   },
+  "publishConfig": {
+    "directory": "dist/source",
+    "linkDirectory": false,
+    "bin": {
+      "generate-claude-plugin": "bin/generate-plugin.js"
+    }
+  },
   "engines": {
     "node": ">=22.16"
   },

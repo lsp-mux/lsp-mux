@@ -1,8 +1,9 @@
 # lsp-proxy-config-default
 
-Example config package for [lsp-proxy](../proxy). Bundles vtsls and
-ESLint for TypeScript/JavaScript development. Use this as a starting point
-for your own config package.
+Default [lsp-proxy](../proxy) config package for
+[Claude Code](https://docs.anthropic.com/en/docs/claude-code). Bundles
+vtsls and ESLint for TypeScript/JavaScript development — works out of
+the box with no additional configuration.
 
 ## What's included
 
@@ -13,21 +14,45 @@ for your own config package.
 Server configs come from the [registry](../registry). Override any
 setting by adding a `servers/vtsls.json` or `servers/eslint.json` file.
 
-## Usage
+## Standalone installation
+
+Install the package globally and point Claude Code at it:
 
 ```sh
-pnpm install
-pnpm generate-plugin
+pnpm add -g lsp-proxy-config-default
 ```
 
-This produces:
+The `postinstall` script automatically generates the plugin files. Then
+register the plugin in Claude Code:
 
-- `.lsp.json` — LSP server registration for Claude Code
-- `.claude-plugin/plugin.json` — plugin metadata
-- `.claude-plugin/marketplace.json` — local marketplace metadata
+```
+/plugin marketplace add /absolute/path/to/global/lsp-proxy-config-default
+/plugin install lsp-proxy@lsp-proxy
+```
 
-Generated files contain absolute paths. Re-run `pnpm generate-plugin` if
-you move the directory.
+Disable any conflicting LSP plugins:
+
+```
+/plugin disable vtsls@claude-code-lsps
+```
+
+## Development usage
+
+When working from the monorepo, plugin files are generated as part of the
+build:
+
+```sh
+pnpm build
+```
+
+To regenerate manually:
+
+```sh
+pnpm -C packages/config-default generate-plugin
+```
+
+Generated files contain absolute paths. Re-run `generate-plugin` if you
+move the directory.
 
 ## Files
 
@@ -71,12 +96,13 @@ For servers not in the registry, create `servers/<name>.json`:
 }
 ```
 
-Add a generate script to `package.json`:
+Add generate and postinstall scripts to `package.json`:
 
 ```json
 {
   "scripts": {
-    "generate-plugin": "generate-claude-plugin"
+    "generate-plugin": "generate-claude-plugin",
+    "postinstall": "generate-claude-plugin"
   }
 }
 ```

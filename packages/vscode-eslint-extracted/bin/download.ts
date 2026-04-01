@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { createWriteStream, existsSync } from 'node:fs';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
@@ -13,7 +14,6 @@ const outFile = join(outDir, 'eslintServer.js');
 
 if (existsSync(outFile)) {
   console.log('vscode-eslint-extracted: eslintServer.js already exists, skipping download');
-  // eslint-disable-next-line n/no-process-exit -- early exit, not error handling
   process.exit(0);
 }
 

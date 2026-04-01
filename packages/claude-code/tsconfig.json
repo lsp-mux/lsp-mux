@@ -1,7 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "noEmit": true
+    "composite": true,
+    "outDir": "dist/source",
+    "rootDir": "."
   },
-  "include": ["bin"]
+  "include": ["bin"],
+  "references": [{ "path": "../proxy/src" }]
 }

@@ -4,7 +4,17 @@
   "description": "Server config registry for lsp-proxy",
   "type": "module",
   "exports": {
-    ".": "./dist/index.js"
+    ".": "./dist/source/index.js"
+  },
+  "publishConfig": {
+    "directory": "dist/source",
+    "linkDirectory": false,
+    "exports": {
+      ".": "./index.js"
+    }
+  },
+  "scripts": {
+    "generate": "node --experimental-strip-types scripts/generate-entries.ts"
   },
   "engines": {
     "node": ">=22.16"

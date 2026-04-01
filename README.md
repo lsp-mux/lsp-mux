@@ -56,12 +56,42 @@ Client (stdio) <--> lsp-proxy <--> vtsls
 | [`packages/proxy`](packages/proxy) | The multiplexing proxy core |
 | [`packages/registry`](packages/registry) | Server config registry with pre-defined configs |
 | [`packages/claude-code`](packages/claude-code) | Claude Code editor integration |
-| [`packages/config-default`](packages/config-default) | Example server configs (vtsls + eslint for TS/JS) |
+| [`packages/config-default`](packages/config-default) | Default server configs (vtsls + eslint for TS/JS) |
 | [`packages/vscode-eslint-extracted`](packages/vscode-eslint-extracted) | ESLint language server extracted from the VS Code extension |
 
 ## Quick Start
 
-Requires Node.js >= 22.16.
+### Standalone (npm)
+
+Requires Node.js >= 22.16. Install the default config package with vtsls
+and ESLint:
+
+```sh
+pnpm add -g lsp-proxy-config-default
+```
+
+The `postinstall` script generates plugin files automatically. Then apply
+the prerequisite patch and register the plugin in Claude Code:
+
+```sh
+pnpm dlx tweakcc --apply --patches "fix-lsp-support"
+```
+
+```
+/plugin marketplace add /absolute/path/to/global/lsp-proxy-config-default
+/plugin install lsp-proxy@lsp-proxy
+```
+
+Disable any conflicting LSP plugins:
+
+```
+/plugin disable vtsls@claude-code-lsps
+```
+
+See [`packages/config-default`](packages/config-default) for details and
+custom config packages.
+
+### From source
 
 ```sh
 pnpm install
@@ -81,18 +111,6 @@ automatic `textDocument/didOpen` before LSP requests:
 ```sh
 pnpm dlx tweakcc --apply --patches "fix-lsp-support"
 ```
-
-### Generate plugin files
-
-Generate the plugin files from your config package:
-
-```sh
-pnpm -C packages/config-default generate-plugin
-```
-
-This creates `.lsp.json` and `.claude-plugin/plugin.json` in
-`packages/config-default/`. The generated files contain absolute paths —
-re-run this command if you move the directory.
 
 ### Dev/testing (current session only)
 
@@ -151,7 +169,7 @@ severity (Error → error, Warning → warn, Info/Log → debug).
 
 ```sh
 pnpm test        # vitest only
-pnpm build       # type-check + lint + test + generate plugin
+pnpm build       # type-check + lint + test + pack
 ```
 
 ## Roadmap
