@@ -19,8 +19,8 @@
     "prepack": "cpy .lsp-proxy.json README.md dist/source/"
   },
   "dependencies": {
+    "@lsp-mux/vscode-eslint-lsp": "catalog:lsp",
     "@vtsls/language-server": "catalog:lsp",
-    "lsp-proxy-claude-code": "workspace:*",
-    "vscode-eslint-extracted": "workspace:*"
+    "lsp-proxy-claude-code": "workspace:*"
   }
 }

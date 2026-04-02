@@ -39,11 +39,6 @@ pnpm workspace monorepo:
   for TS/JS). Installable standalone from npm — `postinstall` generates
   plugin files automatically. Users can create their own config package
   with different servers.
-- **`packages/vscode-eslint-extracted`** — ESLint language server extracted
-  from the VS Code ESLint extension VSIX. Downloads the pre-built server on
-  `postinstall`. Provides `vscode-eslint-extract` bin for manual
-  re-download. Needed because `vscode-langservers-extracted` doesn't
-  support ESLint 10 flat config.
 
 ## Architecture
 

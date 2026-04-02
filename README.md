@@ -57,7 +57,6 @@ Client (stdio) <--> lsp-proxy <--> vtsls
 | [`packages/registry`](packages/registry) | Server config registry with pre-defined configs |
 | [`packages/claude-code`](packages/claude-code) | Claude Code editor integration |
 | [`packages/config-default`](packages/config-default) | Default server configs (vtsls + eslint for TS/JS) |
-| [`packages/vscode-eslint-extracted`](packages/vscode-eslint-extracted) | ESLint language server extracted from the VS Code extension |
 
 ## Quick Start
 

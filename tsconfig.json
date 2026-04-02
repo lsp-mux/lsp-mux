@@ -4,7 +4,6 @@
     { "path": "packages/registry" },
     { "path": "packages/proxy" },
     { "path": "packages/claude-code" },
-    { "path": "packages/vscode-eslint-extracted" },
     { "path": "scripts" },
     { "path": "test" }
   ]

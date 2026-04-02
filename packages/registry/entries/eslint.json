@@ -1,7 +1,7 @@
 {
-  "npm": "vscode-eslint-extracted",
+  "npm": "@lsp-mux/vscode-eslint-lsp",
   "command": "node",
-  "args": ["./node_modules/vscode-eslint-extracted/dist/eslintServer.js", "--stdio"],
+  "args": ["./node_modules/@lsp-mux/vscode-eslint-lsp", "--stdio"],
   "languages": {
     "typescript": [".ts", ".mts", ".cts"],
     "typescriptreact": [".tsx"],
