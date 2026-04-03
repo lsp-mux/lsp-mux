@@ -10,6 +10,7 @@ deep merging, and npm package validation.
 |------|-------------|-------------|
 | `vtsls` | `@vtsls/language-server` | TypeScript / JavaScript |
 | `eslint` | `@lsp-mux/vscode-eslint-lsp` | ESLint diagnostics |
+| `oxlint` | `oxlint` | Oxlint diagnostics |
 
 Configs live in `entries/<name>.json`. Each entry contains the full server
 config (`command`, `args`, `languages`, `transport`, `settings`,

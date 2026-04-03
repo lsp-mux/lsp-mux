@@ -21,6 +21,7 @@
   "dependencies": {
     "@lsp-mux/vscode-eslint-lsp": "catalog:lsp",
     "@vtsls/language-server": "catalog:lsp",
-    "lsp-proxy-claude-code": "workspace:*"
+    "lsp-proxy-claude-code": "workspace:*",
+    "oxlint": "catalog:lsp"
   }
 }
