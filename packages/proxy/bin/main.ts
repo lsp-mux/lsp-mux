@@ -2,11 +2,11 @@ import { createWriteStream, mkdirSync, watch } from 'node:fs';
 import { readdir, stat, unlink } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { loadProxyConfig, loadServerConfig, ownPackageDir } from './config.js';
-import type { ServerConfig } from './types.js';
-import { LspProxy } from './proxy.js';
-import { createLogger } from './logger.js';
-import type { Logger } from './logger.js';
+import { loadProxyConfig, loadServerConfig, ownPackageDir } from '../src/config.ts';
+import type { ServerConfig } from '../src/types.ts';
+import { LspProxy } from '../src/proxy.ts';
+import { createLogger } from '../src/logger.ts';
+import type { Logger } from '../src/logger.ts';
 
 const parseArg = (flag: string): string | undefined => {
   const idx = process.argv.indexOf(flag);

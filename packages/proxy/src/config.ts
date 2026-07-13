@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { basename, dirname, join, resolve } from 'node:path';
+import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as v from 'valibot';
 import {
@@ -9,13 +9,17 @@ import {
 
 const CONFIG_FILE = '.lsp-proxy.json';
 const LOCAL_CONFIG_FILE = '.lsp-proxy.local.json';
-import { ProxyConfigSchema, ServerConfigSchema } from './config-schema.js';
-import type { ProxyConfig, ServerConfig } from './config-schema.js';
+import { ProxyConfigSchema, ServerConfigSchema } from './config-schema.ts';
+import type { ProxyConfig, ServerConfig } from './config-schema.ts';
 
-export const ownPackageDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const selfPath = fileURLToPath(import.meta.url);
+const selfDir = dirname(selfPath);
 
-/** Resolved path to the proxy entry point (main.js), stable across workspace and published layouts. */
-export const proxyMainEntry = join(dirname(fileURLToPath(import.meta.url)), 'main.js');
+export const ownPackageDir = join(selfDir, '..');
+
+/** Resolved path to the proxy entry point (bin/main), stable across workspace
+ *  (.ts source) and published (.js) layouts — extension follows this module. */
+export const proxyMainEntry = join(selfDir, '..', 'bin', `main${extname(selfPath)}`);
 
 const parseJsonFile = async (path: string): Promise<unknown> =>
   JSON.parse(await readFile(path, 'utf-8'));
