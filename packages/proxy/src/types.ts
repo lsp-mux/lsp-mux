@@ -5,8 +5,8 @@ import type { RequestMessage, NotificationMessage } from 'vscode-jsonrpc';
 
 // --- Server & proxy configuration ---
 
-export { ServerConfigSchema, ProxyConfigSchema } from './config-schema.js';
-export type { ServerConfig, ProxyConfig } from './config-schema.js';
+export { ServerConfigSchema, ProxyConfigSchema } from './config-schema.ts';
+export type { ServerConfig, ProxyConfig } from './config-schema.ts';
 
 // --- Document tracking ---
 

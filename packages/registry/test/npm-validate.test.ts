@@ -2,7 +2,7 @@ import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { afterAll, describe, it } from 'vitest';
-import { validateNpmPackage } from '../src/npm-validate.js';
+import { validateNpmPackage } from '../src/npm-validate.ts';
 
 const tmpDir = join(import.meta.dirname, '..', 'dist', 'test-fixtures', randomUUID().slice(0, 8));
 

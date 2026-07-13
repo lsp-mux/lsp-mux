@@ -1,5 +1,5 @@
-import type { Message } from './types.js';
-import { Message as Msg } from './types.js';
+import type { Message } from './types.ts';
+import { Message as Msg } from './types.ts';
 
 export interface MessageBuffer {
   /** Buffer a message. Returns false if full. */

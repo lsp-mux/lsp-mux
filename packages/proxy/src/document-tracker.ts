@@ -1,6 +1,6 @@
 import * as v from 'valibot';
-import type { TrackedDocument } from './types.js';
-import { normalizeFileUri } from './uri.js';
+import type { TrackedDocument } from './types.ts';
+import { normalizeFileUri } from './uri.ts';
 
 export type DocumentMap = ReadonlyMap<string, TrackedDocument>;
 

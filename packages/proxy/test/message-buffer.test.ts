@@ -1,7 +1,7 @@
 import { describe, it } from 'vitest';
 import { faker } from '@faker-js/faker';
-import { createMessageBuffer } from '../src/message-buffer.js';
-import { createRequest, createNotification } from '../src/types.js';
+import { createMessageBuffer } from '../src/message-buffer.ts';
+import { createRequest, createNotification } from '../src/types.ts';
 
 describe('MessageBuffer', () => {
   it('buffers and flushes messages in order', ({ expect }) => {

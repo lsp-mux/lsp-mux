@@ -1,4 +1,4 @@
-import { isPlainObject } from './capabilities.js';
+import { isPlainObject } from './capabilities.ts';
 
 export interface CompensationFlags {
   /** True when the client lacks workspace/didChangeWatchedFiles — proxy watches files locally. */

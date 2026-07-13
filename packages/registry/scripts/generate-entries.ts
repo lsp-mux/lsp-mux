@@ -15,7 +15,7 @@ const properties = files.map((f) => {
 const source = `// Auto-generated from entries/*.json — do not edit manually.
 // Regenerate: pnpm -C packages/registry generate
 
-import type { RegistryEntry } from './index.js';
+import type { RegistryEntry } from './index.ts';
 
 export const entries: Readonly<Record<string, RegistryEntry>> = {
 ${properties.join(',\n')},

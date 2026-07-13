@@ -1,6 +1,6 @@
 import { PassThrough } from 'node:stream';
 import { describe, it } from 'vitest';
-import { createLogger } from '../src/logger.js';
+import { createLogger } from '../src/logger.ts';
 
 /** Read all buffered data from a PassThrough stream as a string. */
 const drain = (stream: PassThrough): string => {

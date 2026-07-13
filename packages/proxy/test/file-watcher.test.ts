@@ -6,7 +6,7 @@ import {
   empty, register, unregister, unregisterServer, matchEvent,
   classifyChange, createExcludeMatcher, resolveRoot, isWithinRoot,
   FileChangeType, WatchKind,
-} from '../src/file-watcher.js';
+} from '../src/file-watcher.ts';
 import { faker } from '@faker-js/faker';
 
 const SERVER_A = faker.string.alpha(8);

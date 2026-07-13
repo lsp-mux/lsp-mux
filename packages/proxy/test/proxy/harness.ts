@@ -3,13 +3,13 @@ import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { PassThrough, Writable } from 'node:stream';
 import { pathToFileURL } from 'node:url';
-import { normalizeFileUri } from '../../src/uri.js';
+import { normalizeFileUri } from '../../src/uri.ts';
 import { test } from 'vitest';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
-import { LspProxy } from '../../src/proxy.js';
-import { createLogger } from '../../src/logger.js';
-import type { Logger } from '../../src/logger.js';
-import type { ServerConfig } from '../../src/types.js';
+import { LspProxy } from '../../src/proxy.ts';
+import { createLogger } from '../../src/logger.ts';
+import type { Logger } from '../../src/logger.ts';
+import type { ServerConfig } from '../../src/types.ts';
 
 export type { LspProxy, ServerConfig };
 
@@ -17,7 +17,7 @@ export const MOCK_SERVER = join(import.meta.dirname, '..', 'helpers', 'mock-serv
 
 export const mockServerConfig: ServerConfig = {
   command: process.execPath,
-  args: ['--import', 'tsx', MOCK_SERVER],
+  args: [MOCK_SERVER],
   languages: { typescript: ['.ts'] },
   transport: 'stdio',
 };

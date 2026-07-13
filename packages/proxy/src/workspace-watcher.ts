@@ -2,12 +2,12 @@ import { readFile, stat } from 'node:fs/promises';
 import { watch, type FSWatcher } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { normalizeFileUri } from './uri.js';
-import type { TrackedDocument } from './types.js';
-import * as fw from './file-watcher.js';
-import { createFlushScheduler } from './flush-scheduler.js';
-import type { FlushScheduler } from './flush-scheduler.js';
-import type { Logger } from './logger.js';
+import { normalizeFileUri } from './uri.ts';
+import type { TrackedDocument } from './types.ts';
+import * as fw from './file-watcher.ts';
+import { createFlushScheduler } from './flush-scheduler.ts';
+import type { FlushScheduler } from './flush-scheduler.ts';
+import type { Logger } from './logger.ts';
 
 const WATCHER_DEBOUNCE_MS = 250;
 const WATCHER_MAX_WAIT_MS = 2000;

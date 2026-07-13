@@ -1,9 +1,9 @@
 import { describe, it } from 'vitest';
-import { createRouter, extractUri } from '../src/router.js';
-import type { ServerEntry } from '../src/router.js';
-import type { ServerConfig } from '../src/types.js';
+import { createRouter, extractUri } from '../src/router.ts';
+import type { ServerEntry } from '../src/router.ts';
+import type { ServerConfig } from '../src/types.ts';
 import { faker } from '@faker-js/faker';
-import { fakeUri } from './helpers/fake.js';
+import { fakeUri } from './helpers/fake.ts';
 
 const makeServer = (name: string, languages: Record<string, string[]>): ServerEntry => ({
   name,

@@ -1,24 +1,24 @@
 import { stat } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
-import type { Message, NotificationMessage, RequestMessage, ResponseMessage, ServerConfig } from './types.js';
+import type { Message, NotificationMessage, RequestMessage, ResponseMessage, ServerConfig } from './types.ts';
 import * as v from 'valibot';
-import { Message as Msg, createNotification, DOCUMENT_SYNC_METHODS, LSP_ERROR_CODES, LSP_MESSAGE_TYPE } from './types.js';
-import { createManagedServer } from './managed-server.js';
-import type { ManagedServer, ServerState } from './managed-server.js';
-import { createRouter, extractUri } from './router.js';
-import type { Router } from './router.js';
-import { isPlainObject, STATIC_CAPABILITIES } from './capabilities.js';
-import { normalizeFileUri } from './uri.js';
-import { analyzeClientCapabilities } from './client-capabilities.js';
-import type { CompensationFlags } from './client-capabilities.js';
-import * as diag from './diagnostics-store.js';
-import * as docs from './document-tracker.js';
-import * as fw from './file-watcher.js';
-import type { RestartPolicy } from './restart-scheduler.js';
-import { WorkspaceWatcher } from './workspace-watcher.js';
-import { createLogger } from './logger.js';
-import type { Logger } from './logger.js';
+import { Message as Msg, createNotification, DOCUMENT_SYNC_METHODS, LSP_ERROR_CODES, LSP_MESSAGE_TYPE } from './types.ts';
+import { createManagedServer } from './managed-server.ts';
+import type { ManagedServer, ServerState } from './managed-server.ts';
+import { createRouter, extractUri } from './router.ts';
+import type { Router } from './router.ts';
+import { isPlainObject, STATIC_CAPABILITIES } from './capabilities.ts';
+import { normalizeFileUri } from './uri.ts';
+import { analyzeClientCapabilities } from './client-capabilities.ts';
+import type { CompensationFlags } from './client-capabilities.ts';
+import * as diag from './diagnostics-store.ts';
+import * as docs from './document-tracker.ts';
+import * as fw from './file-watcher.ts';
+import type { RestartPolicy } from './restart-scheduler.ts';
+import { WorkspaceWatcher } from './workspace-watcher.ts';
+import { createLogger } from './logger.ts';
+import type { Logger } from './logger.ts';
 
 const CancelParamsSchema = v.object({
   id: v.union([v.number(), v.string()]),
@@ -693,7 +693,7 @@ export class LspProxy {
   }
 
   /** Get documents with effective versions (client version + offset) for replay. */
-  private getDocumentsWithEffectiveVersions(): readonly import('./types.js').TrackedDocument[] {
+  private getDocumentsWithEffectiveVersions(): readonly import('./types.ts').TrackedDocument[] {
     return docs.toArray(this.documents).map((doc) => {
       const offset = this.versionOffsets.get(doc.uri) ?? 0;
       return offset > 0 ? { ...doc, version: doc.version + offset } : doc;

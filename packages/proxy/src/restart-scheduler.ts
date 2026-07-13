@@ -1,5 +1,5 @@
-import { defaultTimers } from './types.js';
-import type { Timers } from './types.js';
+import { defaultTimers } from './types.ts';
+import type { Timers } from './types.ts';
 
 export interface RestartPolicy {
   readonly maxRetries: number;

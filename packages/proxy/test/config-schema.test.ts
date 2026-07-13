@@ -1,8 +1,8 @@
 import { isAbsolute, join } from 'node:path';
 import { describe, it } from 'vitest';
 import * as v from 'valibot';
-import { ProxyConfigSchema, ServerConfigSchema } from '../src/config-schema.js';
-import { loadServerConfig } from '../src/config.js';
+import { ProxyConfigSchema, ServerConfigSchema } from '../src/config-schema.ts';
+import { loadServerConfig } from '../src/config.ts';
 
 describe('ProxyConfigSchema', () => {
   it('includes default watcher excludes when none specified', ({ expect }) => {

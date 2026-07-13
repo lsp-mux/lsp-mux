@@ -10,8 +10,8 @@
 import * as v from 'valibot';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import type { ResponseMessage } from 'vscode-jsonrpc';
-import { Message as Msg, createNotification, createRequest } from '../../src/types.js';
-import { DidOpenParamsSchema, DidChangeParamsSchema, DidCloseParamsSchema } from '../../src/document-tracker.js';
+import { Message as Msg, createNotification, createRequest } from '../../src/types.ts';
+import { DidOpenParamsSchema, DidChangeParamsSchema, DidCloseParamsSchema } from '../../src/document-tracker.ts';
 
 const serverName = process.argv.find(a => a.startsWith('--name='))?.slice(7) ?? 'mock';
 const registerWatchers = process.argv.includes('--register-watchers');

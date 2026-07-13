@@ -1,5 +1,5 @@
 import { describe, it } from 'vitest';
-import { lookupRegistryEntry, listRegistryEntries } from '../src/index.js';
+import { lookupRegistryEntry, listRegistryEntries } from '../src/index.ts';
 
 describe('lookupRegistryEntry', () => {
   it('returns entry for known server', ({ expect }) => {

@@ -1,5 +1,5 @@
 import { describe, it } from 'vitest';
-import { normalizeFileUri } from '../src/uri.js';
+import { normalizeFileUri } from '../src/uri.ts';
 
 describe('normalizeFileUri', () => {
   it('normalizes backslash URIs to forward slashes', ({ expect }) => {

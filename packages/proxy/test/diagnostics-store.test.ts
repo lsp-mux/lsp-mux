@@ -1,7 +1,7 @@
 import { describe, it } from 'vitest';
-import { empty, update, merge, clearServer } from '../src/diagnostics-store.js';
+import { empty, update, merge, clearServer } from '../src/diagnostics-store.ts';
 import { faker } from '@faker-js/faker';
-import { fakeUri } from './helpers/fake.js';
+import { fakeUri } from './helpers/fake.ts';
 
 const serverA = faker.string.alpha(8);
 const serverB = faker.string.alpha(8);

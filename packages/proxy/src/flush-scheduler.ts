@@ -1,5 +1,5 @@
-import { noop, defaultTimers } from './types.js';
-import type { Timers } from './types.js';
+import { noop, defaultTimers } from './types.ts';
+import type { Timers } from './types.ts';
 
 export interface FlushSchedulerOptions {
   /** Delay before flushing after the last notification. */

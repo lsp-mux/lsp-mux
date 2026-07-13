@@ -1,5 +1,5 @@
 import { describe, it } from 'vitest';
-import { analyzeClientCapabilities } from '../src/client-capabilities.js';
+import { analyzeClientCapabilities } from '../src/client-capabilities.ts';
 
 describe('analyzeClientCapabilities', () => {
   describe('localFileWatching', () => {

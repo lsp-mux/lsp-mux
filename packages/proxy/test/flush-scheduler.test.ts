@@ -1,6 +1,6 @@
 import { createClock } from '@sinonjs/fake-timers';
 import { describe, it, vi } from 'vitest';
-import { createFlushScheduler } from '../src/flush-scheduler.js';
+import { createFlushScheduler } from '../src/flush-scheduler.ts';
 
 describe('FlushScheduler', () => {
   it('calls onFlush after debounceMs', async ({ expect }) => {

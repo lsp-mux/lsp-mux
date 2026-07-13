@@ -1,6 +1,6 @@
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import type { Message, ResponseMessage } from 'vscode-jsonrpc';
-import { Message as Msg, createRequest, createNotification } from '../../src/types.js';
+import { Message as Msg, createRequest, createNotification } from '../../src/types.ts';
 
 /** Collect messages from a reader until a predicate matches. */
 export const waitForMessage = (

@@ -1,5 +1,5 @@
 import * as v from 'valibot';
-import { LevelSchema } from './logger.js';
+import { LevelSchema } from './logger.ts';
 
 const NotificationConfigSchema = v.object({
   logLevel: v.pipe(

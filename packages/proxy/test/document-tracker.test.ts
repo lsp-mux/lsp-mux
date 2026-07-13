@@ -1,9 +1,9 @@
 import { describe, it } from 'vitest';
-import { empty, trackOpen, trackChange, trackClose, toArray } from '../src/document-tracker.js';
-import type { DocumentMap } from '../src/document-tracker.js';
-import type { TrackedDocument } from '../src/types.js';
+import { empty, trackOpen, trackChange, trackClose, toArray } from '../src/document-tracker.ts';
+import type { DocumentMap } from '../src/document-tracker.ts';
+import type { TrackedDocument } from '../src/types.ts';
 import { faker } from '@faker-js/faker';
-import { fakeUri } from './helpers/fake.js';
+import { fakeUri } from './helpers/fake.ts';
 
 const uri = fakeUri();
 const uriA = fakeUri();

@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { normalizeFileUri } from '../src/uri.js';
+import { normalizeFileUri } from '../src/uri.ts';
 import { describe, it, vi, beforeEach } from 'vitest';
 import { faker } from '@faker-js/faker';
 
@@ -11,29 +11,29 @@ vi.mock('node:fs/promises', () => ({
 vi.mock('node:fs', () => ({
   watch: vi.fn(),
 }));
-vi.mock('../src/flush-scheduler.js', () => ({
+vi.mock('../src/flush-scheduler.ts', () => ({
   createFlushScheduler: vi.fn(),
 }));
-vi.mock('../src/file-watcher.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../src/file-watcher.js')>();
+vi.mock('../src/file-watcher.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/file-watcher.ts')>();
   return {
     ...actual,
     resolveRoot: vi.fn(),
     isWithinRoot: vi.fn(),
   };
 });
-vi.mock('../src/logger.js', () => ({
+vi.mock('../src/logger.ts', () => ({
   createLogger: vi.fn(() => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })),
 }));
 
 import { stat, readFile } from 'node:fs/promises';
 import { watch } from 'node:fs';
 import type { FSWatcher } from 'node:fs';
-import * as fw from '../src/file-watcher.js';
-import { createFlushScheduler } from '../src/flush-scheduler.js';
-import { createLogger } from '../src/logger.js';
-import type { Logger } from '../src/logger.js';
-import { WorkspaceWatcher, type WatcherDelegate, type WorkspaceWatcherOptions } from '../src/workspace-watcher.js';
+import * as fw from '../src/file-watcher.ts';
+import { createFlushScheduler } from '../src/flush-scheduler.ts';
+import { createLogger } from '../src/logger.ts';
+import type { Logger } from '../src/logger.ts';
+import { WorkspaceWatcher, type WatcherDelegate, type WorkspaceWatcherOptions } from '../src/workspace-watcher.ts';
 
 const WORKSPACE = join(import.meta.dirname, 'fake-workspace');
 

@@ -1,4 +1,4 @@
-import { isPlainObject } from './utils.js';
+import { isPlainObject } from './utils.ts';
 
 /**
  * Deep-merge two plain objects. Objects merge recursively (keys from

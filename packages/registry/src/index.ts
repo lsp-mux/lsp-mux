@@ -1,7 +1,7 @@
-import { entries } from './entries.generated.js';
+import { entries } from './entries.generated.ts';
 
-export { deepMerge } from './deep-merge.js';
-export { validateNpmPackage } from './npm-validate.js';
+export { deepMerge } from './deep-merge.ts';
+export { validateNpmPackage } from './npm-validate.ts';
 
 export interface RegistryEntry {
   /** npm package that provides this server's binary. */

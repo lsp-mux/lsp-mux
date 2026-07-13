@@ -1,5 +1,5 @@
 import * as v from 'valibot';
-import type { ServerConfig, Message } from './types.js';
+import type { ServerConfig, Message } from './types.ts';
 
 // --- Types ---
 

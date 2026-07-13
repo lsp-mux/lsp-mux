@@ -1,6 +1,6 @@
 import { describe, it } from 'vitest';
 import { faker } from '@faker-js/faker';
-import { mergeCapabilities } from '../src/capabilities.js';
+import { mergeCapabilities } from '../src/capabilities.ts';
 
 describe('mergeCapabilities', () => {
   it('returns empty object for empty array', ({ expect }) => {

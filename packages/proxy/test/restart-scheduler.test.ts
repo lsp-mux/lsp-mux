@@ -1,7 +1,7 @@
 import { createClock } from '@sinonjs/fake-timers';
 import { describe, it, vi } from 'vitest';
-import { createRestartScheduler } from '../src/restart-scheduler.js';
-import type { Timers } from '../src/types.js';
+import { createRestartScheduler } from '../src/restart-scheduler.ts';
+import type { Timers } from '../src/types.ts';
 
 describe('RestartScheduler', () => {
   const policy = { maxRetries: 3, baseDelayMs: 100, maxDelayMs: 500 };
