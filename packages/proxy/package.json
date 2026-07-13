@@ -3,29 +3,35 @@
   "version": "0.1.0",
   "description": "Multiplexing LSP proxy",
   "type": "module",
-  "main": "dist/source/main.js",
   "exports": {
-    ".": "./dist/source/main.js",
-    "./config": "./dist/source/config.js",
-    "./logger": "./dist/source/logger.js"
+    "./config": "./src/config.ts",
+    "./logger": "./src/logger.ts"
   },
-  "publishConfig": {
-    "directory": "dist/source",
-    "linkDirectory": false,
-    "main": "main.js",
-    "exports": {
-      ".": "./main.js",
-      "./config": "./config.js",
-      "./logger": "./logger.js"
-    }
-  },
-  "engines": {
-    "node": ">=22.16"
+  "scripts": {
+    "compile:ts": "gtb task compile:ts",
+    "coverage:codecov:upload": "gtb task coverage:codecov:upload",
+    "coverage:vitest:merge": "gtb task coverage:vitest:merge",
+    "lint:eslint": "gtb task lint:eslint",
+    "pack:npm": "gtb task pack:npm",
+    "test:vitest:fast": "gtb task test:vitest:fast",
+    "test:vitest:slow": "gtb task test:vitest:slow",
+    "typecheck:ts": "gtb task typecheck:ts"
   },
   "dependencies": {
     "lsp-proxy-registry": "workspace:*",
     "picomatch": "catalog:",
     "valibot": "catalog:",
     "vscode-jsonrpc": "catalog:"
+  },
+  "engines": {
+    "node": ">=22.16"
+  },
+  "publishConfig": {
+    "directory": "dist/source",
+    "exports": {
+      "./config": "./src/config.js",
+      "./logger": "./src/logger.js"
+    },
+    "linkDirectory": false
   }
 }

@@ -4,19 +4,23 @@
   "description": "Server config registry for lsp-proxy",
   "type": "module",
   "exports": {
-    ".": "./dist/source/index.js"
-  },
-  "publishConfig": {
-    "directory": "dist/source",
-    "linkDirectory": false,
-    "exports": {
-      ".": "./index.js"
-    }
+    ".": "./src/index.ts"
   },
   "scripts": {
-    "generate": "node --experimental-strip-types scripts/generate-entries.ts"
+    "compile:ts": "gtb task compile:ts",
+    "generate:entries": "node --experimental-strip-types scripts/generate-entries.ts",
+    "lint:eslint": "gtb task lint:eslint",
+    "pack:npm": "gtb task pack:npm",
+    "typecheck:ts": "gtb task typecheck:ts"
   },
   "engines": {
     "node": ">=22.16"
+  },
+  "publishConfig": {
+    "directory": "dist/source",
+    "exports": {
+      ".": "./src/index.js"
+    },
+    "linkDirectory": false
   }
 }

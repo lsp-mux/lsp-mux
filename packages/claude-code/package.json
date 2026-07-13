@@ -6,17 +6,23 @@
   "bin": {
     "generate-claude-plugin": "bin/generate-plugin.ts"
   },
-  "publishConfig": {
-    "directory": "dist/source",
-    "linkDirectory": false,
-    "bin": {
-      "generate-claude-plugin": "bin/generate-plugin.js"
-    }
+  "scripts": {
+    "compile:ts": "gtb task compile:ts",
+    "lint:eslint": "gtb task lint:eslint",
+    "pack:npm": "gtb task pack:npm",
+    "typecheck:ts": "gtb task typecheck:ts"
+  },
+  "dependencies": {
+    "lsp-proxy": "workspace:*"
   },
   "engines": {
     "node": ">=22.16"
   },
-  "dependencies": {
-    "lsp-proxy": "workspace:*"
+  "publishConfig": {
+    "bin": {
+      "generate-claude-plugin": "bin/generate-plugin.js"
+    },
+    "directory": "dist/source",
+    "linkDirectory": false
   }
 }

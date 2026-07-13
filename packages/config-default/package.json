@@ -7,21 +7,22 @@
     ".lsp-proxy.json",
     "README.md"
   ],
+  "scripts": {
+    "compile:ts": "cpy .lsp-proxy.json dist/source/",
+    "generate-plugin": "generate-claude-plugin",
+    "pack:npm": "gtb task pack:npm"
+  },
+  "dependencies": {
+    "@lsp-mux/vscode-eslint-lsp": "catalog:",
+    "@vtsls/language-server": "catalog:",
+    "lsp-proxy-claude-code": "workspace:*",
+    "oxlint": "catalog:"
+  },
   "publishConfig": {
     "directory": "dist/source",
     "linkDirectory": false,
     "scripts": {
       "postinstall": "generate-claude-plugin"
     }
-  },
-  "scripts": {
-    "generate-plugin": "generate-claude-plugin",
-    "prepack": "cpy .lsp-proxy.json README.md dist/source/"
-  },
-  "dependencies": {
-    "@lsp-mux/vscode-eslint-lsp": "catalog:lsp",
-    "@vtsls/language-server": "catalog:lsp",
-    "lsp-proxy-claude-code": "workspace:*",
-    "oxlint": "catalog:lsp"
   }
 }

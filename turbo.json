@@ -1,0 +1,203 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [
+    "mise.lock",
+    "mise.toml"
+  ],
+  "tasks": {
+    "build": {
+      "dependsOn": [
+        "check",
+        "compile",
+        "pack",
+        "test:slow"
+      ]
+    },
+    "build:ci": {
+      "dependsOn": [
+        "check",
+        "compile",
+        "pack"
+      ]
+    },
+    "check": {
+      "dependsOn": [
+        "typecheck",
+        "test:vitest:fast"
+      ]
+    },
+    "compile": {
+      "dependsOn": [
+        "compile:ts"
+      ]
+    },
+    "compile:ts": {
+      "dependsOn": [
+        "^compile:ts",
+        "generate"
+      ],
+      "inputs": [
+        "$TURBO_ROOT$/tsconfig.base.json",
+        "$TURBO_ROOT$/tsconfig.build.json",
+        "bin/**",
+        "src/**",
+        "tsconfig.build.json"
+      ],
+      "outputs": [
+        "dist/source/**"
+      ]
+    },
+    "coverage:codecov:upload": {
+      "env": [
+        "CI",
+        "CODECOV_TOKEN"
+      ],
+      "inputs": [
+        "dist/coverage/vitest/**/lcov.info"
+      ],
+      "outputs": [
+        "dist/coverage/codecov/.uploaded"
+      ]
+    },
+    "coverage:merge": {
+      "dependsOn": [
+        "coverage:vitest:merge"
+      ]
+    },
+    "coverage:vitest:merge": {
+      "dependsOn": [
+        "test:vitest:fast",
+        "test:vitest:slow"
+      ],
+      "inputs": [
+        "dist/test-results/vitest/merge/blob-*.json"
+      ],
+      "outputs": [
+        "dist/coverage/vitest/merged/**"
+      ]
+    },
+    "generate": {
+      "dependsOn": [
+        "generate:entries"
+      ]
+    },
+    "generate:entries": {
+      "inputs": [
+        "entries/**",
+        "scripts/generate-entries.ts"
+      ],
+      "outputs": [
+        "src/entries.generated.ts"
+      ]
+    },
+    "pack": {
+      "dependsOn": [
+        "pack:npm"
+      ]
+    },
+    "pack:npm": {
+      "dependsOn": [
+        "compile:ts"
+      ],
+      "inputs": [
+        "$TURBO_ROOT$/LICENSE",
+        "$TURBO_ROOT$/package.json",
+        "LICENSE",
+        "README.md",
+        "dist/source/**",
+        "!dist/source/LICENSE",
+        "!dist/source/README.md",
+        "!dist/source/package.json",
+        "package.json"
+      ],
+      "outputs": [
+        "dist/packages/npm/**",
+        "dist/source/LICENSE",
+        "dist/source/README.md",
+        "dist/source/package.json"
+      ]
+    },
+    "test:slow": {
+      "dependsOn": [
+        "test:vitest:slow"
+      ]
+    },
+    "test:vitest:fast": {
+      "dependsOn": [
+        "^compile:ts"
+      ],
+      "env": [
+        "CI"
+      ],
+      "inputs": [
+        "bin/**",
+        "src/**",
+        "test/**",
+        "scripts/**",
+        "vitest.config.*",
+        "!vitest.config.e2e.*"
+      ],
+      "outputs": [
+        "dist/coverage/vitest/fast/**",
+        "dist/test-results/vitest/merge/blob-fast.json"
+      ]
+    },
+    "test:vitest:slow": {
+      "dependsOn": [
+        "^compile:ts"
+      ],
+      "env": [
+        "CI"
+      ],
+      "inputs": [
+        "bin/**",
+        "src/**",
+        "test/**",
+        "scripts/**",
+        "vitest.config.*",
+        "!vitest.config.e2e.*"
+      ],
+      "outputs": [
+        "dist/coverage/vitest/slow/**",
+        "dist/test-results/vitest/merge/blob-slow.json"
+      ]
+    },
+    "typecheck": {
+      "dependsOn": [
+        "typecheck:ts"
+      ]
+    },
+    "typecheck:ts": {
+      "dependsOn": [
+        "generate"
+      ],
+      "inputs": [
+        "$TURBO_ROOT$/tsconfig.base.json",
+        "bin/**",
+        "scripts/**",
+        "src/**",
+        "test/**",
+        "e2e/**",
+        "*.cjs",
+        "*.cts",
+        "*.js",
+        "*.jsx",
+        "*.mjs",
+        "*.mts",
+        "*.ts",
+        "*.tsx",
+        ".*.cjs",
+        ".*.cts",
+        ".*.js",
+        ".*.jsx",
+        ".*.mjs",
+        ".*.mts",
+        ".*.ts",
+        ".*.tsx",
+        "tsconfig.json",
+        "tsconfig.*.json"
+      ],
+      "outputs": []
+    }
+  }
+}

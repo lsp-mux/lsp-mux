@@ -1,0 +1,15 @@
+---
+codecov:
+  require_ci_to_pass: false
+component_management:
+  individual_components:
+    - component_id: proxy
+      name: proxy
+      paths:
+        - packages/proxy/bin/**
+        - packages/proxy/src/**
+flags:
+  proxy:
+    carryforward: true
+    paths:
+      - packages/proxy/
