@@ -1,11 +1,12 @@
+/** @module-tag slow */
 import * as v from 'valibot';
 import { describe } from 'vitest';
 import type { Message, ResponseMessage } from 'vscode-jsonrpc';
-import { Message as Msg, createRequest } from '../src/types.js';
-import { collectMessages, request, notify, waitForMessage, initializeProxy } from './helpers/test-client.js';
+import { Message as Msg, createRequest } from '../src/types.ts';
+import { collectMessages, request, notify, waitForMessage, initializeProxy } from './helpers/test-client.ts';
 import { faker } from '@faker-js/faker';
-import { fakeUri } from './helpers/fake.js';
-import { it, namedConfig } from './proxy/harness.js';
+import { fakeUri } from './helpers/fake.ts';
+import { it, namedConfig } from './proxy/harness.ts';
 
 const testUri = fakeUri();
 const multiUri = fakeUri();

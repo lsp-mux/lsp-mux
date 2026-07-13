@@ -1,10 +1,11 @@
+/** @module-tag slow */
 import { describe } from 'vitest';
 import type { ResponseMessage } from 'vscode-jsonrpc';
-import { Message as Msg } from '../../src/types.js';
-import { request, notify, waitForMessage, initializeProxy } from '../helpers/test-client.js';
+import { Message as Msg } from '../../src/types.ts';
+import { request, notify, waitForMessage, initializeProxy } from '../helpers/test-client.ts';
 import { faker } from '@faker-js/faker';
-import { fakeUri } from '../helpers/fake.js';
-import { it, mockServerConfig, type ServerConfig } from './harness.js';
+import { fakeUri } from '../helpers/fake.ts';
+import { it, mockServerConfig, type ServerConfig } from './harness.ts';
 
 const lazyUri = fakeUri();
 const testUri = fakeUri();

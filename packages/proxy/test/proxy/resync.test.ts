@@ -1,7 +1,8 @@
+/** @module-tag slow */
 import { writeFile } from 'node:fs/promises';
 import { describe, vi } from 'vitest';
-import { request, notify, initializeProxy } from '../helpers/test-client.js';
-import { it } from './harness.js';
+import { request, notify, initializeProxy } from '../helpers/test-client.ts';
+import { it } from './harness.ts';
 
 describe('LspProxy file resync', () => {
   it('resyncs document when file changes on disk', async ({ createProxy, workspace, expect }) => {

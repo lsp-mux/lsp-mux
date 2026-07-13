@@ -1,10 +1,11 @@
+/** @module-tag slow */
 import * as v from 'valibot';
 import { describe } from 'vitest';
 import type { Message } from 'vscode-jsonrpc';
-import { request, notify, collectMessages, initializeProxy } from '../helpers/test-client.js';
+import { request, notify, collectMessages, initializeProxy } from '../helpers/test-client.ts';
 import { faker } from '@faker-js/faker';
-import { fakeUri } from '../helpers/fake.js';
-import { it, namedConfig, mockServerConfig, type ServerConfig } from './harness.js';
+import { fakeUri } from '../helpers/fake.ts';
+import { it, namedConfig, mockServerConfig, type ServerConfig } from './harness.ts';
 
 const DiagNotificationSchema = v.object({
   params: v.object({

@@ -1,11 +1,12 @@
+/** @module-tag slow */
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, vi } from 'vitest';
 import type { ExpectStatic } from 'vitest';
 import type { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
-import { Message as Msg } from '../../src/types.js';
-import { request, notify, waitForMessage, initializeProxy } from '../helpers/test-client.js';
-import { it, mockServerConfig, type ServerConfig, type Workspace } from './harness.js';
+import { Message as Msg } from '../../src/types.ts';
+import { request, notify, waitForMessage, initializeProxy } from '../helpers/test-client.ts';
+import { it, mockServerConfig, type ServerConfig, type Workspace } from './harness.ts';
 
 /** Poll until the proxy's file watcher is active and dispatching events. */
 const waitForWatcherActive = (

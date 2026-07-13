@@ -1,9 +1,10 @@
+/** @module-tag slow */
 import { describe } from 'vitest';
 import type { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
-import { request, notify, initializeProxy } from '../helpers/test-client.js';
+import { request, notify, initializeProxy } from '../helpers/test-client.ts';
 import { faker } from '@faker-js/faker';
-import { fakeUri } from '../helpers/fake.js';
-import { it, type ServerConfig } from './harness.js';
+import { fakeUri } from '../helpers/fake.ts';
+import { it, type ServerConfig } from './harness.ts';
 
 const testUri = fakeUri();
 const replayedUri = fakeUri();
