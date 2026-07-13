@@ -1,10 +1,15 @@
 {
-  "files": [],
-  "references": [
-    { "path": "packages/registry" },
-    { "path": "packages/proxy" },
-    { "path": "packages/claude-code" },
-    { "path": "scripts" },
-    { "path": "test" }
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "extends": "./tsconfig.base.json",
+  "include": [
+    "bin",
+    "scripts",
+    "src",
+    "test",
+    "e2e",
+    "*",
+    ".*"
   ]
 }
