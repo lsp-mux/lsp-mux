@@ -5,3 +5,4 @@ dist/
 .lsp.json
 .lsp-proxy.local.json
 .claude-plugin/
+.turbo/

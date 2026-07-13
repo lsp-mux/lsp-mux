@@ -1,0 +1,39 @@
+# Hard floor: fail fast on a mise old enough to silently ignore the
+# [settings] below (minimum_release_age, idiomatic_version_file_enable_tools).
+min_version = "2026.6.2"
+
+[env]
+# hk wraps hook steps in `mise x` so mise-managed tools resolve without
+# activation.
+HK_MISE = "1"
+
+[hooks]
+postinstall = "hk install --mise"
+
+[settings]
+# Required for the `[hooks]` table.
+experimental = true
+# pnpm's version comes from `packageManager` in package.json (turbo
+# requires that field, and mise reads it natively when listed here).
+# Keeps the pnpm pin in one place instead of mirroring it in mise.toml.
+idiomatic_version_file_enable_tools = ["pnpm"]
+lockfile = true
+# Matches the Renovate/pnpm 3-day quarantine. Only filters fuzzy/`latest`
+# resolution (e.g. manual `mise up --bump`); install of the exact pins
+# in `[tools]` bypasses it, and Renovate already gates automated bumps at
+# 3 days.
+minimum_release_age = "3d"
+
+# mise.tasks.toml is generated and owned by `gtb sync`; this include is
+# the one manual hookup (gtb verify checks it).
+[task_config]
+includes = ["mise.tasks.toml"]
+
+[tools]
+actionlint = "1.7.12"
+hk = "1.49.0"
+node = "24.18.0"
+"npm:renovate" = "43.231.2"
+pkl = "0.31.1"
+shellcheck = "0.11.0"
+shfmt = "3.13.1"
