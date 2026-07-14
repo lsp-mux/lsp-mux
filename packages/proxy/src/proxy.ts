@@ -20,6 +20,10 @@ import type { Message, NotificationMessage, RequestMessage, ResponseMessage, Ser
 import { normalizeFileUri } from './uri.ts';
 import { WorkspaceWatcher } from './workspace-watcher.ts';
 
+// Grace period before proactively pulling diagnostics from servers that are
+// still starting on the first didOpen, giving them time to come up.
+const lazyStartPullDiagnosticsDelayMs = 3000;
+
 const CancelParamsSchema = v.object({
   id: v.union([v.number(), v.string()]),
 });
@@ -315,7 +319,7 @@ export class LspProxy {
           setTimeout(() => {
             if (this.isStopped()) return;
             void this.pullDiagnostics(uri);
-          }, 3000);
+          }, lazyStartPullDiagnosticsDelayMs);
         } else {
           void this.pullDiagnostics(uri);
         }

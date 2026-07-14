@@ -9,11 +9,18 @@ import type { Logger } from './logger.ts';
 import type { TrackedDocument } from './types.ts';
 import { normalizeFileUri } from './uri.ts';
 
+const bytesPerKibibyte = 1024;
+// Node added recursive fs.watch on Linux in 20.x.
+const minRecursiveWatchNodeMajor = 20;
+// A UTF-8 file can expand by at most this factor when decoded, so oversize
+// files are cheaply rejected before reading.
+const maxResyncByteExpansionFactor = 2;
+
 const watcherDebounceMs = 250;
 const watcherMaxWaitMs = 2000;
 const flushBatchSize = 100;
 const defaultMaxPendingEvents = 10_000;
-const defaultMaxResyncBytes = 1024 * 1024; // 1 MB
+const defaultMaxResyncBytes = bytesPerKibibyte * bytesPerKibibyte; // 1 MB
 
 const isNodeError = (err: unknown): err is NodeJS.ErrnoException =>
   err instanceof Error && 'code' in err;
@@ -68,7 +75,7 @@ export class WorkspaceWatcher {
 
     if (process.platform === 'linux') {
       const major = Number(process.versions.node.split('.', 1)[0]);
-      if (major < 20) {
+      if (major < minRecursiveWatchNodeMajor) {
         this.log.warn(`Recursive file watching may not work on Linux with Node.js ${process.versions.node} (requires ≥20.x)`);
       }
     }
@@ -190,7 +197,7 @@ export class WorkspaceWatcher {
     // exact byteLength check after readFile (UTF-8 multi-byte expansion).
     try {
       const fileStat = await stat(filePath);
-      if (fileStat.size > this.maxResyncBytes * 2) {
+      if (fileStat.size > this.maxResyncBytes * maxResyncByteExpansionFactor) {
         this.log.warn(`Skipping resync for ${uri} (${String(fileStat.size)} bytes exceeds limit)`);
         return 'unchanged';
       }

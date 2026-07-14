@@ -4,6 +4,9 @@ import { normalizeFileUri } from './uri.ts';
 
 export type DocumentMap = ReadonlyMap<string, TrackedDocument>;
 
+// Length of a `\r\n` line terminator, skipped as a single unit.
+const crlfLength = 2;
+
 // --- LSP param schemas ---
 
 const PositionSchema = v.object({
@@ -124,7 +127,7 @@ const positionToOffset = (text: string, pos: Position): number => {
             : Math.min(cr, lf);
     if (eol === -1) return text.length;
     // Skip \r\n as a single line terminator
-    offset = text[eol] === '\r' && text[eol + 1] === '\n' ? eol + 2 : eol + 1;
+    offset = text[eol] === '\r' && text[eol + 1] === '\n' ? eol + crlfLength : eol + 1;
   }
   return Math.min(offset + pos.character, text.length);
 };

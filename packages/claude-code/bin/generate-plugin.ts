@@ -6,6 +6,9 @@ import { createLogger } from 'lsp-proxy/logger';
 
 const log = createLogger();
 
+// Indentation width for the generated JSON artifacts.
+const jsonIndent = 2;
+
 const buildExtensionToLanguage = (
   servers: readonly { languages: Readonly<Record<string, readonly string[]>> }[],
 ): Record<string, string> =>
@@ -50,11 +53,11 @@ const main = async (): Promise<void> => {
     plugins: [{ name: 'lsp-proxy', source: './', description: pluginJson.description }],
   };
 
-  await writeFile(join(configDir, '.lsp.json'), JSON.stringify(lspJson, undefined, 2) + '\n');
+  await writeFile(join(configDir, '.lsp.json'), JSON.stringify(lspJson, undefined, jsonIndent) + '\n');
   const pluginDir = join(configDir, '.claude-plugin');
   await mkdir(pluginDir, { recursive: true });
-  await writeFile(join(pluginDir, 'plugin.json'), JSON.stringify(pluginJson, undefined, 2) + '\n');
-  await writeFile(join(pluginDir, 'marketplace.json'), JSON.stringify(marketplaceJson, undefined, 2) + '\n');
+  await writeFile(join(pluginDir, 'plugin.json'), JSON.stringify(pluginJson, undefined, jsonIndent) + '\n');
+  await writeFile(join(pluginDir, 'marketplace.json'), JSON.stringify(marketplaceJson, undefined, jsonIndent) + '\n');
 
   const extCount = Object.keys(extensionToLanguage).length;
   log.info(`Generated .lsp.json (${String(extCount)} extensions from ${proxyConfig.servers.join(', ')})`);

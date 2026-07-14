@@ -18,6 +18,7 @@
     "typecheck:ts": "gtb task typecheck:ts"
   },
   "dependencies": {
+    "date-fns": "catalog:",
     "lsp-proxy-registry": "workspace:*",
     "picomatch": "catalog:",
     "valibot": "catalog:",

@@ -2,6 +2,7 @@ import { createWriteStream, mkdirSync, watch } from 'node:fs';
 import { readdir, stat, unlink } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { milliseconds } from 'date-fns';
 import { loadProxyConfig, loadServerConfig, ownPackageDir } from '../src/config.ts';
 import { createLogger } from '../src/logger.ts';
 import type { Logger } from '../src/logger.ts';
@@ -15,6 +16,9 @@ const parseArg = (flag: string): string | undefined => {
   return resolve(arg);
 };
 
+// Debounce window for coalescing rapid config-file writes before reload.
+const configWatchDebounceMs = 200;
+
 const watchConfigForLogLevel = (configDir: string, log: Logger): Disposable => {
   let debounce: ReturnType<typeof setTimeout> | undefined;
 
@@ -24,7 +28,7 @@ const watchConfigForLogLevel = (configDir: string, log: Logger): Disposable => {
       void loadProxyConfig(configDir)
         .then((cfg) => { log.setLevel(cfg.logLevel); })
         .catch(() => { /* ignore read/parse errors during write */ });
-    }, 200);
+    }, configWatchDebounceMs);
   };
 
   const tryWatch = (path: string) => {
@@ -47,7 +51,7 @@ const watchConfigForLogLevel = (configDir: string, log: Logger): Disposable => {
   };
 };
 
-const logMaxAgeMs = 7 * 24 * 60 * 60 * 1000; // 7 days
+const logMaxAgeMs = milliseconds({ days: 7 });
 
 /**
  * Delete log files older than logMaxAgeMs. Safe for concurrent startup —

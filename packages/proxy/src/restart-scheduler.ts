@@ -13,6 +13,10 @@ export const defaultRestartPolicy: RestartPolicy = {
   maxDelayMs: 30_000,
 };
 
+// Exponential backoff base and the ±ratio of random jitter applied to it.
+const backoffMultiplier = 2;
+const jitterRatio = 0.5;
+
 export interface RestartScheduler {
   /** Schedule a callback with exponential backoff. Returns false if max retries reached. */
   schedule: (callback: () => void) => boolean;
@@ -36,10 +40,10 @@ export const createRestartScheduler = ({ policy, timers: t = defaultTimers }: Re
   return {
     schedule(callback) {
       if (count >= policy.maxRetries) return false;
-      const base = Math.min(policy.baseDelayMs * 2 ** count, policy.maxDelayMs);
+      const base = Math.min(policy.baseDelayMs * backoffMultiplier ** count, policy.maxDelayMs);
       // Add ±50% jitter to prevent thundering herd when multiple servers crash,
       // clamped so jittered delay never exceeds the configured max.
-      const jitter = Math.min(base * (0.5 + Math.random()), policy.maxDelayMs);
+      const jitter = Math.min(base * (jitterRatio + Math.random()), policy.maxDelayMs);
       count++;
       timer = t.setTimeout(callback, jitter);
       return true;
