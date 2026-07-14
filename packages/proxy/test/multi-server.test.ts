@@ -165,10 +165,10 @@ describe('Multi-server proxy', () => {
     const msgs = await collectMessages(
       reader,
       msg =>
-        isResponse(msg, 100)
-        || (isDiagnosticForUri(msg, crashUri)
-          && getDiagnostics(msg).length === 1
-          && getDiagnostics(msg)[0]?.source === 'beta'),
+        isResponse(msg, 100) ||
+        (isDiagnosticForUri(msg, crashUri) &&
+          getDiagnostics(msg).length === 1 &&
+          getDiagnostics(msg)[0]?.source === 'beta'),
       2,
     );
 

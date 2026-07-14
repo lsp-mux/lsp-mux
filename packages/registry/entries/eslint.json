@@ -1,28 +1,43 @@
 {
-  "npm": "@lsp-mux/vscode-eslint-lsp",
+  "args": [
+    "./node_modules/@lsp-mux/vscode-eslint-lsp",
+    "--stdio"
+  ],
   "command": "node",
-  "args": ["./node_modules/@lsp-mux/vscode-eslint-lsp", "--stdio"],
   "languages": {
-    "typescript": [".ts", ".mts", ".cts"],
-    "typescriptreact": [".tsx"],
-    "javascript": [".js", ".mjs", ".cjs"],
-    "javascriptreact": [".jsx"]
+    "javascript": [
+      ".js",
+      ".mjs",
+      ".cjs"
+    ],
+    "javascriptreact": [
+      ".jsx"
+    ],
+    "typescript": [
+      ".ts",
+      ".mts",
+      ".cts"
+    ],
+    "typescriptreact": [
+      ".tsx"
+    ]
   },
-  "transport": "stdio",
+  "notifications": {
+    "eslint/status": { "logLevel": "DEBUG" }
+  },
+  "npm": "@lsp-mux/vscode-eslint-lsp",
   "settings": {
-    "validate": "on",
-    "useESLintClass": true,
-    "run": "onType",
     "nodePath": null,
-    "rulesCustomizations": [],
     "problems": {
       "shortenToSingleLine": false
     },
+    "rulesCustomizations": [],
+    "run": "onType",
+    "useESLintClass": true,
+    "validate": "on",
     "workingDirectory": {
       "mode": "location"
     }
   },
-  "notifications": {
-    "eslint/status": { "logLevel": "DEBUG" }
-  }
+  "transport": "stdio"
 }

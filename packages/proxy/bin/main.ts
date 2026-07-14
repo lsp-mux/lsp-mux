@@ -30,8 +30,7 @@ const watchConfigForLogLevel = (configDir: string, log: Logger): Disposable => {
   const tryWatch = (path: string) => {
     try {
       return watch(path, reload);
-    }
-    catch {
+    } catch {
       return undefined;
     }
   };
@@ -57,8 +56,7 @@ const pruneOldLogs = async (logDir: string): Promise<void> => {
   let files: string[];
   try {
     files = await readdir(logDir);
-  }
-  catch {
+  } catch {
     return;
   }
   await Promise.all(
@@ -69,8 +67,7 @@ const pruneOldLogs = async (logDir: string): Promise<void> => {
         try {
           const s = await stat(path);
           if (now - s.mtimeMs > LOG_MAX_AGE_MS) await unlink(path);
-        }
-        catch { /* ENOENT from concurrent cleanup or permission error — ignore */ }
+        } catch { /* ENOENT from concurrent cleanup or permission error — ignore */ }
       }),
   );
 };

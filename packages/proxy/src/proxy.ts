@@ -222,7 +222,7 @@ export class LspProxy {
         this.handleRunningMessage(msg);
         return;
       }
-      case 'stopped':
+      case 'stopped': {
         if (Msg.isNotification(msg) && msg.method === 'exit') {
           this.clientReader.dispose();
           return;
@@ -230,6 +230,7 @@ export class LspProxy {
         if (Msg.isRequest(msg)) {
           this.sendErrorToClient(msg.id, LSP_ERROR_CODES.ServerNotInitialized, 'Server stopped');
         }
+      }
     }
   }
 
@@ -317,8 +318,7 @@ export class LspProxy {
             if (this.isStopped()) return;
             void this.pullDiagnostics(uri);
           }, 3000);
-        }
-        else {
+        } else {
           void this.pullDiagnostics(uri);
         }
       }
@@ -371,8 +371,7 @@ export class LspProxy {
           this.sendErrorToClient(msg.id, LSP_ERROR_CODES.InternalError, 'Server unavailable');
           this.requestRouting.delete(msg.id);
         }
-      }
-      else {
+      } else {
         this.sendErrorToClient(msg.id, LSP_ERROR_CODES.InternalError, 'No servers available');
       }
       return;
@@ -500,12 +499,10 @@ export class LspProxy {
       const filtered: RequestMessage = { ...msg, params: { registrations: otherRegs } };
       this.serverRequestRouting.set(msg.id, serverName);
       this.writeToClient(filtered);
-    }
-    else if (handledCount > 0) {
+    } else if (handledCount > 0) {
       // All registrations were file watchers — ack to server directly
       this.ackToServer(serverName, msg.id);
-    }
-    else {
+    } else {
       // Nothing matched — forward original
       this.writeToClient(msg);
     }
@@ -527,8 +524,7 @@ export class LspProxy {
         this.watchRegistrations = fw.unregister(this.watchRegistrations, unreg.id);
         handledCount++;
         this.log.info(`${serverName}: unregistered file watcher ${unreg.id}`);
-      }
-      else {
+      } else {
         otherUnregs.push(unreg);
       }
     }
@@ -537,11 +533,9 @@ export class LspProxy {
       const filtered: RequestMessage = { ...msg, params: { unregisterations: otherUnregs } };
       this.serverRequestRouting.set(msg.id, serverName);
       this.writeToClient(filtered);
-    }
-    else if (handledCount > 0) {
+    } else if (handledCount > 0) {
       this.ackToServer(serverName, msg.id);
-    }
-    else {
+    } else {
       this.writeToClient(msg);
     }
   }
@@ -608,8 +602,7 @@ export class LspProxy {
       const root = fileURLToPath(rootUri);
       const exists = await stat(root).then(() => true, () => false);
       if (exists) this.workspaceRoot = root;
-    }
-    catch {
+    } catch {
       // Malformed URI — ignore
     }
   }

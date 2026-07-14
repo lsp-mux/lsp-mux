@@ -23,16 +23,14 @@ export const update = (
 
   if (diagnostics.length === 0) {
     perUri.delete(serverName);
-  }
-  else {
+  } else {
     perUri.set(serverName, diagnostics);
   }
 
   const next = new Map(store);
   if (perUri.size === 0) {
     next.delete(uri);
-  }
-  else {
+  } else {
     next.set(uri, perUri);
   }
   return next;

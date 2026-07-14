@@ -1,12 +1,27 @@
 {
-  "npm": "oxlint",
+  "args": [
+    "./node_modules/oxlint/bin/oxlint",
+    "--lsp"
+  ],
   "command": "node",
-  "args": ["./node_modules/oxlint/bin/oxlint", "--lsp"],
   "languages": {
-    "typescript": [".ts", ".mts", ".cts"],
-    "typescriptreact": [".tsx"],
-    "javascript": [".js", ".mjs", ".cjs"],
-    "javascriptreact": [".jsx"]
+    "javascript": [
+      ".js",
+      ".mjs",
+      ".cjs"
+    ],
+    "javascriptreact": [
+      ".jsx"
+    ],
+    "typescript": [
+      ".ts",
+      ".mts",
+      ".cts"
+    ],
+    "typescriptreact": [
+      ".tsx"
+    ]
   },
+  "npm": "oxlint",
   "transport": "stdio"
 }

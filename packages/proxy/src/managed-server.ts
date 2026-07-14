@@ -253,8 +253,7 @@ export const createManagedServer = (
       scheduler.reset();
       callbacks.onStateChange(state);
       log.info(`${name}: ${label} completed`);
-    }
-    catch (err) {
+    } catch (err) {
       log.error(`${name}: ${label} failed:`, err);
       server?.dispose();
       server = null;

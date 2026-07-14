@@ -94,10 +94,14 @@ export const trackClose = (docs: DocumentMap, rawParams: unknown): DocumentMap =
 
 export const apply = (docs: DocumentMap, method: string, params: unknown): DocumentMap => {
   switch (method) {
-    case 'textDocument/didOpen': return trackOpen(docs, params);
-    case 'textDocument/didChange': return trackChange(docs, params);
-    case 'textDocument/didClose': return trackClose(docs, params);
-    default: return docs;
+    case 'textDocument/didOpen': { return trackOpen(docs, params);
+    }
+    case 'textDocument/didChange': { return trackChange(docs, params);
+    }
+    case 'textDocument/didClose': { return trackClose(docs, params);
+    }
+    default: { return docs;
+    }
   }
 };
 
@@ -110,8 +114,8 @@ const positionToOffset = (text: string, pos: Position): number => {
   for (let line = 0; line < pos.line; line++) {
     const cr = text.indexOf('\r', offset);
     const lf = text.indexOf('\n', offset);
-    const eol
-      = cr === -1 && lf === -1
+    const eol =
+      cr === -1 && lf === -1
         ? -1
         : cr === -1
           ? lf

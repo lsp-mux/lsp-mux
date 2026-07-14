@@ -51,11 +51,11 @@ Client (stdio) <--> lsp-proxy <--> vtsls
 
 ## Packages
 
-| Package | Description |
-|---------|-------------|
-| [`packages/proxy`](packages/proxy) | The multiplexing proxy core |
-| [`packages/registry`](packages/registry) | Server config registry with pre-defined configs |
-| [`packages/claude-code`](packages/claude-code) | Claude Code editor integration |
+| Package                                              | Description                                       |
+| ---------------------------------------------------- | ------------------------------------------------- |
+| [`packages/proxy`](packages/proxy)                   | The multiplexing proxy core                       |
+| [`packages/registry`](packages/registry)             | Server config registry with pre-defined configs   |
+| [`packages/claude-code`](packages/claude-code)       | Claude Code editor integration                    |
 | [`packages/config-default`](packages/config-default) | Default server configs (vtsls + eslint for TS/JS) |
 
 ## Quick Start

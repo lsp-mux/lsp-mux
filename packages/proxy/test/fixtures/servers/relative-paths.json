@@ -1,6 +1,11 @@
 {
+  "args": [
+    "./node_modules/some-server/index.js",
+    "--stdio"
+  ],
   "command": "./bin/server.js",
-  "args": ["./node_modules/some-server/index.js", "--stdio"],
-  "languages": { "typescript": [".ts"] },
+  "languages": { "typescript": [
+      ".ts"
+    ] },
   "transport": "stdio"
 }

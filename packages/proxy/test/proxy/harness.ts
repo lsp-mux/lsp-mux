@@ -100,12 +100,10 @@ export const it = test.extend<{
         const started = ctx.proxy.start();
         return { ...ctx, started };
       });
-    }
-    catch (err) {
+    } catch (err) {
       for (const line of logBuffer) process.stderr.write(line);
       throw err;
-    }
-    finally {
+    } finally {
       for (const p of instances) p.dispose();
     }
   },

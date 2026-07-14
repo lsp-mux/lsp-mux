@@ -69,21 +69,23 @@ Future config fields (not yet implemented):
 
 ```jsonc
 {
-  "bridges": [{
-    "from": "vue-volar",
-    "notification": "tsserver/request",
-    "to": "vtsls",
-    "method": "typescript.tsserverRequest",
-    "respond": "tsserver/response"
-  }],
+  "bridges": [
+    {
+      "from": "vue-volar",
+      "notification": "tsserver/request",
+      "to": "vtsls",
+      "method": "typescript.tsserverRequest",
+      "respond": "tsserver/response",
+    },
+  ],
   "merge": {
     "diagnostics": "union",
     "completion": "interleave",
     "hover": "concatenate",
     "definition": "union",
     "references": "union",
-    "codeAction": "union"
-  }
+    "codeAction": "union",
+  },
 }
 ```
 

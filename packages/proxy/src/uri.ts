@@ -29,8 +29,7 @@ export const normalizeFileUri = (uri: string): string => {
     const normalized = pathToFileURL(canonical).href;
     cache.set(uri, normalized);
     return normalized;
-  }
-  catch {
+  } catch {
     cache.set(uri, uri);
     return uri;
   }

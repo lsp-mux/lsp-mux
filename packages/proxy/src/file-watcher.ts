@@ -101,8 +101,7 @@ const resolveBaseUri = (baseUri: string | { uri: string; name: string }, workspa
     try {
       const absPath = fileURLToPath(raw);
       return relative(workspaceRoot, absPath).replace(/\\/g, '/');
-    }
-    catch {
+    } catch {
       // fileURLToPath failed (malformed URI) — fall through to trailing-slash strip
     }
   }
@@ -206,8 +205,7 @@ export const matchEvent = (
 export const resolveRoot = async (root: string): Promise<string> => {
   try {
     return await realpath(root);
-  }
-  catch {
+  } catch {
     return resolve(root);
   }
 };
@@ -230,8 +228,7 @@ export const isWithinRoot = async (fullPath: string, resolvedRoot: string): Prom
 
   try {
     return isContainedIn(await realpath(fullPath), resolvedRoot);
-  }
-  catch {
+  } catch {
     // File doesn't exist (e.g., delete event). Resolve the parent directory
     // via realpath (it likely still exists) and append the filename, so we
     // stay in the same namespace as the realpath-resolved root. This handles
@@ -240,8 +237,7 @@ export const isWithinRoot = async (fullPath: string, resolvedRoot: string): Prom
     try {
       const resolvedParent = await realpath(dirname(fullPath));
       return isContainedIn(resolve(resolvedParent, basename(fullPath)), resolvedRoot);
-    }
-    catch {
+    } catch {
       // Parent also doesn't exist — fall back to lexical normalization
       return isContainedIn(resolve(fullPath), resolve(resolvedRoot));
     }

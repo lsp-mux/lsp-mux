@@ -121,8 +121,7 @@ reader.listen((msg) => {
               severity: 2,
             }],
           });
-        }
-        else {
+        } else {
           respond(msg.id, { kind: 'full', items: [] });
         }
         return;

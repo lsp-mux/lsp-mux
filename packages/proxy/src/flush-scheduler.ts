@@ -75,8 +75,7 @@ export const createFlushScheduler = (options: FlushSchedulerOptions): FlushSched
     s.notifiedDuringFlush = false;
     try {
       await onFlush();
-    }
-    finally {
+    } finally {
       s.flushInProgress = false;
       if (needsRecheck()) {
         // Re-enter the debounce cycle instead of flushing immediately.

@@ -125,8 +125,8 @@ describe('Pull diagnostics', () => {
       (msg) => {
         if (!isDiagnosticForUri(msg, uri)) return false;
         const diags = getDiagnostics(msg);
-        return diags.some(d => d.source === 'alpha')
-          && diags.some(d => d.source === 'beta');
+        return diags.some(d => d.source === 'alpha') &&
+          diags.some(d => d.source === 'beta');
       },
       1,
     );

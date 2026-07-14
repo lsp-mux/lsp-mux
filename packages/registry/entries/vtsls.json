@@ -1,12 +1,27 @@
 {
-  "npm": "@vtsls/language-server",
+  "args": [
+    "./node_modules/@vtsls/language-server/bin/vtsls.js",
+    "--stdio"
+  ],
   "command": "node",
-  "args": ["./node_modules/@vtsls/language-server/bin/vtsls.js", "--stdio"],
   "languages": {
-    "typescript": [".ts", ".mts", ".cts"],
-    "typescriptreact": [".tsx"],
-    "javascript": [".js", ".mjs", ".cjs"],
-    "javascriptreact": [".jsx"]
+    "javascript": [
+      ".js",
+      ".mjs",
+      ".cjs"
+    ],
+    "javascriptreact": [
+      ".jsx"
+    ],
+    "typescript": [
+      ".ts",
+      ".mts",
+      ".cts"
+    ],
+    "typescriptreact": [
+      ".tsx"
+    ]
   },
+  "npm": "@vtsls/language-server",
   "transport": "stdio"
 }

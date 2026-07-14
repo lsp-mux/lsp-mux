@@ -54,8 +54,7 @@ const extractExtension = (uri: string): string | undefined => {
     const filename = pathname.slice(pathname.lastIndexOf('/') + 1);
     const dotIdx = filename.lastIndexOf('.');
     return dotIdx >= 0 ? filename.slice(dotIdx) : undefined;
-  }
-  catch {
+  } catch {
     return undefined;
   }
 };

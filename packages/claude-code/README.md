@@ -16,11 +16,11 @@ pnpm exec generate-claude-plugin
 The binary reads `.lsp-proxy.json` and `servers/` from the current
 directory and writes three files:
 
-| Output | Purpose |
-|--------|---------|
-| `.lsp.json` | LSP server registration — `command`, `args`, `extensionToLanguage`, `transport` |
-| `.claude-plugin/plugin.json` | Plugin name, version, description |
-| `.claude-plugin/marketplace.json` | Local marketplace metadata |
+| Output                            | Purpose                                                                         |
+| --------------------------------- | ------------------------------------------------------------------------------- |
+| `.lsp.json`                       | LSP server registration — `command`, `args`, `extensionToLanguage`, `transport` |
+| `.claude-plugin/plugin.json`      | Plugin name, version, description                                               |
+| `.claude-plugin/marketplace.json` | Local marketplace metadata                                                      |
 
 The generated `.lsp.json` contains absolute paths to the proxy entry point
 and config directory. Re-run the command if you move the directory.
@@ -31,7 +31,11 @@ and config directory. Re-run the command if you move the directory.
 {
   "lsp-proxy": {
     "command": "node",
-    "args": ["/absolute/path/to/proxy/dist/main.js", "--config-dir", "/absolute/path/to/config"],
+    "args": [
+      "/absolute/path/to/proxy/dist/main.js",
+      "--config-dir",
+      "/absolute/path/to/config"
+    ],
     "extensionToLanguage": { ".ts": "typescript", ".js": "javascript" },
     "transport": "stdio",
     "initializationOptions": {},

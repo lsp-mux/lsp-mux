@@ -31,8 +31,7 @@ const tryLoadJsonFile = async (path: string): Promise<Record<string, unknown> | 
       return raw as Record<string, unknown>;
     }
     return undefined;
-  }
-  catch (err: unknown) {
+  } catch (err: unknown) {
     if (err instanceof Error && 'code' in err && err.code === 'ENOENT') return undefined;
     throw err;
   }

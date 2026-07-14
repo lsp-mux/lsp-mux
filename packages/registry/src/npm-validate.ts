@@ -13,12 +13,11 @@ export const validateNpmPackage = async (
   const pkgPath = join(configDir, 'node_modules', npmPackage);
   try {
     await access(pkgPath);
-  }
-  catch {
+  } catch {
     throw new Error(
-      `Server "${serverName}" requires "${npmPackage}" `
-      + `but it was not found in ${configDir}. `
-      + `Install it with: npm install ${npmPackage}`,
+      `Server "${serverName}" requires "${npmPackage}" ` +
+      `but it was not found in ${configDir}. ` +
+      `Install it with: npm install ${npmPackage}`,
     );
   }
 };

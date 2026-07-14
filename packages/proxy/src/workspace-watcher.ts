@@ -143,8 +143,7 @@ export class WorkspaceWatcher {
         try {
           await stat(fullPath);
           fileExists = true;
-        }
-        catch (err) {
+        } catch (err) {
           // Only ENOENT means truly deleted; permission/symlink errors → treat as existing
           fileExists = !isEnoent(err);
         }
@@ -160,13 +159,11 @@ export class WorkspaceWatcher {
           const existing = batched.get(serverName);
           if (existing) {
             existing.push(...changes);
-          }
-          else {
+          } else {
             batched.set(serverName, [...changes]);
           }
         }
-      }
-      catch (err) {
+      } catch (err) {
         this.log.error(`Error processing file event for ${relativePath}:`, err);
       }
 
@@ -197,16 +194,14 @@ export class WorkspaceWatcher {
         this.log.warn(`Skipping resync for ${uri} (${String(fileStat.size)} bytes exceeds limit)`);
         return 'unchanged';
       }
-    }
-    catch (err) {
+    } catch (err) {
       return isEnoent(err) ? 'deleted' : 'unchanged';
     }
 
     let text: string;
     try {
       text = await readFile(filePath, 'utf-8');
-    }
-    catch (err) {
+    } catch (err) {
       return isEnoent(err) ? 'deleted' : 'unchanged';
     }
 

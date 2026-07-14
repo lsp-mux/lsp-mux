@@ -23,10 +23,10 @@ can also run it directly for debugging:
 node node_modules/lsp-proxy/dist/main.js --config-dir /path/to/config
 ```
 
-| Flag | Description |
-|------|-------------|
+| Flag                  | Description                                                                          |
+| --------------------- | ------------------------------------------------------------------------------------ |
 | `--config-dir <path>` | Directory containing `.lsp-proxy.json` and `servers/`. Defaults to the package root. |
-| `--log-dir <path>` | Log output directory. Overrides `logDir` in config. |
+| `--log-dir <path>`    | Log output directory. Overrides `logDir` in config.                                  |
 
 Logs are written to `<logDir>/<timestamp>-<pid>.log`. The default log
 directory is `$XDG_DATA_HOME/lsp-proxy/logs` on Linux/macOS and
@@ -50,7 +50,7 @@ directory is `$XDG_DATA_HOME/lsp-proxy/logs` on Linux/macOS and
 
   // Optional: glob patterns to exclude from file watching
   // Merged with built-in defaults (node_modules, .git, dist, etc.)
-  "watcherExclude": ["**/build/**"]
+  "watcherExclude": ["**/build/**"],
 }
 ```
 
@@ -70,7 +70,7 @@ Each server config is resolved from the
   "args": ["./node_modules/@vtsls/language-server/bin/vtsls.js", "--stdio"],
   "languages": {
     "typescript": [".ts", ".tsx"],
-    "javascript": [".js", ".jsx"]
+    "javascript": [".js", ".jsx"],
   },
   "transport": "stdio",
 
@@ -80,13 +80,13 @@ Each server config is resolved from the
   // injected.
   "settings": {
     "validate": "on",
-    "run": "onType"
+    "run": "onType",
   },
 
   // Optional: per-notification log level overrides
   "notifications": {
-    "eslint/status": { "logLevel": "DEBUG" }
-  }
+    "eslint/status": { "logLevel": "DEBUG" },
+  },
 }
 ```
 

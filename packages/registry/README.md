@@ -6,11 +6,11 @@ deep merging, and npm package validation.
 
 ## Pre-defined servers
 
-| Name | npm package | Description |
-|------|-------------|-------------|
-| `vtsls` | `@vtsls/language-server` | TypeScript / JavaScript |
-| `eslint` | `@lsp-mux/vscode-eslint-lsp` | ESLint diagnostics |
-| `oxlint` | `oxlint` | Oxlint diagnostics |
+| Name     | npm package                  | Description             |
+| -------- | ---------------------------- | ----------------------- |
+| `vtsls`  | `@vtsls/language-server`     | TypeScript / JavaScript |
+| `eslint` | `@lsp-mux/vscode-eslint-lsp` | ESLint diagnostics      |
+| `oxlint` | `oxlint`                     | Oxlint diagnostics      |
 
 Configs live in `entries/<name>.json`. Each entry contains the full server
 config (`command`, `args`, `languages`, `transport`, `settings`,
@@ -36,7 +36,7 @@ import {
   listRegistryEntries,
   deepMerge,
   validateNpmPackage,
-} from 'lsp-proxy-registry'
+} from 'lsp-proxy-registry';
 ```
 
 - **`lookupRegistryEntry(name)`** — returns the entry object or
