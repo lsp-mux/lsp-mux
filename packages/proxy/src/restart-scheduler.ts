@@ -51,7 +51,7 @@ export const createRestartScheduler = ({ policy, timers: t = defaultTimers }: Re
 
     cancel() {
       if (!timer) {
-      	return;
+        return;
       }
 
       t.clearTimeout(timer);

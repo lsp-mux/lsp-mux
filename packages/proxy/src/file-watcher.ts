@@ -156,7 +156,7 @@ export const unregisterServer = (
   const next = new Map(state);
   for (const [id, reg] of next) {
     if (reg.serverName !== serverName) {
-    	continue;
+      continue;
     }
 
     next.delete(id);

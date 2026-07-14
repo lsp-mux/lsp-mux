@@ -15,7 +15,7 @@ export const waitForMessage = (
     );
     const disposable = reader.listen((msg) => {
       if (!predicate(msg)) {
-      	return;
+        return;
       }
 
       clearTimeout(timer);
@@ -39,7 +39,7 @@ export const collectMessages = (
     );
     const disposable = reader.listen((msg) => {
       if (!predicate(msg)) {
-      	return;
+        return;
       }
 
       collected.push(msg);
@@ -66,7 +66,7 @@ export const request = (
     );
     const disposable = reader.listen((msg) => {
       if (!(Msg.isResponse(msg) && msg.id === id)) {
-      	return;
+        return;
       }
 
       clearTimeout(timer);

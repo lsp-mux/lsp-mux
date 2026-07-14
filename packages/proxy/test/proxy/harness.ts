@@ -11,8 +11,6 @@ import { LspProxy } from '../../src/proxy.ts';
 import type { ServerConfig } from '../../src/types.ts';
 import { normalizeFileUri } from '../../src/uri.ts';
 
-
-
 export const MOCK_SERVER = join(import.meta.dirname, '..', 'helpers', 'mock-server.ts');
 
 export const mockServerConfig: ServerConfig = {
@@ -121,5 +119,5 @@ export const it = test.extend<{
   },
 });
 
-export {type LspProxy} from '../../src/proxy.ts';
-export {type ServerConfig} from '../../src/types.ts';
+export { type LspProxy } from '../../src/proxy.ts';
+export { type ServerConfig } from '../../src/types.ts';
