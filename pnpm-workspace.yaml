@@ -6,6 +6,7 @@ catalog:
   '@changesets/cli': 2.31.0
   '@faker-js/faker': 10.4.0
   '@gtbuchanan/cli': 0.2.0
+  '@gtbuchanan/eslint-config': 0.2.0
   '@gtbuchanan/tsconfig': 0.1.1
   '@gtbuchanan/vitest-config': 0.1.1
   '@lsp-mux/vscode-eslint-lsp': 3.0.24
@@ -17,6 +18,8 @@ catalog:
   '@vtsls/language-server': 0.3.0
   console-fail-test: 0.6.1
   cpy-cli: 7.0.0
+  eslint: 10.6.0
+  jiti: 2.7.0
   oxlint: 1.58.0
   picomatch: ^4.0.4
   turbo: 2.10.4
