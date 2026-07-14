@@ -1,8 +1,8 @@
+import { faker } from '@faker-js/faker';
 import { describe, it } from 'vitest';
 import { createRouter, extractUri } from '../src/router.ts';
 import type { ServerEntry } from '../src/router.ts';
 import type { ServerConfig } from '../src/types.ts';
-import { faker } from '@faker-js/faker';
 import { fakeUri } from './helpers/fake.ts';
 
 const makeServer = (name: string, languages: Record<string, string[]>): ServerEntry => ({
@@ -89,11 +89,12 @@ describe('router', () => {
   describe('allServers', () => {
     it('returns all names in config order', ({ expect }) => {
       const router = createRouter([css, eslint, vtsls]);
+
       expect(router.allServers).toEqual([nameC, nameB, nameA]);
     });
   });
 
-  describe('URI edge cases', () => {
+  describe('uRI edge cases', () => {
     const router = createRouter([vtsls]);
 
     it('handles URIs with query strings', ({ expect }) => {
@@ -114,22 +115,26 @@ describe('extractUri', () => {
   it('extracts from params.textDocument.uri', ({ expect }) => {
     const uri = fakeUri();
     const msg = { jsonrpc: '2.0' as const, id: faker.number.int(), method: 'textDocument/hover', params: { textDocument: { uri }, position: { line: 0, character: 0 } } };
+
     expect(extractUri(msg)).toBe(uri);
   });
 
   it('extracts from params.uri (e.g. publishDiagnostics)', ({ expect }) => {
     const uri = fakeUri();
     const msg = { jsonrpc: '2.0' as const, method: 'textDocument/publishDiagnostics', params: { uri, diagnostics: [] } };
+
     expect(extractUri(msg)).toBe(uri);
   });
 
   it('returns undefined when no URI present', ({ expect }) => {
     const msg = { jsonrpc: '2.0' as const, id: faker.number.int(), method: 'shutdown' };
+
     expect(extractUri(msg)).toBeUndefined();
   });
 
   it('returns undefined for response messages', ({ expect }) => {
     const msg = { jsonrpc: '2.0' as const, id: faker.number.int(), result: {} };
+
     expect(extractUri(msg)).toBeUndefined();
   });
 
@@ -137,6 +142,7 @@ describe('extractUri', () => {
     const tdUri = fakeUri();
     const otherUri = fakeUri();
     const msg = { jsonrpc: '2.0' as const, id: faker.number.int(), method: faker.string.alpha(8), params: { textDocument: { uri: tdUri }, uri: otherUri } };
+
     expect(extractUri(msg)).toBe(tdUri);
   });
 });

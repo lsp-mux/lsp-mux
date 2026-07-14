@@ -1,10 +1,10 @@
-import type { Message, RequestMessage, ResponseMessage, ServerConfig, TrackedDocument } from './types.ts';
-import { Message as Msg, createRequest, createNotification, DOCUMENT_SYNC_METHODS, LSP_ERROR_CODES } from './types.ts';
 import { ChildServer } from './child-server.ts';
-import { createMessageBuffer } from './message-buffer.ts';
-import { createRestartScheduler, DEFAULT_RESTART_POLICY } from './restart-scheduler.ts';
-import type { RestartPolicy } from './restart-scheduler.ts';
 import type { Logger } from './logger.ts';
+import { createMessageBuffer } from './message-buffer.ts';
+import { DEFAULT_RESTART_POLICY, createRestartScheduler } from './restart-scheduler.ts';
+import type { RestartPolicy } from './restart-scheduler.ts';
+import type { Message, RequestMessage, ResponseMessage, ServerConfig, TrackedDocument } from './types.ts';
+import { DOCUMENT_SYNC_METHODS, LSP_ERROR_CODES, Message as Msg, createNotification, createRequest } from './types.ts';
 
 const MAX_BUFFER_SIZE = 1000;
 
@@ -26,21 +26,21 @@ export interface ManagedServer {
   readonly state: ServerState;
 
   /** Store init params for deferred (lazy) initialization. */
-  setInitParams(params: RequestMessage['params']): void;
+  setInitParams: (params: RequestMessage['params']) => void;
   /** Spawn server and send initialize. Resolves with the raw response. */
-  initialize(params: RequestMessage['params']): Promise<ResponseMessage>;
+  initialize: (params: RequestMessage['params']) => Promise<ResponseMessage>;
   /** Mark the proxy-level handshake as complete. Enables lazy start on idle servers. */
-  sendInitialized(): void;
+  sendInitialized: () => void;
   /** Route a message to this server. Triggers lazy start if idle; buffers if starting/restarting. */
-  send(msg: Message): boolean;
+  send: (msg: Message) => boolean;
   /** Try to cancel a buffered request by ID. Returns true if found and removed. */
-  cancelBuffered(id: number | string): boolean;
+  cancelBuffered: (id: number | string) => boolean;
   /** Send a proxy-internal request and return the response. Only works when running. */
-  sendRequest(method: string, params: RequestMessage['params']): Promise<ResponseMessage>;
+  sendRequest: (method: string, params: RequestMessage['params']) => Promise<ResponseMessage>;
   /** Send shutdown request. Resolves with the response. */
-  shutdown(): Promise<ResponseMessage>;
+  shutdown: () => Promise<ResponseMessage>;
   /** Clean up all resources. */
-  dispose(): void;
+  dispose: () => void;
 }
 
 export const createManagedServer = (
@@ -53,15 +53,15 @@ export const createManagedServer = (
   let state: ServerState = 'idle';
   let server: ChildServer | null = null;
   let initParams: RequestMessage['params'];
-  let shutdownSent = false;
+  let isShutdownSent = false;
 
   // Set by sendInitialized() after the client completes the LSP handshake.
   // Gates lazy start: send() on idle servers only triggers start after this is true.
-  let lazyStartEnabled = false;
+  let isLazyStartEnabled = false;
 
   // Whether this server has ever completed a full init sequence (initialize + initialized).
   // Gates restart: crash before first successful init → stop permanently (no retry).
-  let everInitialized = false;
+  let isEverInitialized = false;
 
   const pendingRequests = new Set<number | string | null>();
   const buffer = createMessageBuffer(MAX_BUFFER_SIZE);
@@ -152,7 +152,7 @@ export const createManagedServer = (
     server?.dispose();
     server = null;
 
-    if (!everInitialized) {
+    if (!isEverInitialized) {
       log.error(`${name}: crashed before initial handshake — stopping`);
       state = 'stopped';
       scheduler.cancel();
@@ -161,7 +161,7 @@ export const createManagedServer = (
       return;
     }
 
-    if (shutdownSent) {
+    if (isShutdownSent) {
       log.info(`${name}: exited after shutdown — not restarting`);
       state = 'stopped';
       scheduler.cancel();
@@ -178,8 +178,8 @@ export const createManagedServer = (
   };
 
   const scheduleRetry = (expectedState: 'starting' | 'restarting'): void => {
-    const scheduled = scheduler.schedule(() => void performInitSequence(expectedState));
-    if (!scheduled) {
+    const isScheduled = scheduler.schedule(() => void performInitSequence(expectedState));
+    if (!isScheduled) {
       log.error(`${name}: max attempts (${String(scheduler.maxRetries)}) reached — stopping`);
       state = 'stopped';
       errorBufferedRequests('Server stopped');
@@ -220,7 +220,7 @@ export const createManagedServer = (
           settings: config.settings,
         }));
       }
-      everInitialized = true;
+      isEverInitialized = true;
 
       // Replay tracked document state
       const documents = callbacks.getDocuments();
@@ -253,8 +253,8 @@ export const createManagedServer = (
       scheduler.reset();
       callbacks.onStateChange(state);
       log.info(`${name}: ${label} completed`);
-    } catch (err) {
-      log.error(`${name}: ${label} failed:`, err);
+    } catch (error) {
+      log.error(`${name}: ${label} failed:`, error);
       server?.dispose();
       server = null;
       if (state === expectedState) scheduleRetry(expectedState);
@@ -298,11 +298,11 @@ export const createManagedServer = (
     },
 
     sendInitialized() {
-      lazyStartEnabled = true;
+      isLazyStartEnabled = true;
       // Idle servers haven't been spawned yet — nothing to send.
       // They'll run the full init sequence on first matching message.
       if (!server) return;
-      everInitialized = true;
+      isEverInitialized = true;
       state = 'running';
       server.write(createNotification('initialized', {}));
     },
@@ -311,7 +311,7 @@ export const createManagedServer = (
       if (state === 'running') {
         if (Msg.isRequest(msg)) {
           pendingRequests.add(msg.id);
-          if (msg.method === 'shutdown') shutdownSent = true;
+          if (msg.method === 'shutdown') isShutdownSent = true;
         }
         server?.write(msg);
         return true;
@@ -323,12 +323,11 @@ export const createManagedServer = (
 
       if (state === 'restarting' || state === 'starting') {
         if (isDocSync) return true;
-        if (!buffer.push(msg)) return false;
-        return true;
+        return !!buffer.push(msg);
       }
 
       // Lazy start: first message to an idle server triggers spawn
-      if (state === 'idle' && initParams !== undefined && lazyStartEnabled) {
+      if (state === 'idle' && initParams !== undefined && isLazyStartEnabled) {
         state = 'starting';
         callbacks.onStateChange(state);
         if (!isDocSync) buffer.push(msg);
@@ -355,7 +354,7 @@ export const createManagedServer = (
     },
 
     async shutdown() {
-      shutdownSent = true;
+      isShutdownSent = true;
       if (state === 'restarting' || state === 'starting') {
         cancelRestart();
         state = 'stopped';

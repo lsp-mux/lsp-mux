@@ -1,11 +1,11 @@
 /** @module-tag slow */
+import { faker } from '@faker-js/faker';
 import { describe } from 'vitest';
 import type { ResponseMessage } from 'vscode-jsonrpc';
 import { Message as Msg } from '../../src/types.ts';
-import { request, notify, waitForMessage, initializeProxy } from '../helpers/test-client.ts';
-import { faker } from '@faker-js/faker';
 import { fakeUri } from '../helpers/fake.ts';
-import { it, mockServerConfig, type ServerConfig } from './harness.ts';
+import { initializeProxy, notify, request, waitForMessage } from '../helpers/test-client.ts';
+import { type ServerConfig, it, mockServerConfig } from './harness.ts';
 
 const lazyUri = fakeUri();
 const testUri = fakeUri();
@@ -18,6 +18,7 @@ describe('LspProxy lifecycle', () => {
       await initializeProxy(writer, reader);
 
       const res = await request(writer, reader, 99, 'shutdown');
+
       expect(res).toMatchObject({ result: null });
     });
 
@@ -39,6 +40,7 @@ describe('LspProxy lifecycle', () => {
         textDocument: { uri: lazyUri },
         position: { line: 0, character: 0 },
       });
+
       expect(hover).toMatchObject({ result: { echo: 'textDocument/hover' } });
     });
   });
@@ -50,7 +52,8 @@ describe('LspProxy lifecycle', () => {
       textDocument: { uri: testUri },
       position: { line: 0, character: 0 },
     });
-    expect(res).toMatchObject({ error: { code: -32002 } });
+
+    expect(res).toMatchObject({ error: { code: -32_002 } });
   });
 
   it('returns ServerNotInitialized for requests after shutdown', async ({ createProxy, expect }) => {
@@ -61,13 +64,15 @@ describe('LspProxy lifecycle', () => {
     await request(writer, reader, 98, 'shutdown');
 
     const res = await request(writer, reader, 99, 'textDocument/hover', {});
-    expect(res).toMatchObject({ error: { code: -32002 } });
+
+    expect(res).toMatchObject({ error: { code: -32_002 } });
   });
 
   it('completes initialize handshake', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
     const res = await initializeProxy(writer, reader);
+
     expect(res).toMatchObject({ result: { capabilities: { hoverProvider: true } } });
   });
 
@@ -99,6 +104,7 @@ describe('LspProxy lifecycle', () => {
     await initializeProxy(writer, reader);
 
     const shutdownRes = await request(writer, reader, 99, 'shutdown');
+
     expect(shutdownRes).toMatchObject({ result: null });
   });
 
@@ -116,6 +122,7 @@ describe('LspProxy lifecycle', () => {
     await notify(writer, 'initialized', {});
 
     const res = await request(writer, reader, 5, '$/initParams');
+
     expect(res).toMatchObject({
       result: {
         capabilities: {
@@ -135,6 +142,7 @@ describe('LspProxy lifecycle', () => {
     await initializeProxy(writer, reader);
 
     const res = await request(writer, reader, 5, '$/initParams');
+
     expect(res).toMatchObject({
       result: {
         capabilities: {
@@ -162,6 +170,7 @@ describe('LspProxy lifecycle', () => {
     await notify(writer, 'initialized', {});
 
     const res = await request(writer, reader, 5, '$/initParams');
+
     // Proxy passes through client's didChangeWatchedFiles without overriding
     expect(res).toMatchObject({
       result: {
@@ -194,10 +203,12 @@ describe('LspProxy lifecycle', () => {
       textDocument: { uri: fakeUri() },
       position: { line: 0, character: 0 },
     });
+
     expect(hover).toMatchObject({ result: { echo: 'textDocument/hover' } });
 
     // Server should have received an ack (not an error) for the registration
     const responses = await request(writer, reader, 11, '$/receivedResponses');
+
     expect(responses).toMatchObject({
       result: expect.arrayContaining([
         expect.objectContaining({ result: null }),
@@ -227,6 +238,7 @@ describe('LspProxy lifecycle', () => {
     });
 
     const res = await request(writer, reader, 11, '$/configNotifications');
+
     expect(res).toMatchObject({
       result: [{ settings: { validate: 'on', run: 'onType' } }],
     });
@@ -255,6 +267,7 @@ describe('LspProxy lifecycle', () => {
 
     // Server should have received settings with workspaceFolder injected
     const responses = await request(writer, reader, 11, '$/receivedResponses');
+
     expect(responses).toMatchObject({
       result: expect.arrayContaining([
         expect.objectContaining({
@@ -301,6 +314,7 @@ describe('LspProxy lifecycle', () => {
 
     // Server should have received the response
     const responses = await request(writer, reader, 501, '$/receivedResponses');
+
     expect(responses).toMatchObject({
       result: expect.arrayContaining([
         expect.objectContaining({ result: null }),
@@ -315,6 +329,7 @@ describe('LspProxy lifecycle', () => {
     // 2 (Incremental), the proxy must override to 1 (Full) because resync
     // replaces document content, making incremental client edits unsafe.
     const res = await initializeProxy(writer, reader);
+
     expect(res).toMatchObject({
       result: { capabilities: { textDocumentSync: 1 } },
     });

@@ -6,11 +6,11 @@ export const LevelSchema = v.picklist(LEVELS);
 export type Level = v.InferOutput<typeof LevelSchema>;
 
 export interface Logger {
-  debug(...args: unknown[]): void;
-  info(...args: unknown[]): void;
-  warn(...args: unknown[]): void;
-  error(...args: unknown[]): void;
-  setLevel(level: Level | undefined): void;
+  debug: (...args: unknown[]) => void;
+  info: (...args: unknown[]) => void;
+  warn: (...args: unknown[]) => void;
+  error: (...args: unknown[]) => void;
+  setLevel: (level: Level | undefined) => void;
 }
 
 export const createLogger = (

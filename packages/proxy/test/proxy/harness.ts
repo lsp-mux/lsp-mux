@@ -3,15 +3,15 @@ import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { PassThrough, Writable } from 'node:stream';
 import { pathToFileURL } from 'node:url';
-import { normalizeFileUri } from '../../src/uri.ts';
 import { test } from 'vitest';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
-import { LspProxy } from '../../src/proxy.ts';
 import { createLogger } from '../../src/logger.ts';
 import type { Logger } from '../../src/logger.ts';
+import { LspProxy } from '../../src/proxy.ts';
 import type { ServerConfig } from '../../src/types.ts';
+import { normalizeFileUri } from '../../src/uri.ts';
 
-export type { LspProxy, ServerConfig };
+
 
 export const MOCK_SERVER = join(import.meta.dirname, '..', 'helpers', 'mock-server.ts');
 
@@ -100,9 +100,9 @@ export const it = test.extend<{
         const started = ctx.proxy.start();
         return { ...ctx, started };
       });
-    } catch (err) {
+    } catch (error) {
       for (const line of logBuffer) process.stderr.write(line);
-      throw err;
+      throw error;
     } finally {
       for (const p of instances) p.dispose();
     }
@@ -120,3 +120,6 @@ export const it = test.extend<{
     await rm(dir, { recursive: true, force: true }).catch(() => { /* ignore */ });
   },
 });
+
+export {type LspProxy} from '../../src/proxy.ts';
+export {type ServerConfig} from '../../src/types.ts';

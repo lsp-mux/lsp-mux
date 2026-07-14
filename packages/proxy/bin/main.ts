@@ -3,15 +3,15 @@ import { readdir, stat, unlink } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { loadProxyConfig, loadServerConfig, ownPackageDir } from '../src/config.ts';
-import type { ServerConfig } from '../src/types.ts';
-import { LspProxy } from '../src/proxy.ts';
 import { createLogger } from '../src/logger.ts';
 import type { Logger } from '../src/logger.ts';
+import { LspProxy } from '../src/proxy.ts';
+import type { ServerConfig } from '../src/types.ts';
 
 const parseArg = (flag: string): string | undefined => {
   const idx = process.argv.indexOf(flag);
   const arg = process.argv[idx + 1];
-  if (idx < 0 || !arg) return undefined;
+  if (idx === -1 || !arg) return undefined;
   return resolve(arg);
 };
 
@@ -49,8 +49,10 @@ const watchConfigForLogLevel = (configDir: string, log: Logger): Disposable => {
 
 const LOG_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-/** Delete log files older than LOG_MAX_AGE_MS. Safe for concurrent startup —
- *  ENOENT from a parallel cleanup is silently ignored. */
+/**
+ * Delete log files older than LOG_MAX_AGE_MS. Safe for concurrent startup —
+ *  ENOENT from a parallel cleanup is silently ignored.
+ */
 const pruneOldLogs = async (logDir: string): Promise<void> => {
   const now = Date.now();
   let files: string[];
@@ -88,7 +90,7 @@ const main = async (): Promise<void> => {
   mkdirSync(logDir, { recursive: true });
   void pruneOldLogs(logDir);
   // Timestamp + PID: multiple editors may launch proxies in the same second.
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const timestamp = new Date().toISOString().replaceAll(/[:.]/g, '-');
   const logFile = createWriteStream(join(logDir, `${timestamp}-${String(process.pid)}.log`));
   const log = createLogger(logFile);
 
@@ -116,8 +118,8 @@ const main = async (): Promise<void> => {
   process.exit(0);
 };
 
-main().catch((err: unknown) => {
+main().catch((error: unknown) => {
   // Logger may not be initialized — write to stderr as fallback
-  process.stderr.write(`[lsp-proxy] Fatal: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`);
+  process.stderr.write(`[lsp-proxy] Fatal: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`);
   process.exit(1);
 });

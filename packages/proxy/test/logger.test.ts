@@ -5,7 +5,7 @@ import { createLogger } from '../src/logger.ts';
 /** Read all buffered data from a PassThrough stream as a string. */
 const drain = (stream: PassThrough): string => {
   const chunk: unknown = stream.read();
-  return typeof chunk === 'string' ? chunk : Buffer.isBuffer(chunk) ? chunk.toString() : '';
+  return typeof chunk === 'string' ? chunk : (Buffer.isBuffer(chunk) ? chunk.toString() : '');
 };
 
 describe('createLogger', () => {
@@ -13,6 +13,7 @@ describe('createLogger', () => {
     const stream = new PassThrough();
     const log = createLogger(stream);
     log.info('hello', 'world');
+
     expect(drain(stream)).toMatch(/\[.*\] \[lsp-proxy\] \[INFO\] hello world\n/);
   });
 
@@ -21,6 +22,7 @@ describe('createLogger', () => {
     const log = createLogger(stream);
     log.error('failed:', new Error('boom'));
     const output = drain(stream);
+
     expect(output).toContain('[ERROR]');
     expect(output).toMatch(/Error: boom\n\s+at /);
   });
@@ -32,6 +34,7 @@ describe('createLogger', () => {
       log.debug('should not appear');
       log.info('should appear');
       const output = drain(stream);
+
       expect(output).not.toContain('should not appear');
       expect(output).toContain('should appear');
     });
@@ -43,12 +46,13 @@ describe('createLogger', () => {
       log.warn('no');
       log.error('yes');
       const output = drain(stream);
+
       expect(output).not.toContain('[INFO]');
       expect(output).not.toContain('[WARN]');
       expect(output).toContain('[ERROR]');
     });
 
-    it('DEBUG level shows all messages', ({ expect }) => {
+    it('dEBUG level shows all messages', ({ expect }) => {
       const stream = new PassThrough();
       const log = createLogger(stream, 'DEBUG');
       log.debug('d');
@@ -56,6 +60,7 @@ describe('createLogger', () => {
       log.warn('w');
       log.error('e');
       const output = drain(stream);
+
       expect(output).toContain('[DEBUG]');
       expect(output).toContain('[INFO]');
       expect(output).toContain('[WARN]');
@@ -73,6 +78,7 @@ describe('createLogger', () => {
       log.debug('visible');
 
       const output = drain(stream);
+
       expect(output).not.toContain('hidden');
       expect(output).toContain('visible');
     });
@@ -82,6 +88,7 @@ describe('createLogger', () => {
       const log = createLogger(stream);
       log.setLevel('DEBUG');
       const output = drain(stream);
+
       expect(output).toContain('Log level changed to DEBUG');
       expect(output).toContain('[INFO]');
     });
@@ -90,6 +97,7 @@ describe('createLogger', () => {
       const stream = new PassThrough();
       const log = createLogger(stream, 'INFO');
       log.setLevel('INFO');
+
       expect(drain(stream)).toBe('');
     });
 
@@ -106,6 +114,7 @@ describe('createLogger', () => {
       log.info('should not appear');
       log.warn('should appear');
       const output = drain(stream);
+
       expect(output).not.toContain('should not appear');
       expect(output).toContain('should appear');
     });

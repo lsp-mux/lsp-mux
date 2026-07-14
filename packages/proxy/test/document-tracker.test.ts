@@ -1,8 +1,8 @@
+import { faker } from '@faker-js/faker';
 import { describe, it } from 'vitest';
-import { empty, trackOpen, trackChange, trackClose, toArray } from '../src/document-tracker.ts';
+import { empty, toArray, trackChange, trackClose, trackOpen } from '../src/document-tracker.ts';
 import type { DocumentMap } from '../src/document-tracker.ts';
 import type { TrackedDocument } from '../src/types.ts';
-import { faker } from '@faker-js/faker';
 import { fakeUri } from './helpers/fake.ts';
 
 const uri = fakeUri();
@@ -26,6 +26,7 @@ describe('document-tracker', () => {
     it('stores document state', ({ expect }) => {
       const content = faker.lorem.sentence();
       const docs = openDoc(uri, content);
+
       expect(toArray(docs)).toEqual([
         { uri, languageId: 'typescript', version: 1, content },
       ]);
@@ -37,6 +38,7 @@ describe('document-tracker', () => {
       docs = trackOpen(docs, {
         textDocument: { uri: uriA, languageId: 'typescript', version: 2, text: newContent },
       });
+
       expect(toArray(docs)).toStrictEqual([expect.objectContaining({ content: newContent })]);
     });
   });
@@ -49,6 +51,7 @@ describe('document-tracker', () => {
         textDocument: { uri, version: 2 },
         contentChanges: [{ text: newContent }],
       });
+
       expect(first(docs)).toMatchObject({ content: newContent, version: 2 });
     });
   });
@@ -67,6 +70,7 @@ describe('document-tracker', () => {
           },
         ],
       });
+
       expect(first(docs).content).toBe('hello beautiful world');
     });
 
@@ -81,6 +85,7 @@ describe('document-tracker', () => {
           },
         ],
       });
+
       expect(first(docs).content).toBe('hello there');
     });
 
@@ -95,10 +100,11 @@ describe('document-tracker', () => {
           },
         ],
       });
+
       expect(first(docs).content).toBe('line1\nREPLACED\nline3');
     });
 
-    it('handles \\r\\n line endings', ({ expect }) => {
+    it(String.raw`handles \r\n line endings`, ({ expect }) => {
       let docs = openDoc(uri, 'line1\r\nline2\r\nline3');
       docs = trackChange(docs, {
         textDocument: { uri, version: 2 },
@@ -109,10 +115,11 @@ describe('document-tracker', () => {
           },
         ],
       });
+
       expect(first(docs).content).toBe('line1\r\nREPLACED\r\nline3');
     });
 
-    it('handles bare \\r line endings', ({ expect }) => {
+    it(String.raw`handles bare \r line endings`, ({ expect }) => {
       let docs = openDoc(uri, 'line1\rline2\rline3');
       docs = trackChange(docs, {
         textDocument: { uri, version: 2 },
@@ -123,6 +130,7 @@ describe('document-tracker', () => {
           },
         ],
       });
+
       expect(first(docs).content).toBe('line1\rREPLACED\rline3');
     });
 
@@ -137,6 +145,7 @@ describe('document-tracker', () => {
           },
         ],
       });
+
       expect(first(docs).content).toBe('abef');
     });
 
@@ -150,6 +159,7 @@ describe('document-tracker', () => {
           { text: replacement }, // full replacement first
         ],
       });
+
       expect(first(docs).content).toBe(replacement);
     });
   });
@@ -158,11 +168,13 @@ describe('document-tracker', () => {
     it('removes document', ({ expect }) => {
       let docs = openDoc(uri, faker.lorem.word());
       docs = trackClose(docs, { textDocument: { uri } });
+
       expect(toArray(docs)).toStrictEqual([]);
     });
 
     it('is a no-op for unknown URI', ({ expect }) => {
       const docs = trackClose(empty(), { textDocument: { uri: fakeUri() } });
+
       expect(toArray(docs)).toStrictEqual([]);
     });
   });
@@ -173,6 +185,7 @@ describe('document-tracker', () => {
         textDocument: { uri: fakeUri(), version: 2 },
         contentChanges: [{ text: faker.lorem.sentence() }],
       });
+
       expect(toArray(docs)).toStrictEqual([]);
     });
 
@@ -181,12 +194,14 @@ describe('document-tracker', () => {
       docs = trackOpen(docs, {
         textDocument: { uri: uriB, languageId: 'javascript', version: 1, text: faker.lorem.word() },
       });
+
       expect(toArray(docs)).toHaveLength(2);
     });
 
     it('returns immutable state (original unchanged)', ({ expect }) => {
       const before = empty();
       const after = openDoc(uri, faker.lorem.word());
+
       expect(toArray(before)).toStrictEqual([]);
       expect(toArray(after)).toHaveLength(1);
     });

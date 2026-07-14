@@ -14,19 +14,25 @@ describe('RestartScheduler', () => {
     // Attempt 1: base 100 * 2^0 = 100ms, jittered to [50, 150]
     expect(sched.schedule(() => calls.push(1))).toBe(true);
     expect(sched.attempt).toBe(1);
+
     t.tick(150); // max jittered delay for base 100
+
     expect(calls).toEqual([1]);
 
     // Attempt 2: base 100 * 2^1 = 200ms, jittered to [100, 300]
     expect(sched.schedule(() => calls.push(2))).toBe(true);
     expect(sched.attempt).toBe(2);
+
     t.tick(300);
+
     expect(calls).toEqual([1, 2]);
 
     // Attempt 3: base min(400, 500) = 400ms, jittered to [200, 600)
     expect(sched.schedule(() => calls.push(3))).toBe(true);
     expect(sched.attempt).toBe(3);
+
     t.tick(600);
+
     expect(calls).toEqual([1, 2, 3]);
 
     // Attempt 4: over maxRetries
@@ -49,8 +55,11 @@ describe('RestartScheduler', () => {
 
     // Attempt 3: base min(400, 300) = 300ms → jittered capped at 300
     sched.schedule(() => calls.push(3));
+
     expect(calls).toEqual([1, 2]);
+
     t.tick(450);
+
     expect(calls).toEqual([1, 2, 3]);
   });
 
@@ -62,17 +71,22 @@ describe('RestartScheduler', () => {
     t.tick(150);
     sched.schedule(() => { /* no-op */ });
     t.tick(300);
+
     expect(sched.attempt).toBe(2);
 
     sched.reset();
+
     expect(sched.attempt).toBe(0);
 
     // Should schedule from attempt 1 again
     const called = vi.fn();
+
     expect(sched.schedule(called)).toBe(true);
     expect(sched.attempt).toBe(1);
+
     t.tick(150);
-    expect(called).toHaveBeenCalledOnce();
+
+    expect(called).toHaveBeenCalledTimes(1);
   });
 
   it('cancel prevents pending callback', ({ expect }) => {
@@ -83,11 +97,13 @@ describe('RestartScheduler', () => {
     sched.schedule(called);
     sched.cancel();
     t.tick(1000);
+
     expect(called).not.toHaveBeenCalled();
   });
 
   it('exposes maxRetries from policy', ({ expect }) => {
     const sched = createRestartScheduler({ policy });
+
     expect(sched.maxRetries).toBe(3);
   });
 
@@ -112,11 +128,13 @@ describe('RestartScheduler', () => {
     // With jitter, delays should be within [50, 150] (±50% of base)
     // and NOT all identical (which would indicate no jitter).
     expect(delays).toHaveLength(10);
+
     for (const d of delays) {
       expect(d).toBeGreaterThanOrEqual(50);
       expect(d).toBeLessThanOrEqual(150);
     }
-    const allSame = delays.every(d => d === delays[0]);
-    expect(allSame).toBe(false);
+    const isAllSame = delays.every(d => d === delays[0]);
+
+    expect(isAllSame).toBe(false);
   });
 });

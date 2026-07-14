@@ -1,11 +1,11 @@
 /** @module-tag slow */
+import { faker } from '@faker-js/faker';
 import * as v from 'valibot';
 import { describe } from 'vitest';
 import type { Message } from 'vscode-jsonrpc';
-import { request, notify, collectMessages, initializeProxy } from '../helpers/test-client.ts';
-import { faker } from '@faker-js/faker';
 import { fakeUri } from '../helpers/fake.ts';
-import { it, namedConfig, mockServerConfig, type ServerConfig } from './harness.ts';
+import { collectMessages, initializeProxy, notify, request } from '../helpers/test-client.ts';
+import { type ServerConfig, it, mockServerConfig, namedConfig } from './harness.ts';
 
 const DiagNotificationSchema = v.object({
   params: v.object({
@@ -48,6 +48,7 @@ describe('Pull diagnostics', () => {
     // The proxy should proactively pull diagnostics and publish them
     const msgs = await diagPromise;
     const diags = getDiagnostics(msgs[0]);
+
     expect(diags).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ source: 'mock' }),
@@ -89,6 +90,7 @@ describe('Pull diagnostics', () => {
     });
 
     const pushMsgs = await diagPromise;
+
     expect(getDiagnostics(pushMsgs[0])).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ source: 'mock' }),
@@ -132,6 +134,7 @@ describe('Pull diagnostics', () => {
     );
 
     const diags = getDiagnostics(msgs[0]);
+
     expect(diags).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ source: 'alpha' }),

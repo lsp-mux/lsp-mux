@@ -3,7 +3,7 @@ import { normalizeFileUri } from '../src/uri.ts';
 
 describe('normalizeFileUri', () => {
   it('normalizes backslash URIs to forward slashes', ({ expect }) => {
-    expect(normalizeFileUri('file://C:\\Users\\test\\file.ts'))
+    expect(normalizeFileUri(String.raw`file://C:\Users\test\file.ts`))
       .toBe('file:///c:/Users/test/file.ts');
   });
 
@@ -29,6 +29,7 @@ describe('normalizeFileUri', () => {
 
   it('preserves percent-encoded paths', ({ expect }) => {
     const uri = normalizeFileUri('file:///C:/My%20Project/file.ts');
+
     expect(uri).toContain('My%20Project');
     expect(uri).toBe('file:///c:/My%20Project/file.ts');
   });

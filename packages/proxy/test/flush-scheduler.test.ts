@@ -9,10 +9,12 @@ describe('FlushScheduler', () => {
     const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 1000, onFlush, timers: t });
 
     scheduler.notify();
+
     expect(onFlush).not.toHaveBeenCalled();
 
     await t.tickAsync(100);
-    expect(onFlush).toHaveBeenCalledOnce();
+
+    expect(onFlush).toHaveBeenCalledTimes(1);
 
     scheduler.dispose();
   });
@@ -26,10 +28,12 @@ describe('FlushScheduler', () => {
     await t.tickAsync(80);
     scheduler.notify(); // reset debounce
     await t.tickAsync(80);
+
     expect(onFlush).not.toHaveBeenCalled(); // only 80ms since last notify
 
     await t.tickAsync(20);
-    expect(onFlush).toHaveBeenCalledOnce();
+
+    expect(onFlush).toHaveBeenCalledTimes(1);
 
     scheduler.dispose();
   });
@@ -45,11 +49,13 @@ describe('FlushScheduler', () => {
       await t.tickAsync(50);
       scheduler.notify();
     }
+
     // 250ms elapsed, debounce hasn't fired
     expect(onFlush).not.toHaveBeenCalled();
 
     await t.tickAsync(50); // 300ms total → maxWait fires
-    expect(onFlush).toHaveBeenCalledOnce();
+
+    expect(onFlush).toHaveBeenCalledTimes(1);
 
     scheduler.dispose();
   });
@@ -73,10 +79,12 @@ describe('FlushScheduler', () => {
 
     // Re-check should NOT fire immediately — it goes through debounce
     await t.tickAsync(1);
+
     expect(onFlush).toHaveBeenCalledTimes(1); // still just the first flush
 
     // After debounceMs, the re-check flush fires
     await t.tickAsync(99);
+
     expect(onFlush).toHaveBeenCalledTimes(2);
 
     scheduler.dispose();
@@ -93,17 +101,21 @@ describe('FlushScheduler', () => {
 
     scheduler.notify();
     await t.tickAsync(50); // first flush starts (blocked)
-    expect(onFlush).toHaveBeenCalledOnce();
+
+    expect(onFlush).toHaveBeenCalledTimes(1);
 
     scheduler.notify(); // arrives during flush
     await t.tickAsync(50); // debounce would fire, but flush is in progress
-    expect(onFlush).toHaveBeenCalledOnce(); // still only one call
+
+    expect(onFlush).toHaveBeenCalledTimes(1); // still only one call
 
     resolveFlush(); // unblock first flush
     await t.tickAsync(0); // let first flush complete
-    expect(onFlush).toHaveBeenCalledOnce(); // re-check goes through debounce, not immediate
+
+    expect(onFlush).toHaveBeenCalledTimes(1); // re-check goes through debounce, not immediate
 
     await t.tickAsync(50); // debounce fires
+
     expect(onFlush).toHaveBeenCalledTimes(2); // second flush from debounced re-check
 
     scheduler.dispose();
@@ -118,6 +130,7 @@ describe('FlushScheduler', () => {
     scheduler.dispose();
 
     await t.tickAsync(200);
+
     expect(onFlush).not.toHaveBeenCalled();
   });
 
@@ -130,11 +143,13 @@ describe('FlushScheduler', () => {
 
     scheduler.notify();
     await t.tickAsync(100); // first flush fires and throws
-    expect(onFlush).toHaveBeenCalledOnce();
+
+    expect(onFlush).toHaveBeenCalledTimes(1);
 
     // Scheduler should not be stuck — a new notify should trigger another flush
     scheduler.notify();
     await t.tickAsync(100);
+
     expect(onFlush).toHaveBeenCalledTimes(2);
 
     scheduler.dispose();
@@ -149,6 +164,7 @@ describe('FlushScheduler', () => {
     scheduler.notify(); // should be a no-op
 
     await t.tickAsync(200);
+
     expect(onFlush).not.toHaveBeenCalled();
   });
 
@@ -160,11 +176,13 @@ describe('FlushScheduler', () => {
     // First batch
     scheduler.notify();
     await t.tickAsync(100);
-    expect(onFlush).toHaveBeenCalledOnce();
+
+    expect(onFlush).toHaveBeenCalledTimes(1);
 
     // Second batch — maxWait should restart from now, not from the first notify
     scheduler.notify();
     await t.tickAsync(100);
+
     expect(onFlush).toHaveBeenCalledTimes(2);
 
     scheduler.dispose();

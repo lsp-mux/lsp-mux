@@ -13,6 +13,7 @@ describe('deepMerge', () => {
   it('deep merges nested objects', ({ expect }) => {
     const base = { settings: { validate: 'on', run: 'onType' } };
     const override = { settings: { run: 'onSave' } };
+
     expect(deepMerge(base, override)).toEqual({
       settings: { validate: 'on', run: 'onSave' },
     });
@@ -21,6 +22,7 @@ describe('deepMerge', () => {
   it('replaces arrays instead of merging', ({ expect }) => {
     const base = { args: ['--stdio', '--debug'] };
     const override = { args: ['--stdio'] };
+
     expect(deepMerge(base, override)).toEqual({ args: ['--stdio'] });
   });
 
@@ -34,6 +36,7 @@ describe('deepMerge', () => {
 
   it('returns base unchanged for empty override', ({ expect }) => {
     const base = { a: 1, b: { c: 2 } };
+
     expect(deepMerge(base, {})).toEqual(base);
   });
 

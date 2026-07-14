@@ -1,13 +1,13 @@
+import { type FSWatcher, watch } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
-import { watch, type FSWatcher } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { normalizeFileUri } from './uri.ts';
-import type { TrackedDocument } from './types.ts';
 import * as fw from './file-watcher.ts';
 import { createFlushScheduler } from './flush-scheduler.ts';
 import type { FlushScheduler } from './flush-scheduler.ts';
 import type { Logger } from './logger.ts';
+import type { TrackedDocument } from './types.ts';
+import { normalizeFileUri } from './uri.ts';
 
 const WATCHER_DEBOUNCE_MS = 250;
 const WATCHER_MAX_WAIT_MS = 2000;
@@ -22,12 +22,12 @@ const isEnoent = (err: unknown): boolean =>
   isNodeError(err) && err.code === 'ENOENT';
 
 export interface WatcherDelegate {
-  isStopped(): boolean;
-  getDocument(uri: string): TrackedDocument | undefined;
-  matchEvent(relativePath: string, changeType: number, uri: string): ReadonlyMap<string, fw.FileChange[]>;
+  isStopped: () => boolean;
+  getDocument: (uri: string) => TrackedDocument | undefined;
+  matchEvent: (relativePath: string, changeType: number, uri: string) => ReadonlyMap<string, fw.FileChange[]>;
   /** Update tracked content, bump version offset, and fan out didChange to matching servers. */
-  resyncDocument(uri: string, clientVersion: number, text: string): void;
-  sendWatchedFilesEvent(serverName: string, changes: fw.FileChange[]): void;
+  resyncDocument: (uri: string, clientVersion: number, text: string) => void;
+  sendWatchedFilesEvent: (serverName: string, changes: fw.FileChange[]) => void;
 }
 
 export interface WorkspaceWatcherOptions {
@@ -67,7 +67,7 @@ export class WorkspaceWatcher {
     this.resolvedRoot = await fw.resolveRoot(this.workspaceRoot);
 
     if (process.platform === 'linux') {
-      const major = Number(process.versions.node.split('.')[0]);
+      const major = Number(process.versions.node.split('.', 1)[0]);
       if (major < 20) {
         this.log.warn(`Recursive file watching may not work on Linux with Node.js ${process.versions.node} (requires ≥20.x)`);
       }
@@ -89,7 +89,7 @@ export class WorkspaceWatcher {
         if (!filename) return;
         if (this.delegate.isStopped()) return;
 
-        const normalized = filename.replace(/\\/g, '/');
+        const normalized = filename.replaceAll('\\', '/');
         if (this.isExcluded(normalized)) return;
 
         if (pending.size >= this.maxPendingEvents && !pending.has(normalized)) {
@@ -139,15 +139,15 @@ export class WorkspaceWatcher {
         const fileUri = normalizeFileUri(pathToFileURL(fullPath).href);
         const isTracked = this.delegate.getDocument(fileUri) !== undefined;
 
-        let fileExists: boolean;
+        let isFileExists: boolean;
         try {
           await stat(fullPath);
-          fileExists = true;
-        } catch (err) {
+          isFileExists = true;
+        } catch (error) {
           // Only ENOENT means truly deleted; permission/symlink errors → treat as existing
-          fileExists = !isEnoent(err);
+          isFileExists = !isEnoent(error);
         }
-        let changeType = fw.classifyChange(fileExists);
+        let changeType = fw.classifyChange(isFileExists);
 
         if (changeType !== fw.FileChangeType.Deleted && isTracked) {
           const result = await this.resyncTrackedFile(fileUri);
@@ -163,8 +163,8 @@ export class WorkspaceWatcher {
             batched.set(serverName, [...changes]);
           }
         }
-      } catch (err) {
-        this.log.error(`Error processing file event for ${relativePath}:`, err);
+      } catch (error) {
+        this.log.error(`Error processing file event for ${relativePath}:`, error);
       }
 
       count++;
@@ -194,15 +194,15 @@ export class WorkspaceWatcher {
         this.log.warn(`Skipping resync for ${uri} (${String(fileStat.size)} bytes exceeds limit)`);
         return 'unchanged';
       }
-    } catch (err) {
-      return isEnoent(err) ? 'deleted' : 'unchanged';
+    } catch (error) {
+      return isEnoent(error) ? 'deleted' : 'unchanged';
     }
 
     let text: string;
     try {
       text = await readFile(filePath, 'utf-8');
-    } catch (err) {
-      return isEnoent(err) ? 'deleted' : 'unchanged';
+    } catch (error) {
+      return isEnoent(error) ? 'deleted' : 'unchanged';
     }
 
     const byteLength = Buffer.byteLength(text);

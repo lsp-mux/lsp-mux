@@ -3,11 +3,11 @@ import { Message as Msg } from './types.ts';
 
 export interface MessageBuffer {
   /** Buffer a message. Returns false if full. */
-  push(msg: Message): boolean;
+  push: (msg: Message) => boolean;
   /** Remove a buffered request by ID. Returns true if found. */
-  cancel(targetId: number | string): boolean;
+  cancel: (targetId: number | string) => boolean;
   /** Drain and return all buffered messages. */
-  flush(): readonly Message[];
+  flush: () => readonly Message[];
   readonly length: number;
 }
 

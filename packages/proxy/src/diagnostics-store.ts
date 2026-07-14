@@ -10,16 +10,18 @@ export type DiagnosticsStore = ReadonlyMap<string, PerUriStore>;
 /** Empty store. */
 export const empty = (): DiagnosticsStore => new Map();
 
-/** Update diagnostics for one server + URI. Returns new store.
+/**
+ * Update diagnostics for one server + URI. Returns new store.
  *  If diagnostics array is empty, removes the server's entry for that URI.
- *  If the URI has no more server entries, removes the URI entirely. */
+ *  If the URI has no more server entries, removes the URI entirely.
+ */
 export const update = (
   store: DiagnosticsStore,
   serverName: string,
   uri: string,
   diagnostics: readonly Diagnostic[],
 ): DiagnosticsStore => {
-  const perUri = new Map(store.get(uri) ?? []);
+  const perUri = new Map(store.get(uri));
 
   if (diagnostics.length === 0) {
     perUri.delete(serverName);
@@ -43,8 +45,10 @@ export const merge = (store: DiagnosticsStore, uri: string): readonly Diagnostic
   return [...perUri.values()].flat();
 };
 
-/** Remove all entries for a server (e.g., on crash).
- *  Returns the new store and the list of affected URIs (so caller can re-publish). */
+/**
+ * Remove all entries for a server (e.g., on crash).
+ *  Returns the new store and the list of affected URIs (so caller can re-publish).
+ */
 export const clearServer = (
   store: DiagnosticsStore,
   serverName: string,

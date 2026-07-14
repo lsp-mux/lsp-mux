@@ -15,11 +15,11 @@ export const DEFAULT_RESTART_POLICY: RestartPolicy = {
 
 export interface RestartScheduler {
   /** Schedule a callback with exponential backoff. Returns false if max retries reached. */
-  schedule(callback: () => void): boolean;
+  schedule: (callback: () => void) => boolean;
   /** Reset attempt counter (call after successful restart). */
-  reset(): void;
+  reset: () => void;
   /** Cancel any pending timer. */
-  cancel(): void;
+  cancel: () => void;
   readonly attempt: number;
   readonly maxRetries: number;
 }
@@ -50,10 +50,12 @@ export const createRestartScheduler = ({ policy, timers: t = defaultTimers }: Re
     },
 
     cancel() {
-      if (timer) {
-        t.clearTimeout(timer);
-        timer = null;
+      if (!timer) {
+      	return;
       }
+
+      t.clearTimeout(timer);
+      timer = null;
     },
 
     get attempt() {

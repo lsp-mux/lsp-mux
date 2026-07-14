@@ -24,7 +24,8 @@ const deepMerge = (
   return result;
 };
 
-/** Merge capabilities from multiple servers into a single capabilities object.
+/**
+ * Merge capabilities from multiple servers into a single capabilities object.
  *
  *  Strategy (recursive deep merge):
  *  - Boolean values: OR (true if any server provides it)
@@ -40,7 +41,8 @@ export const mergeCapabilities = (
 ): ServerCapabilities =>
   capabilities.reduce<ServerCapabilities>(deepMerge, {});
 
-/** Static capabilities the proxy advertises during initialize.
+/**
+ * Static capabilities the proxy advertises during initialize.
  *
  *  Child servers are started lazily (on first matching file open), so
  *  their actual capabilities aren't known at init time. The proxy declares

@@ -5,16 +5,19 @@ describe('analyzeClientCapabilities', () => {
   describe('localFileWatching', () => {
     it('enabled when capabilities are empty', ({ expect }) => {
       const { localFileWatching } = analyzeClientCapabilities({ capabilities: {} });
+
       expect(localFileWatching).toBe(true);
     });
 
     it('enabled when params is null', ({ expect }) => {
       const { localFileWatching } = analyzeClientCapabilities(null);
+
       expect(localFileWatching).toBe(true);
     });
 
     it('enabled when params is undefined', ({ expect }) => {
       const { localFileWatching } = analyzeClientCapabilities(undefined);
+
       expect(localFileWatching).toBe(true);
     });
 
@@ -22,6 +25,7 @@ describe('analyzeClientCapabilities', () => {
       const { localFileWatching } = analyzeClientCapabilities({
         capabilities: { textDocument: {} },
       });
+
       expect(localFileWatching).toBe(true);
     });
 
@@ -29,6 +33,7 @@ describe('analyzeClientCapabilities', () => {
       const { localFileWatching } = analyzeClientCapabilities({
         capabilities: { workspace: { applyEdit: true } },
       });
+
       expect(localFileWatching).toBe(true);
     });
 
@@ -40,6 +45,7 @@ describe('analyzeClientCapabilities', () => {
           },
         },
       });
+
       expect(localFileWatching).toBe(true);
     });
 
@@ -51,6 +57,7 @@ describe('analyzeClientCapabilities', () => {
           },
         },
       });
+
       expect(localFileWatching).toBe(false);
     });
 
@@ -65,6 +72,7 @@ describe('analyzeClientCapabilities', () => {
           },
         },
       });
+
       expect(localFileWatching).toBe(false);
     });
   });
@@ -72,6 +80,7 @@ describe('analyzeClientCapabilities', () => {
   describe('proactivePullDiagnostics', () => {
     it('enabled when capabilities are empty', ({ expect }) => {
       const { proactivePullDiagnostics } = analyzeClientCapabilities({ capabilities: {} });
+
       expect(proactivePullDiagnostics).toBe(true);
     });
 
@@ -79,6 +88,7 @@ describe('analyzeClientCapabilities', () => {
       const { proactivePullDiagnostics } = analyzeClientCapabilities({
         capabilities: { workspace: {} },
       });
+
       expect(proactivePullDiagnostics).toBe(true);
     });
 
@@ -86,6 +96,7 @@ describe('analyzeClientCapabilities', () => {
       const { proactivePullDiagnostics } = analyzeClientCapabilities({
         capabilities: { textDocument: { hover: {} } },
       });
+
       expect(proactivePullDiagnostics).toBe(true);
     });
 
@@ -97,6 +108,7 @@ describe('analyzeClientCapabilities', () => {
           },
         },
       });
+
       expect(proactivePullDiagnostics).toBe(true);
     });
 
@@ -108,6 +120,7 @@ describe('analyzeClientCapabilities', () => {
           },
         },
       });
+
       expect(proactivePullDiagnostics).toBe(false);
     });
   });
@@ -123,6 +136,7 @@ describe('analyzeClientCapabilities', () => {
         },
       },
     });
+
     expect(flags).toEqual({
       localFileWatching: false,
       proactivePullDiagnostics: false,

@@ -1,5 +1,5 @@
 import * as v from 'valibot';
-import type { ServerConfig, Message } from './types.ts';
+import type { Message, ServerConfig } from './types.ts';
 
 // --- Types ---
 
@@ -9,12 +9,16 @@ export interface ServerEntry {
 }
 
 export interface Router {
-  /** All server names that handle a URI's file type (for fanout).
-   *  Returns allServers if URI is undefined or extension is unknown. */
-  serversForUri(uri: string | undefined): readonly string[];
-  /** First server that handles a URI's file type (for single-response routing).
-   *  Returns first of allServers if URI is undefined or extension is unknown. */
-  primaryForUri(uri: string | undefined): string | undefined;
+  /**
+   * All server names that handle a URI's file type (for fanout).
+   *  Returns allServers if URI is undefined or extension is unknown.
+   */
+  serversForUri: (uri: string | undefined) => readonly string[];
+  /**
+   * First server that handles a URI's file type (for single-response routing).
+   *  Returns first of allServers if URI is undefined or extension is unknown.
+   */
+  primaryForUri: (uri: string | undefined) => string | undefined;
   /** All configured server names, in config order. */
   readonly allServers: readonly string[];
 }
@@ -53,7 +57,7 @@ const extractExtension = (uri: string): string | undefined => {
     const pathname = new URL(uri).pathname;
     const filename = pathname.slice(pathname.lastIndexOf('/') + 1);
     const dotIdx = filename.lastIndexOf('.');
-    return dotIdx >= 0 ? filename.slice(dotIdx) : undefined;
+    return dotIdx === -1 ? undefined : filename.slice(dotIdx);
   } catch {
     return undefined;
   }
@@ -100,8 +104,10 @@ const ParamsUriSchema = v.union([
   ),
 ]);
 
-/** Extract textDocument.uri from LSP message params (if present).
- *  Handles both `params.textDocument.uri` and `params.uri` shapes. */
+/**
+ * Extract textDocument.uri from LSP message params (if present).
+ *  Handles both `params.textDocument.uri` and `params.uri` shapes.
+ */
 export const extractUri = (msg: Message): string | undefined => {
   const params = 'params' in msg ? msg.params : undefined;
   const result = v.safeParse(ParamsUriSchema, params);

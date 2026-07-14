@@ -62,7 +62,7 @@ const main = async (): Promise<void> => {
   log.info('Generated .claude-plugin/marketplace.json');
 };
 
-main().catch((err: unknown) => {
-  log.error('Fatal:', err);
+main().catch((error: unknown) => {
+  log.error('Fatal:', error);
   process.exit(1);
 });

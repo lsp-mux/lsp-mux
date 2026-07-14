@@ -1,11 +1,11 @@
 /** @module-tag slow */
+import { faker } from '@faker-js/faker';
 import * as v from 'valibot';
 import { describe } from 'vitest';
 import type { Message, ResponseMessage } from 'vscode-jsonrpc';
 import { Message as Msg, createRequest } from '../src/types.ts';
-import { collectMessages, request, notify, waitForMessage, initializeProxy } from './helpers/test-client.ts';
-import { faker } from '@faker-js/faker';
 import { fakeUri } from './helpers/fake.ts';
+import { collectMessages, initializeProxy, notify, request, waitForMessage } from './helpers/test-client.ts';
 import { it, namedConfig } from './proxy/harness.ts';
 
 const testUri = fakeUri();
@@ -48,6 +48,7 @@ describe('Multi-server proxy', () => {
     const { writer, reader } = createProxy({ configs: twoServerConfigs() });
 
     const res = await initializeProxy(writer, reader);
+
     expect(res).toMatchObject({
       result: { capabilities: { hoverProvider: true, textDocumentSync: 1 } },
     });
@@ -73,10 +74,12 @@ describe('Multi-server proxy', () => {
       textDocument: { uri: testUri },
       position: { line: 0, character: 0 },
     });
+
     expect(hover).toMatchObject({ result: { server: 'alpha' } });
 
     // Shutdown should succeed instantly — beta was never started
     const shutdownRes = await request(writer, reader, 99, 'shutdown');
+
     expect(shutdownRes).toMatchObject({ result: null });
   });
 
@@ -100,6 +103,7 @@ describe('Multi-server proxy', () => {
     });
 
     const diagnosticMsgs = await diagPromise;
+
     expect(getDiagnostics(diagnosticMsgs.at(-1))).toEqual(expect.arrayContaining([
       expect.objectContaining({ source: 'alpha' }),
       expect.objectContaining({ source: 'beta' }),
@@ -138,6 +142,7 @@ describe('Multi-server proxy', () => {
     });
 
     const msgs = await diagPromise;
+
     expect(getDiagnostics(msgs.at(-1))).toEqual(expect.arrayContaining([
       expect.objectContaining({ source: 'alpha' }),
       expect.objectContaining({ source: 'beta' }),
@@ -183,6 +188,7 @@ describe('Multi-server proxy', () => {
     await initializeProxy(writer, reader);
 
     const res = await request(writer, reader, 200, 'shutdown');
+
     expect(res).toMatchObject({ result: null });
   });
 
@@ -191,6 +197,7 @@ describe('Multi-server proxy', () => {
     await initializeProxy(writer, reader);
 
     const crashRes = await request(writer, reader, 300, '$/crash');
+
     expect(crashRes).toMatchObject({ error: expect.objectContaining({}) as unknown });
 
     const hover = await request(writer, reader, 301, 'textDocument/hover', {
@@ -210,6 +217,7 @@ describe('Multi-server proxy', () => {
     const { writer, reader } = createProxy({ configs });
 
     const res = await initializeProxy(writer, reader);
+
     // Even though beta advertises textDocumentSync: 2 (Incremental),
     // the proxy must advertise Full (1) to ensure resync safety.
     expect(res).toMatchObject({
@@ -260,6 +268,7 @@ describe('Multi-server proxy', () => {
 
     // Alpha (primary, queryable) should NOT have received any response messages
     const alphaResponses = await request(writer, reader, 500, '$/receivedResponses');
+
     expect(alphaResponses).toMatchObject({ result: [] });
   });
 });

@@ -1,8 +1,7 @@
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { normalizeFileUri } from '../src/uri.ts';
-import { describe, it, vi, beforeEach } from 'vitest';
 import { faker } from '@faker-js/faker';
+import { beforeEach, describe, it, vi } from 'vitest';
 
 vi.mock('node:fs/promises', () => ({
   stat: vi.fn(),
@@ -26,14 +25,15 @@ vi.mock('../src/logger.ts', () => ({
   createLogger: vi.fn(() => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })),
 }));
 
-import { stat, readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { watch } from 'node:fs';
 import type { FSWatcher } from 'node:fs';
 import * as fw from '../src/file-watcher.ts';
 import { createFlushScheduler } from '../src/flush-scheduler.ts';
 import { createLogger } from '../src/logger.ts';
 import type { Logger } from '../src/logger.ts';
-import { WorkspaceWatcher, type WatcherDelegate, type WorkspaceWatcherOptions } from '../src/workspace-watcher.ts';
+import { normalizeFileUri } from '../src/uri.ts';
+import { type WatcherDelegate, WorkspaceWatcher, type WorkspaceWatcherOptions } from '../src/workspace-watcher.ts';
 
 const WORKSPACE = join(import.meta.dirname, 'fake-workspace');
 
@@ -200,7 +200,7 @@ describe.sequential('WorkspaceWatcher', () => {
       const delegate = createDelegate();
 
       await startWatcher(delegate);
-      watchCallback('change', 'sub\\file.ts');
+      watchCallback('change', String.raw`sub\file.ts`);
       await onFlush();
 
       expect(delegate.matchEvent).toHaveBeenCalledWith(
@@ -376,11 +376,12 @@ describe.sequential('WorkspaceWatcher', () => {
       watcher.dispose();
 
       const scheduler = vi.mocked(createFlushScheduler).mock.results[0]?.value as { dispose: ReturnType<typeof vi.fn> };
+
       expect(scheduler.dispose).toHaveBeenCalled();
       expect(mockFsWatcher.close).toHaveBeenCalled();
     });
 
-    it('Symbol.dispose calls dispose', async ({ expect }) => {
+    it('symbol.dispose calls dispose', async ({ expect }) => {
       const delegate = createDelegate();
       const watcher = await startWatcher(delegate);
 

@@ -8,21 +8,21 @@
  * Usage: node --import tsx mock-server.ts [--name=<serverName>]
  */
 import * as v from 'valibot';
-import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import type { ResponseMessage } from 'vscode-jsonrpc';
+import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
+import { DidChangeParamsSchema, DidCloseParamsSchema, DidOpenParamsSchema } from '../../src/document-tracker.ts';
 import { Message as Msg, createNotification, createRequest } from '../../src/types.ts';
-import { DidOpenParamsSchema, DidChangeParamsSchema, DidCloseParamsSchema } from '../../src/document-tracker.ts';
 
 const serverName = process.argv.find(a => a.startsWith('--name='))?.slice(7) ?? 'mock';
-const registerWatchers = process.argv.includes('--register-watchers');
-const registerMixed = process.argv.includes('--register-mixed');
-const incrementalSync = process.argv.includes('--incremental-sync');
-const unregisterOnCommand = process.argv.includes('--unregister-on-command');
-const sendCustomRequest = process.argv.includes('--send-custom-request');
-const trackConfig = process.argv.includes('--track-config');
-const requestConfig = process.argv.includes('--request-config');
-const registerConfig = process.argv.includes('--register-config');
-const pullDiagnostics = process.argv.includes('--pull-diagnostics');
+const isRegisterWatchers = process.argv.includes('--register-watchers');
+const isRegisterMixed = process.argv.includes('--register-mixed');
+const isIncrementalSync = process.argv.includes('--incremental-sync');
+const isUnregisterOnCommand = process.argv.includes('--unregister-on-command');
+const isSendCustomRequest = process.argv.includes('--send-custom-request');
+const isTrackConfig = process.argv.includes('--track-config');
+const isRequestConfig = process.argv.includes('--request-config');
+const isRegisterConfig = process.argv.includes('--register-config');
+const isPullDiagnostics = process.argv.includes('--pull-diagnostics');
 
 const reader = new StreamMessageReader(process.stdin);
 const writer = new StreamMessageWriter(process.stdout);
@@ -71,7 +71,7 @@ reader.listen((msg) => {
     switch (msg.method) {
       case 'initialize': {
         initializeParams = msg.params;
-        respond(msg.id, { capabilities: { textDocumentSync: incrementalSync ? 2 : 1, hoverProvider: true } });
+        respond(msg.id, { capabilities: { textDocumentSync: isIncrementalSync ? 2 : 1, hoverProvider: true } });
         return;
       }
       case '$/initParams': {
@@ -99,7 +99,7 @@ reader.listen((msg) => {
         return;
       }
       case '$/unregisterWatchers': {
-        if (unregisterOnCommand) {
+        if (isUnregisterOnCommand) {
           void writer.write(createRequest(serverRequestSeq++, 'client/unregisterCapability', {
             unregisterations: [{
               id: `${serverName}-watcher-ts`,
@@ -111,7 +111,7 @@ reader.listen((msg) => {
         return;
       }
       case 'textDocument/diagnostic': {
-        if (pullDiagnostics) {
+        if (isPullDiagnostics) {
           respond(msg.id, {
             kind: 'full',
             items: [{
@@ -138,7 +138,7 @@ reader.listen((msg) => {
 
     switch (msg.method) {
       case 'initialized': {
-        if (registerConfig) {
+        if (isRegisterConfig) {
           void writer.write(createRequest(serverRequestSeq++, 'client/registerCapability', {
             registrations: [{
               id: `${serverName}-config`,
@@ -146,18 +146,18 @@ reader.listen((msg) => {
             }],
           }));
         }
-        if (requestConfig) {
+        if (isRequestConfig) {
           void writer.write(createRequest(serverRequestSeq++, 'workspace/configuration', {
             items: [{ scopeUri: 'file:///test.ts', section: '' }],
           }));
         }
-        if (sendCustomRequest) {
+        if (isSendCustomRequest) {
           void writer.write(createRequest(serverRequestSeq++, 'window/showMessageRequest', {
             type: 3,
             message: 'Test request from server',
           }));
         }
-        if (registerWatchers) {
+        if (isRegisterWatchers) {
           void writer.write(createRequest(serverRequestSeq++, 'client/registerCapability', {
             registrations: [{
               id: `${serverName}-watcher-ts`,
@@ -168,7 +168,7 @@ reader.listen((msg) => {
             }],
           }));
         }
-        if (registerMixed) {
+        if (isRegisterMixed) {
           void writer.write(createRequest(serverRequestSeq++, 'client/registerCapability', {
             registrations: [
               {
@@ -189,7 +189,7 @@ reader.listen((msg) => {
         break;
       }
       case 'workspace/didChangeConfiguration': {
-        if (trackConfig) configNotifications.push(msg.params);
+        if (isTrackConfig) configNotifications.push(msg.params);
         break;
       }
       case 'workspace/didChangeWatchedFiles': {

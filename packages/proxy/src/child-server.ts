@@ -1,8 +1,8 @@
-import { spawn, type ChildProcess } from 'node:child_process';
+import { type ChildProcess, spawn } from 'node:child_process';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
+import type { Logger } from './logger.ts';
 import type { Message, ServerConfig } from './types.ts';
 import { noop } from './types.ts';
-import type { Logger } from './logger.ts';
 
 export interface ChildServerEvents {
   readonly onMessage: (msg: Message) => void;

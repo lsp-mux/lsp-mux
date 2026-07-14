@@ -5,8 +5,8 @@ import { describe, vi } from 'vitest';
 import type { ExpectStatic } from 'vitest';
 import type { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import { Message as Msg } from '../../src/types.ts';
-import { request, notify, waitForMessage, initializeProxy } from '../helpers/test-client.ts';
-import { it, mockServerConfig, type ServerConfig, type Workspace } from './harness.ts';
+import { initializeProxy, notify, request, waitForMessage } from '../helpers/test-client.ts';
+import { type ServerConfig, type Workspace, it, mockServerConfig } from './harness.ts';
 
 /** Poll until the proxy's file watcher is active and dispatching events. */
 const waitForWatcherActive = (
@@ -18,6 +18,7 @@ const waitForWatcherActive = (
   vi.waitFor(async () => {
     await writeFile(join(dir, 'probe.ts'), 'probe');
     const probe = await request(w, r, nextSeq(), '$/watcherEvents');
+
     expect(probe).toMatchObject({
       result: expect.arrayContaining([expect.anything()]) as unknown,
     });
@@ -42,6 +43,7 @@ describe.sequential('LspProxy file watchers', () => {
 
       await vi.waitFor(async () => {
         const res = await request(writer, reader, workspace.nextSeq(), '$/watcherEvents');
+
         expect(res).toMatchObject({
           result: expect.arrayContaining([
             expect.objectContaining({
@@ -84,6 +86,7 @@ describe.sequential('LspProxy file watchers', () => {
 
       // Verify only the non-watcher registration was forwarded
       const forwarded = await forwardedPromise;
+
       expect(forwarded).toMatchObject({
         method: 'client/registerCapability',
         params: {
@@ -98,6 +101,7 @@ describe.sequential('LspProxy file watchers', () => {
 
       await vi.waitFor(async () => {
         const res = await request(writer, reader, workspace.nextSeq(), '$/watcherEvents');
+
         expect(res).toMatchObject({
           result: expect.arrayContaining([
             expect.objectContaining({
@@ -146,6 +150,7 @@ describe.sequential('LspProxy file watchers', () => {
 
       // Verify no new events were dispatched — result should be unchanged
       const final = await request(writer, reader, workspace.nextSeq(), '$/watcherEvents');
+
       expect(final.result).toStrictEqual(baseline.result);
     });
   });
@@ -164,6 +169,7 @@ describe.sequential('LspProxy file watchers', () => {
 
       // Crash the server — watcher registrations should be cleared
       const crashRes = await request(writer, reader, workspace.nextSeq(), '$/crash');
+
       expect(crashRes).toMatchObject({ error: expect.objectContaining({}) as unknown });
 
       // After restart, the server should re-register its watchers via initialized
@@ -171,6 +177,7 @@ describe.sequential('LspProxy file watchers', () => {
       await vi.waitFor(async () => {
         await writeFile(join(workspace.dir, 'after-restart.ts'), 'restarted');
         const res = await request(writer, reader, workspace.nextSeq(), '$/watcherEvents');
+
         expect(res).toMatchObject({
           result: expect.arrayContaining([
             expect.objectContaining({
@@ -209,6 +216,7 @@ describe.sequential('LspProxy file watchers', () => {
       // Wait for bp-1 to appear (proves flush completed)
       await vi.waitFor(async () => {
         const res = await request(writer, reader, workspace.nextSeq(), '$/watcherEvents');
+
         expect(res).toMatchObject({
           result: expect.arrayContaining([
             expect.objectContaining({
@@ -274,6 +282,7 @@ describe.sequential('LspProxy file watchers', () => {
 
       // Watcher registration should be forwarded to client (not intercepted)
       const forwarded = await forwardedPromise;
+
       expect(forwarded).toMatchObject({
         method: 'client/registerCapability',
         params: {
@@ -308,6 +317,7 @@ describe.sequential('LspProxy file watchers', () => {
       // (proving they were batched rather than sent as separate notifications)
       await vi.waitFor(async () => {
         const res = await request(writer, reader, workspace.nextSeq(), '$/watcherEvents');
+
         expect(res).toMatchObject({
           result: expect.arrayContaining([
             expect.objectContaining({

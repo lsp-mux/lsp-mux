@@ -1,7 +1,7 @@
 // Message is both an interface and a namespace (with isRequest/isResponse/isNotification guards)
 export { Message } from 'vscode-jsonrpc';
 export type { RequestMessage, ResponseMessage, NotificationMessage } from 'vscode-jsonrpc';
-import type { RequestMessage, NotificationMessage } from 'vscode-jsonrpc';
+import type { NotificationMessage, RequestMessage } from 'vscode-jsonrpc';
 
 // --- Server & proxy configuration ---
 
@@ -32,12 +32,15 @@ export const createNotification = (
 
 // --- Timer abstraction ---
 
-// Method syntax is intentional: bivariant parameter checking allows
-// sinon's Clock (clearTimeout(id: number)) to satisfy clearTimeout(id: unknown).
+/* eslint-disable @typescript-eslint/method-signature-style --
+   Method syntax is intentional: its bivariant parameter checking lets
+   sinon's Clock (clearTimeout(id: number)) satisfy clearTimeout(id: unknown).
+   Property/arrow syntax is contravariant and would reject it. */
 export interface Timers {
   setTimeout(callback: () => void, ms: number): unknown;
   clearTimeout(id: unknown): void;
 }
+/* eslint-enable @typescript-eslint/method-signature-style */
 
 export const defaultTimers: Timers = {
   setTimeout: (cb, ms) => globalThis.setTimeout(cb, ms),
@@ -61,9 +64,9 @@ export const DOCUMENT_SYNC_METHODS = new Set([
 ]);
 
 export const LSP_ERROR_CODES = {
-  ServerNotInitialized: -32002,
-  RequestCancelled: -32800,
-  InternalError: -32603,
+  ServerNotInitialized: -32_002,
+  RequestCancelled: -32_800,
+  InternalError: -32_603,
 } as const;
 
 export const LSP_MESSAGE_TYPE = {

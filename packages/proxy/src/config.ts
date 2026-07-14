@@ -1,11 +1,11 @@
 import { readFile } from 'node:fs/promises';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import * as v from 'valibot';
 import {
-  lookupRegistryEntry, serverConfigFromEntry,
-  deepMerge, validateNpmPackage,
+  deepMerge, lookupRegistryEntry,
+  serverConfigFromEntry, validateNpmPackage,
 } from 'lsp-proxy-registry';
+import * as v from 'valibot';
 
 const CONFIG_FILE = '.lsp-proxy.json';
 const LOCAL_CONFIG_FILE = '.lsp-proxy.local.json';
@@ -17,8 +17,10 @@ const selfDir = dirname(selfPath);
 
 export const ownPackageDir = join(selfDir, '..');
 
-/** Resolved path to the proxy entry point (bin/main), stable across workspace
- *  (.ts source) and published (.js) layouts — extension follows this module. */
+/**
+ * Resolved path to the proxy entry point (bin/main), stable across workspace
+ *  (.ts source) and published (.js) layouts — extension follows this module.
+ */
 export const proxyMainEntry = join(selfDir, '..', 'bin', `main${extname(selfPath)}`);
 
 const parseJsonFile = async (path: string): Promise<unknown> =>
@@ -31,9 +33,9 @@ const tryLoadJsonFile = async (path: string): Promise<Record<string, unknown> | 
       return raw as Record<string, unknown>;
     }
     return undefined;
-  } catch (err: unknown) {
-    if (err instanceof Error && 'code' in err && err.code === 'ENOENT') return undefined;
-    throw err;
+  } catch (error: unknown) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return undefined;
+    throw error;
   }
 };
 

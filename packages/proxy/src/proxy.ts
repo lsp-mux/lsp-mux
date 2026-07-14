@@ -1,24 +1,24 @@
 import { stat } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
-import type { Message, NotificationMessage, RequestMessage, ResponseMessage, ServerConfig } from './types.ts';
 import * as v from 'valibot';
-import { Message as Msg, createNotification, DOCUMENT_SYNC_METHODS, LSP_ERROR_CODES, LSP_MESSAGE_TYPE } from './types.ts';
-import { createManagedServer } from './managed-server.ts';
-import type { ManagedServer, ServerState } from './managed-server.ts';
-import { createRouter, extractUri } from './router.ts';
-import type { Router } from './router.ts';
-import { isPlainObject, STATIC_CAPABILITIES } from './capabilities.ts';
-import { normalizeFileUri } from './uri.ts';
+import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
+import { STATIC_CAPABILITIES, isPlainObject } from './capabilities.ts';
 import { analyzeClientCapabilities } from './client-capabilities.ts';
 import type { CompensationFlags } from './client-capabilities.ts';
 import * as diag from './diagnostics-store.ts';
 import * as docs from './document-tracker.ts';
 import * as fw from './file-watcher.ts';
-import type { RestartPolicy } from './restart-scheduler.ts';
-import { WorkspaceWatcher } from './workspace-watcher.ts';
 import { createLogger } from './logger.ts';
 import type { Logger } from './logger.ts';
+import type { ManagedServer, ServerState } from './managed-server.ts';
+import { createManagedServer } from './managed-server.ts';
+import type { RestartPolicy } from './restart-scheduler.ts';
+import type { Router } from './router.ts';
+import { createRouter, extractUri } from './router.ts';
+import { DOCUMENT_SYNC_METHODS, LSP_ERROR_CODES, LSP_MESSAGE_TYPE, Message as Msg, createNotification } from './types.ts';
+import type { Message, NotificationMessage, RequestMessage, ResponseMessage, ServerConfig } from './types.ts';
+import { normalizeFileUri } from './uri.ts';
+import { WorkspaceWatcher } from './workspace-watcher.ts';
 
 const CancelParamsSchema = v.object({
   id: v.union([v.number(), v.string()]),
@@ -295,9 +295,7 @@ export class LspProxy {
         : msg;
 
       // Reset version offset on open/close — client version is authoritative
-      if (msg.method === 'textDocument/didOpen' || msg.method === 'textDocument/didClose') {
-        if (uri) this.versionOffsets.delete(uri);
-      }
+      if ((msg.method === 'textDocument/didOpen' || msg.method === 'textDocument/didClose') && uri) this.versionOffsets.delete(uri);
 
       const rewritten = this.rewriteDocSyncVersion(normalized, uri);
       for (const name of this.router.serversForUri(uri)) {
@@ -308,12 +306,12 @@ export class LspProxy {
       // Only needed when the client lacks native pull diagnostic support —
       // converts pull results to push notifications the client can consume.
       if (this.compensations.proactivePullDiagnostics && uri && msg.method !== 'textDocument/didClose') {
-        const allStarting = this.router.serversForUri(uri)
+        const isAllStarting = this.router.serversForUri(uri)
           .every((n) => {
             const s = this.servers.get(n)?.state;
             return s === 'starting' || s === 'idle';
           });
-        if (allStarting) {
+        if (isAllStarting) {
           setTimeout(() => {
             if (this.isStopped()) return;
             void this.pullDiagnostics(uri);
@@ -329,11 +327,11 @@ export class LspProxy {
       const result = v.safeParse(CancelParamsSchema, msg.params);
       if (result.success) {
         const { id } = result.output;
-        let cancelled = false;
+        let isCancelled = false;
         for (const server of this.servers.values()) {
-          if (server.cancelBuffered(id)) cancelled = true;
+          if (server.cancelBuffered(id)) isCancelled = true;
         }
-        if (cancelled) {
+        if (isCancelled) {
           this.sendErrorToClient(id, LSP_ERROR_CODES.RequestCancelled, 'Request cancelled');
           this.requestRouting.delete(id);
           return;
@@ -584,8 +582,8 @@ export class LspProxy {
       this.watchRegistrations = fw.unregisterServer(this.watchRegistrations, serverName);
     }
 
-    const allStopped = [...this.servers.values()].every(s => s.state === 'stopped');
-    if (allStopped && this.state === 'running') {
+    const isAllStopped = [...this.servers.values()].every(s => s.state === 'stopped');
+    if (isAllStopped && this.state === 'running') {
       this.log.error('All servers stopped — proxy stopping');
       this.dispose();
     }
@@ -600,8 +598,8 @@ export class LspProxy {
 
     try {
       const root = fileURLToPath(rootUri);
-      const exists = await stat(root).then(() => true, () => false);
-      if (exists) this.workspaceRoot = root;
+      const isExists = await stat(root).then(() => true, () => false);
+      if (isExists) this.workspaceRoot = root;
     } catch {
       // Malformed URI — ignore
     }
@@ -653,8 +651,10 @@ export class LspProxy {
 
   // ── URI / Version Rewriting ──────────────────────────────────────────
 
-  /** Rewrite the textDocument.uri in a document sync notification to a
-   *  normalized form. Used when the client sends non-standard file URIs. */
+  /**
+   * Rewrite the textDocument.uri in a document sync notification to a
+   *  normalized form. Used when the client sends non-standard file URIs.
+   */
   private rewriteDocSyncUri(msg: NotificationMessage, normalizedUri: string): NotificationMessage {
     const params = msg.params;
     if (!isPlainObject(params)) return msg;
@@ -666,8 +666,10 @@ export class LspProxy {
     });
   }
 
-  /** Rewrite the textDocument.version in a document sync notification if a
-   *  version offset exists for the URI (due to prior resync). */
+  /**
+   * Rewrite the textDocument.version in a document sync notification if a
+   *  version offset exists for the URI (due to prior resync).
+   */
   private rewriteDocSyncVersion(msg: NotificationMessage, uri: string | undefined): Message {
     if (!uri) return msg;
     const offset = this.versionOffsets.get(uri);
@@ -717,9 +719,11 @@ export class LspProxy {
     this.respondToClient(msg.id, { kind: 'full', items: allItems });
   }
 
-  /** Pull diagnostics from all matching servers and store results.
+  /**
+   * Pull diagnostics from all matching servers and store results.
    *  Only publishes if at least one server returns items — avoids
-   *  spurious re-publications that race with push-based servers. */
+   *  spurious re-publications that race with push-based servers.
+   */
   private async pullDiagnostics(uri: string): Promise<void> {
     const serverNames = this.router.serversForUri(uri);
     const params = { textDocument: { uri } };
@@ -734,24 +738,26 @@ export class LspProxy {
         }),
     );
 
-    let updated = false;
+    let isUpdated = false;
     for (const { name, res } of responses) {
       if (!res.result || !isPlainObject(res.result)) continue;
       const items = res.result['items'];
       if (!Array.isArray(items)) continue;
       this.diagnosticsStore = diag.update(this.diagnosticsStore, name, uri, items);
-      updated = true;
+      isUpdated = true;
     }
 
-    if (updated) {
+    if (isUpdated) {
       this.publishMergedDiagnostics(uri);
     }
   }
 
   // ── Logging ──────────────────────────────────────────────────────────
 
-  /** Forward server window/logMessage at appropriate level; log others at DEBUG
-   *  unless the server config declares a custom log level for the notification. */
+  /**
+   * Forward server window/logMessage at appropriate level; log others at DEBUG
+   *  unless the server config declares a custom log level for the notification.
+   */
   private logServerNotification(serverName: string, msg: NotificationMessage): void {
     if (msg.method === 'window/logMessage') {
       const parsed = v.safeParse(LogMessageSchema, msg.params);
@@ -798,8 +804,8 @@ export class LspProxy {
   }
 
   private writeToClient(msg: Message): void {
-    this.clientWriter.write(msg).catch((err: unknown) => {
-      this.log.warn('Client write failed:', err);
+    this.clientWriter.write(msg).catch((error: unknown) => {
+      this.log.warn('Client write failed:', error);
     });
   }
 

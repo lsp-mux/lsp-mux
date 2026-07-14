@@ -1,4 +1,4 @@
-import { noop, defaultTimers } from './types.ts';
+import { defaultTimers, noop } from './types.ts';
 import type { Timers } from './types.ts';
 
 export interface FlushSchedulerOptions {
@@ -14,14 +14,16 @@ export interface FlushSchedulerOptions {
 
 export interface FlushScheduler {
   /** Signal that new data is available for flushing. */
-  notify(): void;
+  notify: () => void;
   /** Cancel all pending timers and prevent future flushes. */
-  dispose(): void;
+  dispose: () => void;
 }
 
-/** State mutated asynchronously by notify/dispose during an in-flight flush.
+/**
+ * State mutated asynchronously by notify/dispose during an in-flight flush.
  *  Stored in an object so TypeScript doesn't narrow away the mutations
- *  that occur across `await` boundaries. */
+ *  that occur across `await` boundaries.
+ */
 interface AsyncState {
   flushInProgress: boolean;
   notifiedDuringFlush: boolean;

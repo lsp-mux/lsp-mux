@@ -1,8 +1,8 @@
 import { realpath } from 'node:fs/promises';
 import { basename, dirname, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import * as v from 'valibot';
 import picomatch from 'picomatch';
+import * as v from 'valibot';
 
 // --- LSP file change types ---
 
@@ -100,7 +100,7 @@ const resolveBaseUri = (baseUri: string | { uri: string; name: string }, workspa
   if (workspaceRoot && raw.startsWith('file://')) {
     try {
       const absPath = fileURLToPath(raw);
-      return relative(workspaceRoot, absPath).replace(/\\/g, '/');
+      return relative(workspaceRoot, absPath).replaceAll('\\', '/');
     } catch {
       // fileURLToPath failed (malformed URI) — fall through to trailing-slash strip
     }
@@ -152,21 +152,22 @@ export const unregisterServer = (
   state: WatchRegistrations,
   serverName: string,
 ): WatchRegistrations => {
-  let changed = false;
+  let isChanged = false;
   const next = new Map(state);
   for (const [id, reg] of next) {
-    if (reg.serverName === serverName) {
-      next.delete(id);
-      changed = true;
+    if (reg.serverName !== serverName) {
+    	continue;
     }
+
+    next.delete(id);
+    isChanged = true;
   }
-  return changed ? next : state;
+  return isChanged ? next : state;
 };
 
 /**
  * Match a file event against all registrations.
  * Returns a map of serverName → FileChange[] for dispatch.
- *
  * @param relativePath Forward-slash-separated path relative to workspace root
  * @param changeType LSP FileChangeType (1=Created, 2=Changed, 3=Deleted)
  * @param fileUri Full file:// URI for the changed file
@@ -219,7 +220,6 @@ export const resolveRoot = async (root: string): Promise<string> => {
  * lexical `resolve()` so they stay in the same namespace — otherwise a
  * symlinked workspace root (realpath) would never match a deleted file path
  * (resolve fallback in the symlink namespace).
- *
  * @param resolvedRoot — result of `resolveRoot()`, cached by the caller
  */
 export const isWithinRoot = async (fullPath: string, resolvedRoot: string): Promise<boolean> => {

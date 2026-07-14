@@ -1,5 +1,5 @@
-import { describe, it } from 'vitest';
 import { faker } from '@faker-js/faker';
+import { describe, it } from 'vitest';
 import { mergeCapabilities } from '../src/capabilities.ts';
 
 describe('mergeCapabilities', () => {
@@ -9,10 +9,11 @@ describe('mergeCapabilities', () => {
 
   it('returns capabilities unchanged for single server', ({ expect }) => {
     const caps = { hoverProvider: true, completionProvider: { triggerCharacters: ['.'] } };
+
     expect(mergeCapabilities([caps])).toEqual(caps);
   });
 
-  it('ORs boolean providers', ({ expect }) => {
+  it('oRs boolean providers', ({ expect }) => {
     expect(mergeCapabilities([
       { hoverProvider: true },
       { hoverProvider: false },
@@ -63,6 +64,7 @@ describe('mergeCapabilities', () => {
 
   it('concatenates array values', ({ expect }) => {
     const [a, b, c] = [faker.string.alpha(4), faker.string.alpha(4), faker.string.alpha(4)];
+
     expect(mergeCapabilities([
       { experimental: [a, b] },
       { experimental: [c] },

@@ -1,6 +1,6 @@
-import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import type { Message, ResponseMessage } from 'vscode-jsonrpc';
-import { Message as Msg, createRequest, createNotification } from '../../src/types.ts';
+import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
+import { Message as Msg, createNotification, createRequest } from '../../src/types.ts';
 
 /** Collect messages from a reader until a predicate matches. */
 export const waitForMessage = (
@@ -14,11 +14,13 @@ export const waitForMessage = (
       timeoutMs,
     );
     const disposable = reader.listen((msg) => {
-      if (predicate(msg)) {
-        clearTimeout(timer);
-        disposable.dispose();
-        resolve(msg);
+      if (!predicate(msg)) {
+      	return;
       }
+
+      clearTimeout(timer);
+      disposable.dispose();
+      resolve(msg);
     });
   });
 
@@ -36,13 +38,15 @@ export const collectMessages = (
       timeoutMs,
     );
     const disposable = reader.listen((msg) => {
-      if (predicate(msg)) {
-        collected.push(msg);
-        if (collected.length >= count) {
-          clearTimeout(timer);
-          disposable.dispose();
-          resolve(collected);
-        }
+      if (!predicate(msg)) {
+      	return;
+      }
+
+      collected.push(msg);
+      if (collected.length >= count) {
+        clearTimeout(timer);
+        disposable.dispose();
+        resolve(collected);
       }
     });
   });
@@ -61,11 +65,13 @@ export const request = (
       10_000,
     );
     const disposable = reader.listen((msg) => {
-      if (Msg.isResponse(msg) && msg.id === id) {
-        clearTimeout(timer);
-        disposable.dispose();
-        resolve(msg);
+      if (!(Msg.isResponse(msg) && msg.id === id)) {
+      	return;
       }
+
+      clearTimeout(timer);
+      disposable.dispose();
+      resolve(msg);
     });
     void writer.write(createRequest(id, method, params));
   });
