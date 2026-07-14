@@ -1,0 +1,22 @@
+---
+jobs:
+  changeset:
+    name: Changeset
+    uses: gtbuchanan/tooling/.github/workflows/changeset-check.yml@main
+  ci:
+    name: CI
+    secrets: inherit
+    uses: gtbuchanan/tooling/.github/workflows/ci.yml@main
+  dependencies:
+    name: Dependencies
+    uses: gtbuchanan/tooling/.github/workflows/dependency-review.yml@main
+  pre-commit:
+    name: Pre-Commit
+    uses: gtbuchanan/tooling/.github/workflows/pre-commit.yml@main
+name: PR
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+  pull-requests: write # Dependencies posts a PR comment

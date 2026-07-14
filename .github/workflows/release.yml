@@ -1,0 +1,20 @@
+---
+jobs:
+  cd:
+    name: CD
+    needs: ci
+    permissions:
+      contents: write # changesets release tags/PR
+      id-token: write # npm trusted publishing (OIDC)
+    secrets: inherit
+    uses: gtbuchanan/tooling/.github/workflows/cd.yml@main
+  ci:
+    name: CI
+    secrets: inherit
+    uses: gtbuchanan/tooling/.github/workflows/ci.yml@main
+name: Release
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
