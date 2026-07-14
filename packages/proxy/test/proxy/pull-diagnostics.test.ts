@@ -66,6 +66,8 @@ describe('Pull diagnostics', () => {
     // Initialize with pull diagnostic support — proxy should NOT proactively pull
     await request(writer, reader, 0, 'initialize', {
       processId: process.pid,
+      /* eslint-disable-next-line unicorn/no-null --
+         LSP InitializeParams.rootUri is `string | null`. */
       rootUri: null,
       capabilities: {
         textDocument: {

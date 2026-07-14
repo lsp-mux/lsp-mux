@@ -49,6 +49,8 @@ describe('deepMerge', () => {
   });
 
   it('handles null values in override as replacements', ({ expect }) => {
+    /* eslint-disable-next-line unicorn/no-null --
+       This test exercises null override semantics specifically. */
     expect(deepMerge({ a: { b: 1 } }, { a: null })).toEqual({ a: null });
   });
 

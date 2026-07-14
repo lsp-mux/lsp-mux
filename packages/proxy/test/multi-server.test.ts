@@ -80,6 +80,7 @@ describe('Multi-server proxy', () => {
     // Shutdown should succeed instantly — beta was never started
     const shutdownRes = await request(writer, reader, 99, 'shutdown');
 
+    /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
     expect(shutdownRes).toMatchObject({ result: null });
   });
 
@@ -189,6 +190,7 @@ describe('Multi-server proxy', () => {
 
     const res = await request(writer, reader, 200, 'shutdown');
 
+    /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
     expect(res).toMatchObject({ result: null });
   });
 
@@ -235,6 +237,7 @@ describe('Multi-server proxy', () => {
 
     await request(writer, reader, 0, 'initialize', {
       processId: process.pid,
+      /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
       rootUri: null,
       capabilities: {},
     });
@@ -254,6 +257,7 @@ describe('Multi-server proxy', () => {
     // Client acks the forwarded registration
     const forwarded = await forwardedPromise;
     if (Msg.isRequest(forwarded)) {
+      /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
       const ack: ResponseMessage = { jsonrpc: '2.0', id: forwarded.id, result: null };
       await writer.write(ack);
     }

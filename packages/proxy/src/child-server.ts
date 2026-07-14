@@ -16,9 +16,9 @@ export interface ChildServerEvents {
  * Does NOT handle restart logic — that belongs to the proxy.
  */
 export class ChildServer {
-  private proc: ChildProcess | null = null;
-  private reader: StreamMessageReader | null = null;
-  private writer: StreamMessageWriter | null = null;
+  private proc: ChildProcess | undefined;
+  private reader: StreamMessageReader | undefined;
+  private writer: StreamMessageWriter | undefined;
   private disposed = false;
   private exited = false;
 
@@ -88,11 +88,11 @@ export class ChildServer {
     if (this.disposed) return;
     this.disposed = true;
     this.reader?.dispose();
-    this.reader = null;
-    this.writer = null;
+    this.reader = undefined;
+    this.writer = undefined;
     if (this.proc?.exitCode === null) {
       this.proc.kill();
     }
-    this.proc = null;
+    this.proc = undefined;
   }
 }

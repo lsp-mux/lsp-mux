@@ -51,7 +51,7 @@ export const createManagedServer = (
   restartPolicy?: Partial<RestartPolicy>,
 ): ManagedServer => {
   let state: ServerState = 'idle';
-  let server: ChildServer | null = null;
+  let server: ChildServer | undefined;
   let initParams: RequestMessage['params'];
   let isShutdownSent = false;
 
@@ -150,7 +150,7 @@ export const createManagedServer = (
     }
 
     server?.dispose();
-    server = null;
+    server = undefined;
 
     if (!isEverInitialized) {
       log.error(`${name}: crashed before initial handshake — stopping`);
@@ -209,7 +209,7 @@ export const createManagedServer = (
       if (initResponse.error) {
         log.error(`${name}: ${label} initialize failed:`, initResponse.error.message);
         child.dispose();
-        server = null;
+        server = undefined;
         scheduleRetry(expectedState);
         return;
       }
@@ -256,7 +256,7 @@ export const createManagedServer = (
     } catch (error) {
       log.error(`${name}: ${label} failed:`, error);
       server?.dispose();
-      server = null;
+      server = undefined;
       if (state === expectedState) scheduleRetry(expectedState);
     }
   };
@@ -277,7 +277,7 @@ export const createManagedServer = (
     scheduler.cancel();
     resolveProxyCallbacks('Restart cancelled');
     server?.dispose();
-    server = null;
+    server = undefined;
   };
 
   // -- Public interface --
@@ -346,6 +346,8 @@ export const createManagedServer = (
       if (state !== 'running' || !server) {
         return Promise.resolve({
           jsonrpc: '2.0' as const,
+          /* eslint-disable-next-line unicorn/no-null --
+             JSON-RPC requires an explicit null id when no request id applies. */
           id: null,
           error: { code: LSP_ERROR_CODES.InternalError, message: 'Server not running' },
         });
@@ -359,11 +361,15 @@ export const createManagedServer = (
         cancelRestart();
         state = 'stopped';
         callbacks.onStateChange(state);
+        /* eslint-disable-next-line unicorn/no-null --
+           A synthesized JSON-RPC shutdown response requires null id/result. */
         return { jsonrpc: '2.0' as const, id: null, result: null };
       }
       if (state !== 'running' || !server) {
         state = 'stopped';
         callbacks.onStateChange(state);
+        /* eslint-disable-next-line unicorn/no-null --
+           A synthesized JSON-RPC shutdown response requires null id/result. */
         return { jsonrpc: '2.0' as const, id: null, result: null };
       }
       const response = await sendProxyRequest(server, 'shutdown', undefined);

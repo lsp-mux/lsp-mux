@@ -85,6 +85,8 @@ export const notify = async (writer: StreamMessageWriter, method: string, params
 export const initializeProxy = async (
   writer: StreamMessageWriter,
   reader: StreamMessageReader,
+  /* eslint-disable-next-line unicorn/no-null --
+     LSP InitializeParams.rootUri is `string | null`; null means no root. */
   rootUri: string | null = null,
   capabilities: object = {},
 ): Promise<Message> => {

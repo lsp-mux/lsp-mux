@@ -50,11 +50,11 @@ const main = async (): Promise<void> => {
     plugins: [{ name: 'lsp-proxy', source: './', description: pluginJson.description }],
   };
 
-  await writeFile(join(configDir, '.lsp.json'), JSON.stringify(lspJson, null, 2) + '\n');
+  await writeFile(join(configDir, '.lsp.json'), JSON.stringify(lspJson, undefined, 2) + '\n');
   const pluginDir = join(configDir, '.claude-plugin');
   await mkdir(pluginDir, { recursive: true });
-  await writeFile(join(pluginDir, 'plugin.json'), JSON.stringify(pluginJson, null, 2) + '\n');
-  await writeFile(join(pluginDir, 'marketplace.json'), JSON.stringify(marketplaceJson, null, 2) + '\n');
+  await writeFile(join(pluginDir, 'plugin.json'), JSON.stringify(pluginJson, undefined, 2) + '\n');
+  await writeFile(join(pluginDir, 'marketplace.json'), JSON.stringify(marketplaceJson, undefined, 2) + '\n');
 
   const extCount = Object.keys(extensionToLanguage).length;
   log.info(`Generated .lsp.json (${String(extCount)} extensions from ${proxyConfig.servers.join(', ')})`);

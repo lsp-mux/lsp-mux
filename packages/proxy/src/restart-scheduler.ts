@@ -31,7 +31,7 @@ export interface RestartSchedulerOptions {
 
 export const createRestartScheduler = ({ policy, timers: t = defaultTimers }: RestartSchedulerOptions): RestartScheduler => {
   let count = 0;
-  let timer: unknown = null;
+  let timer: unknown;
 
   return {
     schedule(callback) {
@@ -55,7 +55,7 @@ export const createRestartScheduler = ({ policy, timers: t = defaultTimers }: Re
       }
 
       t.clearTimeout(timer);
-      timer = null;
+      timer = undefined;
     },
 
     get attempt() {

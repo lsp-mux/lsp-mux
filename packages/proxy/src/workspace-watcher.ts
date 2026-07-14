@@ -40,9 +40,9 @@ export interface WorkspaceWatcherOptions {
 
 export class WorkspaceWatcher {
   private readonly workspaceRoot: string;
-  private resolvedRoot: string | null = null;
-  private watcher: FSWatcher | null = null;
-  private scheduler: FlushScheduler | null = null;
+  private resolvedRoot: string | undefined;
+  private watcher: FSWatcher | undefined;
+  private scheduler: FlushScheduler | undefined;
   private readonly pendingEvents = new Set<string>();
   private pendingOverflowWarned = false;
   private _isDegraded = false;
@@ -227,9 +227,9 @@ export class WorkspaceWatcher {
 
   dispose(): void {
     this.scheduler?.dispose();
-    this.scheduler = null;
+    this.scheduler = undefined;
     this.watcher?.close();
-    this.watcher = null;
+    this.watcher = undefined;
   }
 
   [Symbol.dispose](): void {

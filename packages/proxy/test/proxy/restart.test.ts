@@ -131,6 +131,8 @@ describe('LspProxy restart behavior', () => {
 
     const res = await request(writer, reader, 50, 'shutdown');
 
+    /* eslint-disable-next-line unicorn/no-null --
+       The LSP shutdown response result is null on the wire. */
     expect(res).toMatchObject({ result: null });
 
     const hover = await request(writer, reader, 51, 'textDocument/hover', {});

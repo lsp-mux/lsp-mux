@@ -27,7 +27,7 @@ const isPullDiagnostics = process.argv.includes('--pull-diagnostics');
 const reader = new StreamMessageReader(process.stdin);
 const writer = new StreamMessageWriter(process.stdout);
 
-let initializeParams: unknown = null;
+let initializeParams: unknown;
 const openDocuments = new Map<string, { uri: string; languageId: string; version: number; text: string }>();
 const watcherEvents: unknown[] = [];
 const configNotifications: unknown[] = [];
@@ -79,6 +79,8 @@ reader.listen((msg) => {
         return;
       }
       case 'shutdown': {
+        /* eslint-disable-next-line unicorn/no-null --
+           The JSON-RPC shutdown response result is null. */
         respond(msg.id, null);
         return;
       }

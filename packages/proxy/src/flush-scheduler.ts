@@ -32,18 +32,18 @@ interface AsyncState {
 
 export const createFlushScheduler = (options: FlushSchedulerOptions): FlushScheduler => {
   const { debounceMs, maxWaitMs, onFlush, timers: t = defaultTimers } = options;
-  let debounceTimer: unknown = null;
-  let maxWaitTimer: unknown = null;
+  let debounceTimer: unknown;
+  let maxWaitTimer: unknown;
   const s: AsyncState = { flushInProgress: false, notifiedDuringFlush: false, disposed: false };
 
   const clearTimers = (): void => {
     if (debounceTimer) {
       t.clearTimeout(debounceTimer);
-      debounceTimer = null;
+      debounceTimer = undefined;
     }
     if (maxWaitTimer) {
       t.clearTimeout(maxWaitTimer);
-      maxWaitTimer = null;
+      maxWaitTimer = undefined;
     }
   };
 

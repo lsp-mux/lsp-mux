@@ -10,6 +10,8 @@ describe('analyzeClientCapabilities', () => {
     });
 
     it('enabled when params is null', ({ expect }) => {
+      /* eslint-disable-next-line unicorn/no-null --
+         Verifies handling when the client sends null capabilities. */
       const { localFileWatching } = analyzeClientCapabilities(null);
 
       expect(localFileWatching).toBe(true);

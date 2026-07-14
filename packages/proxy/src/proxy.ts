@@ -135,8 +135,8 @@ export class LspProxy {
   private diagnosticsStore: diag.DiagnosticsStore = diag.empty();
   private watchRegistrations: fw.WatchRegistrations = fw.empty();
   private initParams: RequestMessage['params'];
-  private workspaceRoot: string | null = null;
-  private watcher: WorkspaceWatcher | null = null;
+  private workspaceRoot: string | undefined;
+  private watcher: WorkspaceWatcher | undefined;
 
   get isWatcherDegraded(): boolean { return this.watcher?.isDegraded ?? false; }
 
@@ -386,6 +386,8 @@ export class LspProxy {
       if (server.state === 'idle') continue;
       await server.shutdown();
     }
+    /* eslint-disable-next-line unicorn/no-null --
+       The LSP shutdown response requires an explicit null result. */
     this.respondToClient(clientRequestId, null);
     this.state = 'stopped';
   }
@@ -789,6 +791,8 @@ export class LspProxy {
   }
 
   private ackToServer(serverName: string, requestId: number | string | null): void {
+    /* eslint-disable-next-line unicorn/no-null --
+       A JSON-RPC ack response requires an explicit null result. */
     const response: ResponseMessage = { jsonrpc: '2.0', id: requestId, result: null };
     this.servers.get(serverName)?.send(response);
   }
@@ -813,7 +817,7 @@ export class LspProxy {
     if (this.state === 'stopped') return;
     this.state = 'stopped';
     this.watcher?.dispose();
-    this.watcher = null;
+    this.watcher = undefined;
     for (const server of this.servers.values()) server.dispose();
     this.clientReader.dispose();
     this.log.info('Proxy shut down');

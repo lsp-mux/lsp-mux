@@ -19,6 +19,7 @@ describe('LspProxy lifecycle', () => {
 
       const res = await request(writer, reader, 99, 'shutdown');
 
+      /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
       expect(res).toMatchObject({ result: null });
     });
 
@@ -105,6 +106,7 @@ describe('LspProxy lifecycle', () => {
 
     const shutdownRes = await request(writer, reader, 99, 'shutdown');
 
+    /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
     expect(shutdownRes).toMatchObject({ result: null });
   });
 
@@ -113,6 +115,7 @@ describe('LspProxy lifecycle', () => {
 
     await request(writer, reader, 0, 'initialize', {
       processId: process.pid,
+      /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
       rootUri: null,
       capabilities: {
         workspace: { applyEdit: true },
@@ -160,6 +163,7 @@ describe('LspProxy lifecycle', () => {
 
     await request(writer, reader, 0, 'initialize', {
       processId: process.pid,
+      /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
       rootUri: null,
       capabilities: {
         workspace: {
@@ -211,6 +215,7 @@ describe('LspProxy lifecycle', () => {
 
     expect(responses).toMatchObject({
       result: expect.arrayContaining([
+        /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
         expect.objectContaining({ result: null }),
       ]) as unknown,
     });
@@ -248,6 +253,7 @@ describe('LspProxy lifecycle', () => {
     const config: ServerConfig = {
       ...mockServerConfig,
       args: [...mockServerConfig.args, '--request-config'],
+      /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
       settings: { validate: 'on', nodePath: null },
     };
     const { writer, reader } = createProxy({ config });
@@ -273,6 +279,7 @@ describe('LspProxy lifecycle', () => {
         expect.objectContaining({
           result: [expect.objectContaining({
             validate: 'on',
+            /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
             nodePath: null,
             workspaceFolder: expect.objectContaining({ uri: workspace.uri }) as unknown,
           })],
@@ -302,6 +309,7 @@ describe('LspProxy lifecycle', () => {
 
     // Client responds
     if (Msg.isRequest(serverReq)) {
+      /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
       const ack: ResponseMessage = { jsonrpc: '2.0', id: serverReq.id, result: null };
       await writer.write(ack);
     }
@@ -317,6 +325,7 @@ describe('LspProxy lifecycle', () => {
 
     expect(responses).toMatchObject({
       result: expect.arrayContaining([
+        /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
         expect.objectContaining({ result: null }),
       ]) as unknown,
     });
