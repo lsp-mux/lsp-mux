@@ -23,14 +23,14 @@ describe('diagnostics-store', () => {
     it('single server, single URI → merge returns those diagnostics', ({ expect }) => {
       const store = update(empty(), serverA, uriA, [diagA]);
 
-      expect(merge(store, uriA)).toEqual([diagA]);
+      expect(merge(store, uriA)).toStrictEqual([diagA]);
     });
 
     it('two servers, same URI → merge returns union', ({ expect }) => {
       let store = update(empty(), serverA, uriA, [diagA]);
       store = update(store, serverB, uriA, [diagB]);
 
-      expect(merge(store, uriA)).toEqual([diagA, diagB]);
+      expect(merge(store, uriA)).toStrictEqual([diagA, diagB]);
     });
 
     it('update with empty array removes server entry; merge returns only other server', ({ expect }) => {
@@ -38,7 +38,7 @@ describe('diagnostics-store', () => {
       store = update(store, serverB, uriA, [diagB]);
       store = update(store, serverA, uriA, []);
 
-      expect(merge(store, uriA)).toEqual([diagB]);
+      expect(merge(store, uriA)).toStrictEqual([diagB]);
     });
 
     it('update with empty array when last server removes URI entirely', ({ expect }) => {
@@ -46,18 +46,18 @@ describe('diagnostics-store', () => {
       store = update(store, serverA, uriA, []);
 
       expect(store.has(uriA)).toBe(false);
-      expect(merge(store, uriA)).toEqual([]);
+      expect(merge(store, uriA)).toStrictEqual([]);
     });
 
     it('merge on unknown URI returns empty array', ({ expect }) => {
-      expect(merge(empty(), fakeUri())).toEqual([]);
+      expect(merge(empty(), fakeUri())).toStrictEqual([]);
     });
 
     it('replaces previous diagnostics for same server + URI', ({ expect }) => {
       let store = update(empty(), serverA, uriA, [diagA]);
       store = update(store, serverA, uriA, [diagC]);
 
-      expect(merge(store, uriA)).toEqual([diagC]);
+      expect(merge(store, uriA)).toStrictEqual([diagC]);
     });
   });
 
@@ -69,9 +69,9 @@ describe('diagnostics-store', () => {
 
       const result = clearServer(store, serverA);
 
-      expect(result.affectedUris).toEqual([uriA, uriB]);
+      expect(result.affectedUris).toStrictEqual([uriA, uriB]);
       // uriA still has serverB diagnostics
-      expect(merge(result.store, uriA)).toEqual([diagB]);
+      expect(merge(result.store, uriA)).toStrictEqual([diagB]);
       // uriB had only serverA — URI removed entirely
       expect(result.store.has(uriB)).toBe(false);
     });
@@ -80,8 +80,8 @@ describe('diagnostics-store', () => {
       const store = update(empty(), serverA, uriA, [diagA]);
       const result = clearServer(store, serverB);
 
-      expect(result.affectedUris).toEqual([]);
-      expect(merge(result.store, uriA)).toEqual([diagA]);
+      expect(result.affectedUris).toStrictEqual([]);
+      expect(merge(result.store, uriA)).toStrictEqual([diagA]);
     });
   });
 
@@ -98,8 +98,8 @@ describe('diagnostics-store', () => {
       const before = update(empty(), serverA, uriA, [diagA]);
       const result = clearServer(before, serverA);
 
-      expect(merge(before, uriA)).toEqual([diagA]);
-      expect(merge(result.store, uriA)).toEqual([]);
+      expect(merge(before, uriA)).toStrictEqual([diagA]);
+      expect(merge(result.store, uriA)).toStrictEqual([]);
     });
   });
 });

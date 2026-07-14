@@ -27,7 +27,7 @@ describe('document-tracker', () => {
       const content = faker.lorem.sentence();
       const docs = openDoc(uri, content);
 
-      expect(toArray(docs)).toEqual([
+      expect(toArray(docs)).toStrictEqual([
         { uri, languageId: 'typescript', version: 1, content },
       ]);
     });

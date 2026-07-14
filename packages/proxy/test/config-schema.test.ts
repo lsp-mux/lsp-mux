@@ -105,7 +105,7 @@ describe('ServerConfigSchema', () => {
   it('accepts optional settings', ({ expect }) => {
     const result = v.parse(ServerConfigSchema, { ...validConfig, settings: { foo: 'bar' } });
 
-    expect(result.settings).toEqual({ foo: 'bar' });
+    expect(result.settings).toStrictEqual({ foo: 'bar' });
   });
 });
 

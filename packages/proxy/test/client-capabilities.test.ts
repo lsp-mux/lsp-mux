@@ -139,7 +139,7 @@ describe('analyzeClientCapabilities', () => {
       },
     });
 
-    expect(flags).toEqual({
+    expect(flags).toStrictEqual({
       localFileWatching: false,
       proactivePullDiagnostics: false,
     });

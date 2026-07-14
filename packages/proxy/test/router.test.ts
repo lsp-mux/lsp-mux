@@ -34,7 +34,7 @@ describe('router', () => {
     const router = createRouter([vtsls]);
 
     it('serversForUri returns the server for a matching URI', ({ expect }) => {
-      expect(router.serversForUri(fakeUri('.ts'))).toEqual([nameA]);
+      expect(router.serversForUri(fakeUri('.ts'))).toStrictEqual([nameA]);
     });
 
     it('primaryForUri returns the server for a matching URI', ({ expect }) => {
@@ -46,7 +46,7 @@ describe('router', () => {
     const router = createRouter([vtsls, eslint]);
 
     it('serversForUri returns both in config order', ({ expect }) => {
-      expect(router.serversForUri(fakeUri('.tsx'))).toEqual([nameA, nameB]);
+      expect(router.serversForUri(fakeUri('.tsx'))).toStrictEqual([nameA, nameB]);
     });
 
     it('primaryForUri returns first', ({ expect }) => {
@@ -58,11 +58,11 @@ describe('router', () => {
     const router = createRouter([vtsls, css]);
 
     it('routes .ts to first server only', ({ expect }) => {
-      expect(router.serversForUri(fakeUri('.ts'))).toEqual([nameA]);
+      expect(router.serversForUri(fakeUri('.ts'))).toStrictEqual([nameA]);
     });
 
     it('routes .css to second server only', ({ expect }) => {
-      expect(router.serversForUri(fakeUri('.css'))).toEqual([nameC]);
+      expect(router.serversForUri(fakeUri('.css'))).toStrictEqual([nameC]);
     });
   });
 
@@ -70,7 +70,7 @@ describe('router', () => {
     const router = createRouter([vtsls, css]);
 
     it('returns allServers as fallback', ({ expect }) => {
-      expect(router.serversForUri(fakeUri('.md'))).toEqual([nameA, nameC]);
+      expect(router.serversForUri(fakeUri('.md'))).toStrictEqual([nameA, nameC]);
     });
   });
 
@@ -78,7 +78,7 @@ describe('router', () => {
     const router = createRouter([vtsls, css]);
 
     it('serversForUri returns allServers', ({ expect }) => {
-      expect(router.serversForUri(undefined)).toEqual([nameA, nameC]);
+      expect(router.serversForUri(undefined)).toStrictEqual([nameA, nameC]);
     });
 
     it('primaryForUri returns first of allServers', ({ expect }) => {
@@ -90,7 +90,7 @@ describe('router', () => {
     it('returns all names in config order', ({ expect }) => {
       const router = createRouter([css, eslint, vtsls]);
 
-      expect(router.allServers).toEqual([nameC, nameB, nameA]);
+      expect(router.allServers).toStrictEqual([nameC, nameB, nameA]);
     });
   });
 
@@ -98,15 +98,15 @@ describe('router', () => {
     const router = createRouter([vtsls]);
 
     it('handles URIs with query strings', ({ expect }) => {
-      expect(router.serversForUri(`${fakeUri('.ts')}?version=${String(faker.number.int())}`)).toEqual([nameA]);
+      expect(router.serversForUri(`${fakeUri('.ts')}?version=${String(faker.number.int())}`)).toStrictEqual([nameA]);
     });
 
     it('handles URIs with fragments', ({ expect }) => {
-      expect(router.serversForUri(`${fakeUri('.ts')}#L${String(faker.number.int())}`)).toEqual([nameA]);
+      expect(router.serversForUri(`${fakeUri('.ts')}#L${String(faker.number.int())}`)).toStrictEqual([nameA]);
     });
 
     it('handles URIs with no extension', ({ expect }) => {
-      expect(router.serversForUri(fakeUri(''))).toEqual([nameA]);
+      expect(router.serversForUri(fakeUri(''))).toStrictEqual([nameA]);
     });
   });
 });

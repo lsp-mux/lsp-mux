@@ -15,7 +15,7 @@ describe('MessageBuffer', () => {
 
     const flushed = buf.flush();
 
-    expect(flushed).toEqual([r1, r2]);
+    expect(flushed).toStrictEqual([r1, r2]);
     expect(buf).toHaveLength(0);
   });
 
@@ -42,7 +42,7 @@ describe('MessageBuffer', () => {
 
     const flushed = buf.flush();
 
-    expect(flushed.map(m => 'id' in m ? m.id : undefined)).toEqual([id1, id3]);
+    expect(flushed.map(m => 'id' in m ? m.id : undefined)).toStrictEqual([id1, id3]);
   });
 
   it('returns false when cancelling non-existent ID', ({ expect }) => {
@@ -68,6 +68,6 @@ describe('MessageBuffer', () => {
   it('flush returns empty array when buffer is empty', ({ expect }) => {
     const buf = createMessageBuffer(10);
 
-    expect(buf.flush()).toEqual([]);
+    expect(buf.flush()).toStrictEqual([]);
   });
 });

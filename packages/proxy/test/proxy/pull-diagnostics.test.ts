@@ -49,7 +49,7 @@ describe('Pull diagnostics', () => {
     const msgs = await diagPromise;
     const diags = getDiagnostics(msgs[0]);
 
-    expect(diags).toEqual(
+    expect(diags).toStrictEqual(
       expect.arrayContaining([
         expect.objectContaining({ source: 'mock' }),
       ]),
@@ -93,7 +93,7 @@ describe('Pull diagnostics', () => {
 
     const pushMsgs = await diagPromise;
 
-    expect(getDiagnostics(pushMsgs[0])).toEqual(
+    expect(getDiagnostics(pushMsgs[0])).toStrictEqual(
       expect.arrayContaining([
         expect.objectContaining({ source: 'mock' }),
       ]),
@@ -137,7 +137,7 @@ describe('Pull diagnostics', () => {
 
     const diags = getDiagnostics(msgs[0]);
 
-    expect(diags).toEqual(
+    expect(diags).toStrictEqual(
       expect.arrayContaining([
         expect.objectContaining({ source: 'alpha' }),
         expect.objectContaining({ source: 'beta' }),

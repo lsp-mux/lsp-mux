@@ -105,7 +105,7 @@ describe('Multi-server proxy', () => {
 
     const diagnosticMsgs = await diagPromise;
 
-    expect(getDiagnostics(diagnosticMsgs.at(-1))).toEqual(expect.arrayContaining([
+    expect(getDiagnostics(diagnosticMsgs.at(-1))).toStrictEqual(expect.arrayContaining([
       expect.objectContaining({ source: 'alpha' }),
       expect.objectContaining({ source: 'beta' }),
     ]));
@@ -144,7 +144,7 @@ describe('Multi-server proxy', () => {
 
     const msgs = await diagPromise;
 
-    expect(getDiagnostics(msgs.at(-1))).toEqual(expect.arrayContaining([
+    expect(getDiagnostics(msgs.at(-1))).toStrictEqual(expect.arrayContaining([
       expect.objectContaining({ source: 'alpha' }),
       expect.objectContaining({ source: 'beta' }),
     ]));

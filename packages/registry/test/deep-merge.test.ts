@@ -3,18 +3,18 @@ import { deepMerge } from '../src/deep-merge.ts';
 
 describe('deepMerge', () => {
   it('merges flat objects', ({ expect }) => {
-    expect(deepMerge({ a: 1 }, { b: 2 })).toEqual({ a: 1, b: 2 });
+    expect(deepMerge({ a: 1 }, { b: 2 })).toStrictEqual({ a: 1, b: 2 });
   });
 
   it('override wins for scalar values', ({ expect }) => {
-    expect(deepMerge({ a: 1 }, { a: 2 })).toEqual({ a: 2 });
+    expect(deepMerge({ a: 1 }, { a: 2 })).toStrictEqual({ a: 2 });
   });
 
   it('deep merges nested objects', ({ expect }) => {
     const base = { settings: { validate: 'on', run: 'onType' } };
     const override = { settings: { run: 'onSave' } };
 
-    expect(deepMerge(base, override)).toEqual({
+    expect(deepMerge(base, override)).toStrictEqual({
       settings: { validate: 'on', run: 'onSave' },
     });
   });
@@ -23,35 +23,35 @@ describe('deepMerge', () => {
     const base = { args: ['--stdio', '--debug'] };
     const override = { args: ['--stdio'] };
 
-    expect(deepMerge(base, override)).toEqual({ args: ['--stdio'] });
+    expect(deepMerge(base, override)).toStrictEqual({ args: ['--stdio'] });
   });
 
   it('skips undefined values in override', ({ expect }) => {
-    expect(deepMerge({ a: 1 }, { a: undefined })).toEqual({ a: 1 });
+    expect(deepMerge({ a: 1 }, { a: undefined })).toStrictEqual({ a: 1 });
   });
 
   it('adds keys not present in base', ({ expect }) => {
-    expect(deepMerge({}, { a: 1 })).toEqual({ a: 1 });
+    expect(deepMerge({}, { a: 1 })).toStrictEqual({ a: 1 });
   });
 
   it('returns base unchanged for empty override', ({ expect }) => {
     const base = { a: 1, b: { c: 2 } };
 
-    expect(deepMerge(base, {})).toEqual(base);
+    expect(deepMerge(base, {})).toStrictEqual(base);
   });
 
   it('replaces object with scalar when override is scalar', ({ expect }) => {
-    expect(deepMerge({ a: { nested: true } }, { a: 'flat' })).toEqual({ a: 'flat' });
+    expect(deepMerge({ a: { nested: true } }, { a: 'flat' })).toStrictEqual({ a: 'flat' });
   });
 
   it('replaces scalar with object when override is object', ({ expect }) => {
-    expect(deepMerge({ a: 'flat' }, { a: { nested: true } })).toEqual({ a: { nested: true } });
+    expect(deepMerge({ a: 'flat' }, { a: { nested: true } })).toStrictEqual({ a: { nested: true } });
   });
 
   it('handles null values in override as replacements', ({ expect }) => {
     /* eslint-disable-next-line unicorn/no-null --
        This test exercises null override semantics specifically. */
-    expect(deepMerge({ a: { b: 1 } }, { a: null })).toEqual({ a: null });
+    expect(deepMerge({ a: { b: 1 } }, { a: null })).toStrictEqual({ a: null });
   });
 
   it('does not mutate base or override', ({ expect }) => {
@@ -62,7 +62,7 @@ describe('deepMerge', () => {
 
     deepMerge(base, override);
 
-    expect(base).toEqual(baseCopy);
-    expect(override).toEqual(overrideCopy);
+    expect(base).toStrictEqual(baseCopy);
+    expect(override).toStrictEqual(overrideCopy);
   });
 });

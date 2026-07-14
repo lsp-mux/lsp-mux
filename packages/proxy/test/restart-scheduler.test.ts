@@ -17,7 +17,7 @@ describe('RestartScheduler', () => {
 
     t.tick(150); // max jittered delay for base 100
 
-    expect(calls).toEqual([1]);
+    expect(calls).toStrictEqual([1]);
 
     // Attempt 2: base 100 * 2^1 = 200ms, jittered to [100, 300]
     expect(sched.schedule(() => calls.push(2))).toBe(true);
@@ -25,7 +25,7 @@ describe('RestartScheduler', () => {
 
     t.tick(300);
 
-    expect(calls).toEqual([1, 2]);
+    expect(calls).toStrictEqual([1, 2]);
 
     // Attempt 3: base min(400, 500) = 400ms, jittered to [200, 600)
     expect(sched.schedule(() => calls.push(3))).toBe(true);
@@ -33,7 +33,7 @@ describe('RestartScheduler', () => {
 
     t.tick(600);
 
-    expect(calls).toEqual([1, 2, 3]);
+    expect(calls).toStrictEqual([1, 2, 3]);
 
     // Attempt 4: over maxRetries
     expect(sched.schedule(() => calls.push(4))).toBe(false);
@@ -56,11 +56,11 @@ describe('RestartScheduler', () => {
     // Attempt 3: base min(400, 300) = 300ms → jittered capped at 300
     sched.schedule(() => calls.push(3));
 
-    expect(calls).toEqual([1, 2]);
+    expect(calls).toStrictEqual([1, 2]);
 
     t.tick(450);
 
-    expect(calls).toEqual([1, 2, 3]);
+    expect(calls).toStrictEqual([1, 2, 3]);
   });
 
   it('reset restores attempt counter', ({ expect }) => {
