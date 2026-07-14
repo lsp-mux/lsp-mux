@@ -2,27 +2,28 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { faker } from '@faker-js/faker';
 import { beforeEach, describe, it, vi } from 'vitest';
+import { type MockProxy, mock } from 'vitest-mock-extended';
 
 vi.mock('node:fs/promises', () => ({
-  stat: vi.fn(),
-  readFile: vi.fn(),
+  stat: vi.fn<typeof stat>(),
+  readFile: vi.fn<typeof readFile>(),
 }));
 vi.mock('node:fs', () => ({
-  watch: vi.fn(),
+  watch: vi.fn<typeof watch>(),
 }));
 vi.mock('../src/flush-scheduler.ts', () => ({
-  createFlushScheduler: vi.fn(),
+  createFlushScheduler: vi.fn<typeof createFlushScheduler>(),
 }));
 vi.mock('../src/file-watcher.ts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../src/file-watcher.ts')>();
   return {
     ...actual,
-    resolveRoot: vi.fn(),
-    isWithinRoot: vi.fn(),
+    resolveRoot: vi.fn<typeof fw.resolveRoot>(),
+    isWithinRoot: vi.fn<typeof fw.isWithinRoot>(),
   };
 });
 vi.mock('../src/logger.ts', () => ({
-  createLogger: vi.fn(() => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })),
+  createLogger: vi.fn<typeof createLogger>(),
 }));
 
 import { readFile, stat } from 'node:fs/promises';
@@ -30,6 +31,7 @@ import { watch } from 'node:fs';
 import type { FSWatcher } from 'node:fs';
 import * as fw from '../src/file-watcher.ts';
 import { createFlushScheduler } from '../src/flush-scheduler.ts';
+import type { FlushScheduler } from '../src/flush-scheduler.ts';
 import { createLogger } from '../src/logger.ts';
 import type { Logger } from '../src/logger.ts';
 import { normalizeFileUri } from '../src/uri.ts';
@@ -40,14 +42,13 @@ const WORKSPACE = join(import.meta.dirname, 'fake-workspace');
 const toUri = (relativePath: string) =>
   normalizeFileUri(pathToFileURL(join(WORKSPACE, relativePath)).href);
 
-const createDelegate = (overrides?: Partial<WatcherDelegate>): WatcherDelegate => ({
-  isStopped: vi.fn(() => false),
-  getDocument: vi.fn(() => undefined),
-  matchEvent: vi.fn(() => new Map()),
-  resyncDocument: vi.fn(),
-  sendWatchedFilesEvent: vi.fn(),
-  ...overrides,
-});
+const createDelegate = (): MockProxy<WatcherDelegate> => {
+  const delegate = mock<WatcherDelegate>();
+  // Sensible defaults; individual tests override via mockReturnValue.
+  delegate.isStopped.mockReturnValue(false);
+  delegate.matchEvent.mockReturnValue(new Map());
+  return delegate;
+};
 
 const nodeError = (code: string): NodeJS.ErrnoException => {
   const err = new Error(`${code} error`) as NodeJS.ErrnoException;
@@ -55,14 +56,15 @@ const nodeError = (code: string): NodeJS.ErrnoException => {
   return err;
 };
 
-let log: Logger;
+let log: MockProxy<Logger>;
 let onFlush: () => Promise<void>;
 let watchCallback: (event: string, filename: string | null) => void;
-let mockFsWatcher: { on: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn> };
+let mockFsWatcher: MockProxy<FSWatcher>;
 
 beforeEach(() => {
-  log = vi.mocked(createLogger)();
-  mockFsWatcher = { on: vi.fn(), close: vi.fn() };
+  log = mock<Logger>();
+  vi.mocked(createLogger).mockReturnValue(log);
+  mockFsWatcher = mock<FSWatcher>();
 
   vi.mocked(fw.resolveRoot).mockResolvedValue(WORKSPACE);
   vi.mocked(fw.isWithinRoot).mockResolvedValue(true);
@@ -71,11 +73,11 @@ beforeEach(() => {
 
   vi.mocked(watch).mockImplementation((...args: unknown[]) => {
     watchCallback = args[2] as typeof watchCallback;
-    return mockFsWatcher as unknown as FSWatcher;
+    return mockFsWatcher;
   });
   vi.mocked(createFlushScheduler).mockImplementation((opts) => {
     onFlush = opts.onFlush;
-    return { notify: vi.fn(), dispose: vi.fn() };
+    return mock<FlushScheduler>();
   });
 });
 
@@ -94,9 +96,8 @@ describe.sequential('WorkspaceWatcher', () => {
   describe('flushFileEvents', () => {
     it('dispatches matched events via delegate', async ({ expect }) => {
       const changes: fw.FileChange[] = [{ uri: toUri('test.ts'), type: fw.FileChangeType.Changed }];
-      const delegate = createDelegate({
-        matchEvent: vi.fn(() => new Map([['mock', changes]])),
-      });
+      const delegate = createDelegate();
+      delegate.matchEvent.mockReturnValue(new Map([['mock', changes]]));
 
       await startWatcher(delegate);
       addEvent('test.ts');
@@ -147,9 +148,8 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('stops processing when isStopped returns true', async ({ expect }) => {
-      const delegate = createDelegate({
-        isStopped: vi.fn(() => true),
-      });
+      const delegate = createDelegate();
+      delegate.isStopped.mockReturnValue(true);
 
       await startWatcher(delegate);
       addEvent('a.ts');
@@ -165,10 +165,8 @@ describe.sequential('WorkspaceWatcher', () => {
       const doc = { uri: toUri('tracked.ts'), languageId: 'typescript', version: 1, content: oldContent };
       vi.mocked(readFile).mockResolvedValue(newContent);
 
-      const delegate = createDelegate({
-        getDocument: vi.fn(() => doc),
-        matchEvent: vi.fn(() => new Map()),
-      });
+      const delegate = createDelegate();
+      delegate.getDocument.mockReturnValue(doc);
 
       await startWatcher(delegate);
       addEvent('tracked.ts');
@@ -183,9 +181,8 @@ describe.sequential('WorkspaceWatcher', () => {
         .mockResolvedValueOnce(true);
 
       const changes: fw.FileChange[] = [{ uri: toUri('b.ts'), type: fw.FileChangeType.Changed }];
-      const delegate = createDelegate({
-        matchEvent: vi.fn(() => new Map([['mock', changes]])),
-      });
+      const delegate = createDelegate();
+      delegate.matchEvent.mockReturnValue(new Map([['mock', changes]]));
 
       await startWatcher(delegate);
       addEvent('a.ts');
@@ -214,7 +211,8 @@ describe.sequential('WorkspaceWatcher', () => {
       const content = faker.lorem.sentence();
       const doc = { uri: toUri('same.ts'), languageId: 'typescript', version: 1, content };
       vi.mocked(readFile).mockResolvedValue(content);
-      const delegate = createDelegate({ getDocument: vi.fn(() => doc) });
+      const delegate = createDelegate();
+      delegate.getDocument.mockReturnValue(doc);
 
       await startWatcher(delegate);
       addEvent('same.ts');
@@ -224,7 +222,8 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('returns unchanged when document not tracked', async ({ expect }) => {
-      const delegate = createDelegate({ getDocument: vi.fn(() => undefined) });
+      const delegate = createDelegate();
+      delegate.getDocument.mockReturnValue(undefined);
 
       await startWatcher(delegate);
       addEvent('untracked.ts');
@@ -239,7 +238,8 @@ describe.sequential('WorkspaceWatcher', () => {
       vi.mocked(stat)
         .mockResolvedValueOnce({ size: 10 } as Awaited<ReturnType<typeof stat>>)
         .mockRejectedValueOnce(nodeError('ENOENT'));
-      const delegate = createDelegate({ getDocument: vi.fn(() => doc) });
+      const delegate = createDelegate();
+      delegate.getDocument.mockReturnValue(doc);
 
       await startWatcher(delegate);
       addEvent('vanished.ts');
@@ -257,7 +257,8 @@ describe.sequential('WorkspaceWatcher', () => {
       vi.mocked(stat)
         .mockResolvedValueOnce({ size: 10 } as Awaited<ReturnType<typeof stat>>)
         .mockRejectedValueOnce(nodeError('EACCES'));
-      const delegate = createDelegate({ getDocument: vi.fn(() => doc) });
+      const delegate = createDelegate();
+      delegate.getDocument.mockReturnValue(doc);
 
       await startWatcher(delegate);
       addEvent('perm.ts');
@@ -273,7 +274,8 @@ describe.sequential('WorkspaceWatcher', () => {
     it('returns deleted on readFile ENOENT', async ({ expect }) => {
       const doc = { uri: toUri('gone.ts'), languageId: 'typescript', version: 1, content: faker.lorem.sentence() };
       vi.mocked(readFile).mockRejectedValue(nodeError('ENOENT'));
-      const delegate = createDelegate({ getDocument: vi.fn(() => doc) });
+      const delegate = createDelegate();
+      delegate.getDocument.mockReturnValue(doc);
 
       await startWatcher(delegate);
       addEvent('gone.ts');
@@ -288,7 +290,8 @@ describe.sequential('WorkspaceWatcher', () => {
     it('skips files exceeding stat 2x pre-filter', async ({ expect }) => {
       const doc = { uri: toUri('huge.ts'), languageId: 'typescript', version: 1, content: faker.lorem.sentence() };
       vi.mocked(stat).mockResolvedValue({ size: 300 } as Awaited<ReturnType<typeof stat>>);
-      const delegate = createDelegate({ getDocument: vi.fn(() => doc) });
+      const delegate = createDelegate();
+      delegate.getDocument.mockReturnValue(doc);
 
       await startWatcher(delegate, { maxResyncBytes: 100 });
       addEvent('huge.ts');
@@ -304,7 +307,8 @@ describe.sequential('WorkspaceWatcher', () => {
       // stat.size passes 2x filter (150 < 200) but byteLength (150) > maxResyncBytes (100)
       vi.mocked(stat).mockResolvedValue({ size: 150 } as Awaited<ReturnType<typeof stat>>);
       vi.mocked(readFile).mockResolvedValue('x'.repeat(150));
-      const delegate = createDelegate({ getDocument: vi.fn(() => doc) });
+      const delegate = createDelegate();
+      delegate.getDocument.mockReturnValue(doc);
 
       await startWatcher(delegate, { maxResyncBytes: 100 });
       addEvent('big.ts');
@@ -322,13 +326,12 @@ describe.sequential('WorkspaceWatcher', () => {
       const v2 = { uri: toUri('race.ts'), languageId: 'typescript', version: 2, content: clientContent };
       vi.mocked(readFile).mockResolvedValue(diskContent);
 
+      const delegate = createDelegate();
       // Call order: flush isTracked → resync initial → resync re-check
-      const getDocument = vi.fn()
+      delegate.getDocument
         .mockReturnValueOnce(v1) // flush: isTracked check
         .mockReturnValueOnce(v1) // resync: initial read
         .mockReturnValueOnce(v2); // resync: concurrency re-check (version changed)
-
-      const delegate = createDelegate({ getDocument });
 
       await startWatcher(delegate);
       addEvent('race.ts');

@@ -33,7 +33,8 @@
     "turbo": "catalog:",
     "typescript": "catalog:",
     "valibot": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
   },
   "packageManager": "pnpm@11.8.0",
   "engines": {

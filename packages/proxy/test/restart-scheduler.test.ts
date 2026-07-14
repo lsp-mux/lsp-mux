@@ -1,6 +1,7 @@
 import { createClock } from '@sinonjs/fake-timers';
 import { describe, it, vi } from 'vitest';
 import { createRestartScheduler } from '../src/restart-scheduler.ts';
+import type { RestartScheduler } from '../src/restart-scheduler.ts';
 import type { Timers } from '../src/types.ts';
 
 describe('RestartScheduler', () => {
@@ -79,7 +80,7 @@ describe('RestartScheduler', () => {
     expect(sched.attempt).toBe(0);
 
     // Should schedule from attempt 1 again
-    const called = vi.fn();
+    const called = vi.fn<Parameters<RestartScheduler['schedule']>[0]>();
 
     expect(sched.schedule(called)).toBe(true);
     expect(sched.attempt).toBe(1);
@@ -92,7 +93,7 @@ describe('RestartScheduler', () => {
   it('cancel prevents pending callback', ({ expect }) => {
     const t = createClock();
     const sched = createRestartScheduler({ policy, timers: t });
-    const called = vi.fn();
+    const called = vi.fn<Parameters<RestartScheduler['schedule']>[0]>();
 
     sched.schedule(called);
     sched.cancel();

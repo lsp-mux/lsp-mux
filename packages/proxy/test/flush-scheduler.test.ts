@@ -1,11 +1,12 @@
 import { createClock } from '@sinonjs/fake-timers';
 import { describe, it, vi } from 'vitest';
 import { createFlushScheduler } from '../src/flush-scheduler.ts';
+import type { FlushSchedulerOptions } from '../src/flush-scheduler.ts';
 
 describe('FlushScheduler', () => {
   it('calls onFlush after debounceMs', async ({ expect }) => {
     const t = createClock();
-    const onFlush = vi.fn().mockResolvedValue(undefined);
+    const onFlush = vi.fn<FlushSchedulerOptions['onFlush']>().mockResolvedValue(undefined);
     const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 1000, onFlush, timers: t });
 
     scheduler.notify();
@@ -21,7 +22,7 @@ describe('FlushScheduler', () => {
 
   it('resets debounce on each notify', async ({ expect }) => {
     const t = createClock();
-    const onFlush = vi.fn().mockResolvedValue(undefined);
+    const onFlush = vi.fn<FlushSchedulerOptions['onFlush']>().mockResolvedValue(undefined);
     const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 2000, onFlush, timers: t });
 
     scheduler.notify();
@@ -40,7 +41,7 @@ describe('FlushScheduler', () => {
 
   it('forces flush at maxWaitMs even when debounce keeps resetting', async ({ expect }) => {
     const t = createClock();
-    const onFlush = vi.fn().mockResolvedValue(undefined);
+    const onFlush = vi.fn<FlushSchedulerOptions['onFlush']>().mockResolvedValue(undefined);
     const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 300, onFlush, timers: t });
 
     // Notify every 50ms — debounce (100ms) never fires
@@ -63,7 +64,7 @@ describe('FlushScheduler', () => {
   it('re-enters debounce cycle when notified during flush (not immediate)', async ({ expect }) => {
     const t = createClock();
     let flushCount = 0;
-    const onFlush = vi.fn().mockResolvedValue(undefined);
+    const onFlush = vi.fn<FlushSchedulerOptions['onFlush']>().mockResolvedValue(undefined);
     const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 1000, onFlush, timers: t });
 
     onFlush.mockImplementation(() => {
@@ -96,7 +97,7 @@ describe('FlushScheduler', () => {
     const flushPromise = new Promise<void>((r) => {
       resolveFlush = r;
     });
-    const onFlush = vi.fn().mockReturnValueOnce(flushPromise).mockResolvedValue(undefined);
+    const onFlush = vi.fn<FlushSchedulerOptions['onFlush']>().mockReturnValueOnce(flushPromise).mockResolvedValue(undefined);
     const scheduler = createFlushScheduler({ debounceMs: 50, maxWaitMs: 1000, onFlush, timers: t });
 
     scheduler.notify();
@@ -123,7 +124,7 @@ describe('FlushScheduler', () => {
 
   it('dispose cancels pending timers', async ({ expect }) => {
     const t = createClock();
-    const onFlush = vi.fn().mockResolvedValue(undefined);
+    const onFlush = vi.fn<FlushSchedulerOptions['onFlush']>().mockResolvedValue(undefined);
     const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 1000, onFlush, timers: t });
 
     scheduler.notify();
@@ -136,7 +137,7 @@ describe('FlushScheduler', () => {
 
   it('recovers after onFlush throws', async ({ expect }) => {
     const t = createClock();
-    const onFlush = vi.fn()
+    const onFlush = vi.fn<FlushSchedulerOptions['onFlush']>()
       .mockRejectedValueOnce(new Error('boom'))
       .mockResolvedValue(undefined);
     const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 1000, onFlush, timers: t });
@@ -157,7 +158,7 @@ describe('FlushScheduler', () => {
 
   it('does not flush after dispose', async ({ expect }) => {
     const t = createClock();
-    const onFlush = vi.fn().mockResolvedValue(undefined);
+    const onFlush = vi.fn<FlushSchedulerOptions['onFlush']>().mockResolvedValue(undefined);
     const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 1000, onFlush, timers: t });
 
     scheduler.dispose();
@@ -170,7 +171,7 @@ describe('FlushScheduler', () => {
 
   it('resets maxWait timer after flush completes', async ({ expect }) => {
     const t = createClock();
-    const onFlush = vi.fn().mockResolvedValue(undefined);
+    const onFlush = vi.fn<FlushSchedulerOptions['onFlush']>().mockResolvedValue(undefined);
     const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 300, onFlush, timers: t });
 
     // First batch
