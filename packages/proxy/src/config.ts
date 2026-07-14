@@ -7,8 +7,8 @@ import {
 } from 'lsp-proxy-registry';
 import * as v from 'valibot';
 
-const CONFIG_FILE = '.lsp-proxy.json';
-const LOCAL_CONFIG_FILE = '.lsp-proxy.local.json';
+const configFile = '.lsp-proxy.json';
+const localConfigFile = '.lsp-proxy.local.json';
 import { ProxyConfigSchema, ServerConfigSchema } from './config-schema.ts';
 import type { ProxyConfig, ServerConfig } from './config-schema.ts';
 
@@ -54,8 +54,8 @@ const resolveServerPaths = (config: ServerConfig, configDir: string): ServerConf
 export const loadProxyConfig = async (
   configDir = ownPackageDir,
 ): Promise<ProxyConfig> => {
-  const base = await parseJsonFile(join(configDir, CONFIG_FILE));
-  const local = await tryLoadJsonFile(join(configDir, LOCAL_CONFIG_FILE));
+  const base = await parseJsonFile(join(configDir, configFile));
+  const local = await tryLoadJsonFile(join(configDir, localConfigFile));
   const merged = local ? deepMerge(base as Record<string, unknown>, local) : base;
   return v.parse(ProxyConfigSchema, merged);
 };

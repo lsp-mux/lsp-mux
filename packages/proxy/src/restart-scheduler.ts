@@ -7,7 +7,7 @@ export interface RestartPolicy {
   readonly maxDelayMs: number;
 }
 
-export const DEFAULT_RESTART_POLICY: RestartPolicy = {
+export const defaultRestartPolicy: RestartPolicy = {
   maxRetries: 5,
   baseDelayMs: 1000,
   maxDelayMs: 30_000,

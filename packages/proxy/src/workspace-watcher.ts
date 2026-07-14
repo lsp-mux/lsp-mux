@@ -9,11 +9,11 @@ import type { Logger } from './logger.ts';
 import type { TrackedDocument } from './types.ts';
 import { normalizeFileUri } from './uri.ts';
 
-const WATCHER_DEBOUNCE_MS = 250;
-const WATCHER_MAX_WAIT_MS = 2000;
-const FLUSH_BATCH_SIZE = 100;
-const DEFAULT_MAX_PENDING_EVENTS = 10_000;
-const DEFAULT_MAX_RESYNC_BYTES = 1024 * 1024; // 1 MB
+const watcherDebounceMs = 250;
+const watcherMaxWaitMs = 2000;
+const flushBatchSize = 100;
+const defaultMaxPendingEvents = 10_000;
+const defaultMaxResyncBytes = 1024 * 1024; // 1 MB
 
 const isNodeError = (err: unknown): err is NodeJS.ErrnoException =>
   err instanceof Error && 'code' in err;
@@ -57,8 +57,8 @@ export class WorkspaceWatcher {
   constructor(options: WorkspaceWatcherOptions, delegate: WatcherDelegate) {
     this.workspaceRoot = options.workspaceRoot;
     this.isExcluded = fw.createExcludeMatcher(options.watcherExclude ?? []);
-    this.maxResyncBytes = options.maxResyncBytes ?? DEFAULT_MAX_RESYNC_BYTES;
-    this.maxPendingEvents = options.maxPendingEvents ?? DEFAULT_MAX_PENDING_EVENTS;
+    this.maxResyncBytes = options.maxResyncBytes ?? defaultMaxResyncBytes;
+    this.maxPendingEvents = options.maxPendingEvents ?? defaultMaxPendingEvents;
     this.delegate = delegate;
     this.log = options.log;
   }
@@ -77,8 +77,8 @@ export class WorkspaceWatcher {
     const pending = this.pendingEvents;
 
     this.scheduler = createFlushScheduler({
-      debounceMs: WATCHER_DEBOUNCE_MS,
-      maxWaitMs: WATCHER_MAX_WAIT_MS,
+      debounceMs: watcherDebounceMs,
+      maxWaitMs: watcherMaxWaitMs,
       onFlush: () => this.flushFileEvents(),
     });
 
@@ -168,7 +168,7 @@ export class WorkspaceWatcher {
       }
 
       count++;
-      if (count % FLUSH_BATCH_SIZE === 0) {
+      if (count % flushBatchSize === 0) {
         await new Promise<void>((resolve) => {
           setTimeout(resolve, 0);
         });

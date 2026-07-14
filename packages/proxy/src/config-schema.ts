@@ -28,7 +28,7 @@ export const ServerConfigSchema = v.object({
 
 export type ServerConfig = v.InferOutput<typeof ServerConfigSchema>;
 
-const DEFAULT_WATCHER_EXCLUDE = [
+const defaultWatcherExclude = [
   '**/node_modules/**',
   '**/.git/**',
   '**/.hg/**',
@@ -52,7 +52,7 @@ export const ProxyConfigSchema = v.pipe(
   }),
   v.transform(cfg => ({
     ...cfg,
-    watcherExclude: [...new Set([...DEFAULT_WATCHER_EXCLUDE, ...(cfg.watcherExclude ?? [])])],
+    watcherExclude: [...new Set([...defaultWatcherExclude, ...(cfg.watcherExclude ?? [])])],
   })),
 );
 

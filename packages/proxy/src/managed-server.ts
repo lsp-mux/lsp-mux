@@ -1,12 +1,12 @@
 import { ChildServer } from './child-server.ts';
 import type { Logger } from './logger.ts';
 import { createMessageBuffer } from './message-buffer.ts';
-import { DEFAULT_RESTART_POLICY, createRestartScheduler } from './restart-scheduler.ts';
+import { defaultRestartPolicy, createRestartScheduler } from './restart-scheduler.ts';
 import type { RestartPolicy } from './restart-scheduler.ts';
 import type { Message, RequestMessage, ResponseMessage, ServerConfig, TrackedDocument } from './types.ts';
-import { DOCUMENT_SYNC_METHODS, LSP_ERROR_CODES, Message as Msg, createNotification, createRequest } from './types.ts';
+import { documentSyncMethods, lspErrorCodes, Message as Msg, createNotification, createRequest } from './types.ts';
 
-const MAX_BUFFER_SIZE = 1000;
+const maxBufferSize = 1000;
 
 export type ServerState = 'idle' | 'starting' | 'running' | 'restarting' | 'stopped';
 
@@ -64,8 +64,8 @@ export const createManagedServer = (
   let isEverInitialized = false;
 
   const pendingRequests = new Set<number | string | null>();
-  const buffer = createMessageBuffer(MAX_BUFFER_SIZE);
-  const scheduler = createRestartScheduler({ policy: { ...DEFAULT_RESTART_POLICY, ...restartPolicy } });
+  const buffer = createMessageBuffer(maxBufferSize);
+  const scheduler = createRestartScheduler({ policy: { ...defaultRestartPolicy, ...restartPolicy } });
 
   let proxySeq = 0;
   const proxyCallbacks = new Map<string, (res: ResponseMessage) => void>();
@@ -74,7 +74,7 @@ export const createManagedServer = (
 
   const resolveProxyCallbacks = (message: string): void => {
     for (const [id, cb] of proxyCallbacks) {
-      cb({ jsonrpc: '2.0', id, error: { code: LSP_ERROR_CODES.InternalError, message } });
+      cb({ jsonrpc: '2.0', id, error: { code: lspErrorCodes.InternalError, message } });
     }
     proxyCallbacks.clear();
   };
@@ -92,7 +92,7 @@ export const createManagedServer = (
         resolve({
           jsonrpc: '2.0',
           id,
-          error: { code: LSP_ERROR_CODES.InternalError, message: `Request ${method} timed out after ${String(timeoutMs)}ms` },
+          error: { code: lspErrorCodes.InternalError, message: `Request ${method} timed out after ${String(timeoutMs)}ms` },
         });
       }, timeoutMs);
 
@@ -319,7 +319,7 @@ export const createManagedServer = (
 
       // Document sync notifications are tracked centrally by the proxy.
       // Drop them here — they'll be replayed via getDocuments() after init.
-      const isDocSync = Msg.isNotification(msg) && DOCUMENT_SYNC_METHODS.has(msg.method);
+      const isDocSync = Msg.isNotification(msg) && documentSyncMethods.has(msg.method);
 
       if (state === 'restarting' || state === 'starting') {
         if (isDocSync) return true;
@@ -349,7 +349,7 @@ export const createManagedServer = (
           /* eslint-disable-next-line unicorn/no-null --
              JSON-RPC requires an explicit null id when no request id applies. */
           id: null,
-          error: { code: LSP_ERROR_CODES.InternalError, message: 'Server not running' },
+          error: { code: lspErrorCodes.InternalError, message: 'Server not running' },
         });
       }
       return sendProxyRequest(server, method, params);

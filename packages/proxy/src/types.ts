@@ -57,19 +57,19 @@ export const noop = (): void => {};
 // --- Constants ---
 
 /** Notifications that mutate document state — tracked by the proxy, not buffered during restart. */
-export const DOCUMENT_SYNC_METHODS = new Set([
+export const documentSyncMethods = new Set([
   'textDocument/didOpen',
   'textDocument/didChange',
   'textDocument/didClose',
 ]);
 
-export const LSP_ERROR_CODES = {
+export const lspErrorCodes = {
   ServerNotInitialized: -32_002,
   RequestCancelled: -32_800,
   InternalError: -32_603,
 } as const;
 
-export const LSP_MESSAGE_TYPE = {
+export const lspMessageType = {
   Error: 1,
   Warning: 2,
   Info: 3,

@@ -2,7 +2,7 @@ import { stat } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import * as v from 'valibot';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
-import { STATIC_CAPABILITIES, isPlainObject } from './capabilities.ts';
+import { staticCapabilities, isPlainObject } from './capabilities.ts';
 import { analyzeClientCapabilities } from './client-capabilities.ts';
 import type { CompensationFlags } from './client-capabilities.ts';
 import * as diag from './diagnostics-store.ts';
@@ -15,7 +15,7 @@ import { createManagedServer } from './managed-server.ts';
 import type { RestartPolicy } from './restart-scheduler.ts';
 import type { Router } from './router.ts';
 import { createRouter, extractUri } from './router.ts';
-import { DOCUMENT_SYNC_METHODS, LSP_ERROR_CODES, LSP_MESSAGE_TYPE, Message as Msg, createNotification } from './types.ts';
+import { documentSyncMethods, lspErrorCodes, lspMessageType, Message as Msg, createNotification } from './types.ts';
 import type { Message, NotificationMessage, RequestMessage, ResponseMessage, ServerConfig } from './types.ts';
 import { normalizeFileUri } from './uri.ts';
 import { WorkspaceWatcher } from './workspace-watcher.ts';
@@ -59,9 +59,9 @@ const LogMessageSchema = v.object({
   type: v.pipe(
     v.number(),
     v.transform((n): 'error' | 'warn' | 'info' | 'debug' => {
-      if (n === LSP_MESSAGE_TYPE.Error) return 'error';
-      if (n === LSP_MESSAGE_TYPE.Warning) return 'warn';
-      return n === LSP_MESSAGE_TYPE.Info ? 'info' : 'debug';
+      if (n === lspMessageType.Error) return 'error';
+      if (n === lspMessageType.Warning) return 'warn';
+      return n === lspMessageType.Info ? 'info' : 'debug';
     }),
   ),
   message: v.string(),
@@ -209,7 +209,7 @@ export class LspProxy {
     else if (Msg.isNotification(msg)) this.log.debug(`client → proxy: notification ${msg.method}`);
     else if (Msg.isResponse(msg)) this.log.debug(`client → proxy: response (id: ${String(msg.id)})`);
 
-    if (Msg.isNotification(msg) && DOCUMENT_SYNC_METHODS.has(msg.method)) {
+    if (Msg.isNotification(msg) && documentSyncMethods.has(msg.method)) {
       this.documents = docs.apply(this.documents, msg.method, msg.params);
     }
 
@@ -228,7 +228,7 @@ export class LspProxy {
           return;
         }
         if (Msg.isRequest(msg)) {
-          this.sendErrorToClient(msg.id, LSP_ERROR_CODES.ServerNotInitialized, 'Server stopped');
+          this.sendErrorToClient(msg.id, lspErrorCodes.ServerNotInitialized, 'Server stopped');
         }
       }
     }
@@ -241,7 +241,7 @@ export class LspProxy {
       return;
     }
     if (Msg.isRequest(msg)) {
-      this.sendErrorToClient(msg.id, LSP_ERROR_CODES.ServerNotInitialized, 'Not initialized');
+      this.sendErrorToClient(msg.id, lspErrorCodes.ServerNotInitialized, 'Not initialized');
     }
   }
 
@@ -257,7 +257,7 @@ export class LspProxy {
       server.setInitParams(serverInitParams);
     }
 
-    this.respondToClient(clientRequestId, { capabilities: STATIC_CAPABILITIES });
+    this.respondToClient(clientRequestId, { capabilities: staticCapabilities });
     this.state = 'running';
 
     await this.resolveWorkspaceRoot();
@@ -287,7 +287,7 @@ export class LspProxy {
       return;
     }
 
-    if (Msg.isNotification(msg) && DOCUMENT_SYNC_METHODS.has(msg.method)) {
+    if (Msg.isNotification(msg) && documentSyncMethods.has(msg.method)) {
       const rawUri = extractUri(msg);
       const uri = rawUri ? normalizeFileUri(rawUri) : undefined;
       const normalized = uri && uri !== rawUri
@@ -332,7 +332,7 @@ export class LspProxy {
           if (server.cancelBuffered(id)) isCancelled = true;
         }
         if (isCancelled) {
-          this.sendErrorToClient(id, LSP_ERROR_CODES.RequestCancelled, 'Request cancelled');
+          this.sendErrorToClient(id, lspErrorCodes.RequestCancelled, 'Request cancelled');
           this.requestRouting.delete(id);
           return;
         }
@@ -366,11 +366,11 @@ export class LspProxy {
       if (primary) {
         this.requestRouting.set(msg.id, primary.name);
         if (!primary.send(msg)) {
-          this.sendErrorToClient(msg.id, LSP_ERROR_CODES.InternalError, 'Server unavailable');
+          this.sendErrorToClient(msg.id, lspErrorCodes.InternalError, 'Server unavailable');
           this.requestRouting.delete(msg.id);
         }
       } else {
-        this.sendErrorToClient(msg.id, LSP_ERROR_CODES.InternalError, 'No servers available');
+        this.sendErrorToClient(msg.id, lspErrorCodes.InternalError, 'No servers available');
       }
       return;
     }
@@ -569,7 +569,7 @@ export class LspProxy {
 
   private handlePendingErrors(_serverName: string, ids: ReadonlySet<number | string | null>, message: string): void {
     for (const id of ids) {
-      this.sendErrorToClient(id, LSP_ERROR_CODES.InternalError, message);
+      this.sendErrorToClient(id, lspErrorCodes.InternalError, message);
       this.requestRouting.delete(id);
     }
   }

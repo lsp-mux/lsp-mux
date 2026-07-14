@@ -49,7 +49,7 @@ export const mergeCapabilities = (
  *  a permissive superset. Unsupported methods get natural null/error
  *  responses from servers.
  */
-export const STATIC_CAPABILITIES: ServerCapabilities = {
+export const staticCapabilities: ServerCapabilities = {
   textDocumentSync: 1,
   hoverProvider: true,
   completionProvider: {

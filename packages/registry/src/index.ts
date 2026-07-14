@@ -16,11 +16,11 @@ export const lookupRegistryEntry = (
 ): RegistryEntry | undefined =>
   entries[name];
 
-const METADATA_KEYS: ReadonlySet<string> = new Set(['npm']);
+const metadataKeys: ReadonlySet<string> = new Set(['npm']);
 
 /** Return the server config fields from a registry entry (strips registry metadata). */
 export const serverConfigFromEntry = (entry: RegistryEntry): Record<string, unknown> =>
-  Object.fromEntries(Object.entries(entry).filter(([k]) => !METADATA_KEYS.has(k)));
+  Object.fromEntries(Object.entries(entry).filter(([k]) => !metadataKeys.has(k)));
 
 /** List all server names available in the registry. */
 export const listRegistryEntries = (): readonly string[] =>

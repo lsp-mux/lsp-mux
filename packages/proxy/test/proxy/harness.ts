@@ -11,11 +11,11 @@ import { LspProxy } from '../../src/proxy.ts';
 import type { ServerConfig } from '../../src/types.ts';
 import { normalizeFileUri } from '../../src/uri.ts';
 
-export const MOCK_SERVER = join(import.meta.dirname, '..', 'helpers', 'mock-server.ts');
+export const mockServer = join(import.meta.dirname, '..', 'helpers', 'mock-server.ts');
 
 export const mockServerConfig: ServerConfig = {
   command: process.execPath,
-  args: [MOCK_SERVER],
+  args: [mockServer],
   languages: { typescript: ['.ts'] },
   transport: 'stdio',
 };

@@ -47,10 +47,10 @@ const watchConfigForLogLevel = (configDir: string, log: Logger): Disposable => {
   };
 };
 
-const LOG_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const logMaxAgeMs = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 /**
- * Delete log files older than LOG_MAX_AGE_MS. Safe for concurrent startup —
+ * Delete log files older than logMaxAgeMs. Safe for concurrent startup —
  *  ENOENT from a parallel cleanup is silently ignored.
  */
 const pruneOldLogs = async (logDir: string): Promise<void> => {
@@ -68,7 +68,7 @@ const pruneOldLogs = async (logDir: string): Promise<void> => {
         const path = join(logDir, f);
         try {
           const s = await stat(path);
-          if (now - s.mtimeMs > LOG_MAX_AGE_MS) await unlink(path);
+          if (now - s.mtimeMs > logMaxAgeMs) await unlink(path);
         } catch { /* ENOENT from concurrent cleanup or permission error — ignore */ }
       }),
   );
