@@ -34,19 +34,22 @@ describe('ProxyConfigSchema', () => {
   });
 
   it('rejects empty servers array', ({ expect }) => {
-    expect(() => v.parse(ProxyConfigSchema, { servers: [] })).toThrow();
+    expect(() => v.parse(ProxyConfigSchema, { servers: [] }))
+      .toThrow('at least one server must be configured');
   });
 
   it('rejects empty server name', ({ expect }) => {
-    expect(() => v.parse(ProxyConfigSchema, { servers: [''] })).toThrow();
+    expect(() => v.parse(ProxyConfigSchema, { servers: [''] }))
+      .toThrow('server name must not be empty');
   });
 
   it('rejects missing servers field', ({ expect }) => {
-    expect(() => v.parse(ProxyConfigSchema, {})).toThrow();
+    expect(() => v.parse(ProxyConfigSchema, {})).toThrow('Invalid key: Expected "servers"');
   });
 
   it('rejects duplicate server names', ({ expect }) => {
-    expect(() => v.parse(ProxyConfigSchema, { servers: ['vtsls', 'vtsls'] })).toThrow();
+    expect(() => v.parse(ProxyConfigSchema, { servers: ['vtsls', 'vtsls'] }))
+      .toThrow('server names must be unique');
   });
 
   it('accepts valid logLevel', ({ expect }) => {
@@ -62,7 +65,8 @@ describe('ProxyConfigSchema', () => {
   });
 
   it('rejects invalid logLevel', ({ expect }) => {
-    expect(() => v.parse(ProxyConfigSchema, { servers: ['vtsls'], logLevel: 'TRACE' })).toThrow();
+    expect(() => v.parse(ProxyConfigSchema, { servers: ['vtsls'], logLevel: 'TRACE' }))
+      .toThrow('"DEBUG" | "INFO" | "WARN" | "ERROR"');
   });
 
   it('accepts valid logDir', ({ expect }) => {
@@ -91,15 +95,18 @@ describe('ServerConfigSchema', () => {
   });
 
   it('rejects empty command', ({ expect }) => {
-    expect(() => v.parse(ServerConfigSchema, { ...validConfig, command: '' })).toThrow();
+    expect(() => v.parse(ServerConfigSchema, { ...validConfig, command: '' }))
+      .toThrow('command must not be empty');
   });
 
   it('rejects empty languages', ({ expect }) => {
-    expect(() => v.parse(ServerConfigSchema, { ...validConfig, languages: {} })).toThrow();
+    expect(() => v.parse(ServerConfigSchema, { ...validConfig, languages: {} }))
+      .toThrow('languages must define at least one language');
   });
 
   it('rejects invalid transport', ({ expect }) => {
-    expect(() => v.parse(ServerConfigSchema, { ...validConfig, transport: 'tcp' })).toThrow();
+    expect(() => v.parse(ServerConfigSchema, { ...validConfig, transport: 'tcp' }))
+      .toThrow('Expected "stdio"');
   });
 
   it('accepts optional settings', ({ expect }) => {
@@ -111,12 +118,12 @@ describe('ServerConfigSchema', () => {
 
 describe('loadServerConfig', () => {
   it('rejects server names with path traversal', async ({ expect }) => {
-    await expect(loadServerConfig('../../../etc/passwd')).rejects.toThrow();
+    await expect(loadServerConfig('../../../etc/passwd')).rejects.toThrow('Invalid server name');
   });
 
   it('rejects server names with directory separators', async ({ expect }) => {
-    await expect(loadServerConfig('foo/bar')).rejects.toThrow();
-    await expect(loadServerConfig(String.raw`foo\bar`)).rejects.toThrow();
+    await expect(loadServerConfig('foo/bar')).rejects.toThrow('Invalid server name');
+    await expect(loadServerConfig(String.raw`foo\bar`)).rejects.toThrow('Invalid server name');
   });
 
   it('resolves relative paths and preserves non-path args', async ({ expect }) => {
