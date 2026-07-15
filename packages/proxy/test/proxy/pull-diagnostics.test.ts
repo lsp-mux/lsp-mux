@@ -103,7 +103,7 @@ describe('Pull diagnostics', () => {
     // shortly after the push one (~100ms). Wait and verify none arrives.
     await expect(
       collectMessages(reader, msg => isDiagnosticForUri(msg, uri), 1, 1000),
-    ).rejects.toThrow(/[Tt]imeout/);
+    ).rejects.toThrow(/[Tt]imeout/v);
   });
 
   it('merges pull diagnostics from multiple servers', async ({ createProxy, expect }) => {

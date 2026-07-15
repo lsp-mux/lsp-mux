@@ -94,7 +94,7 @@ const main = async (): Promise<void> => {
   mkdirSync(logDir, { recursive: true });
   void pruneOldLogs(logDir);
   // Timestamp + PID: multiple editors may launch proxies in the same second.
-  const timestamp = new Date().toISOString().replaceAll(/[:.]/g, '-');
+  const timestamp = new Date().toISOString().replaceAll(/[:.]/gv, '-');
   const logFile = createWriteStream(path.join(logDir, `${timestamp}-${String(process.pid)}.log`));
   const log = createLogger(logFile);
 

@@ -105,7 +105,7 @@ const resolveBaseUri = (baseUri: string | { uri: string; name: string }, workspa
       // fileURLToPath failed (malformed URI) — fall through to trailing-slash strip
     }
   }
-  return raw.replace(/\/$/, '');
+  return raw.replace(/\/$/v, '');
 };
 
 const compileGlob = (

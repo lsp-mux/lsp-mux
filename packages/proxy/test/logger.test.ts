@@ -14,7 +14,7 @@ describe('createLogger', () => {
     const log = createLogger(stream);
     log.info('hello', 'world');
 
-    expect(drain(stream)).toMatch(/\[.*\] \[lsp-proxy\] \[INFO\] hello world\n/);
+    expect(drain(stream)).toMatch(/\[.*\] \[lsp-proxy\] \[INFO\] hello world\n/v);
   });
 
   it('formats Error instances with stack trace', ({ expect }) => {
@@ -24,7 +24,7 @@ describe('createLogger', () => {
     const output = drain(stream);
 
     expect(output).toContain('[ERROR]');
-    expect(output).toMatch(/Error: boom\n\s+at /);
+    expect(output).toMatch(/Error: boom\n\s+at /v);
   });
 
   describe('level filtering', () => {

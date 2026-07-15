@@ -23,8 +23,8 @@ export const normalizeFileUri = (uri: string): string => {
     const fsPath = fileURLToPath(uri);
     // Canonicalize Windows drive letter to lowercase so C: and c: map
     // to the same URI — they're the same path on Windows.
-    const canonical = /^[A-Z]:/.test(fsPath)
-      ? fsPath.replace(/^[A-Z]/, c => c.toLowerCase())
+    const canonical = /^[A-Z]:/v.test(fsPath)
+      ? fsPath.replace(/^[A-Z]/v, c => c.toLowerCase())
       : fsPath;
     const normalized = pathToFileURL(canonical).href;
     cache.set(uri, normalized);

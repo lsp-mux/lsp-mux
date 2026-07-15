@@ -25,7 +25,7 @@ describe('validateNpmPackage', () => {
     await mkdir(dir, { recursive: true });
 
     await expect(validateNpmPackage('@scope/pkg', dir, 'myserver'))
-      .rejects.toThrow(/requires "@scope\/pkg"/);
+      .rejects.toThrow(/requires "@scope\/pkg"/v);
   });
 
   it('includes install command in error', async ({ expect }) => {
@@ -33,6 +33,6 @@ describe('validateNpmPackage', () => {
     await mkdir(dir, { recursive: true });
 
     await expect(validateNpmPackage('some-pkg', dir, 'test'))
-      .rejects.toThrow(/npm install some-pkg/);
+      .rejects.toThrow(/npm install some-pkg/v);
   });
 });
