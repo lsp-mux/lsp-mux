@@ -13,7 +13,7 @@ describe('RestartScheduler', () => {
     const calls: number[] = [];
 
     // Attempt 1: base 100 * 2^0 = 100ms, jittered to [50, 150]
-    expect(sched.schedule(() => calls.push(1))).toBe(true);
+    expect(sched.schedule(() => { calls.push(1); })).toBe(true);
     expect(sched.attempt).toBe(1);
 
     t.tick(150); // max jittered delay for base 100
@@ -21,7 +21,7 @@ describe('RestartScheduler', () => {
     expect(calls).toStrictEqual([1]);
 
     // Attempt 2: base 100 * 2^1 = 200ms, jittered to [100, 300]
-    expect(sched.schedule(() => calls.push(2))).toBe(true);
+    expect(sched.schedule(() => { calls.push(2); })).toBe(true);
     expect(sched.attempt).toBe(2);
 
     t.tick(300);
@@ -29,7 +29,7 @@ describe('RestartScheduler', () => {
     expect(calls).toStrictEqual([1, 2]);
 
     // Attempt 3: base min(400, 500) = 400ms, jittered to [200, 600)
-    expect(sched.schedule(() => calls.push(3))).toBe(true);
+    expect(sched.schedule(() => { calls.push(3); })).toBe(true);
     expect(sched.attempt).toBe(3);
 
     t.tick(600);
@@ -37,7 +37,7 @@ describe('RestartScheduler', () => {
     expect(calls).toStrictEqual([1, 2, 3]);
 
     // Attempt 4: over maxRetries
-    expect(sched.schedule(() => calls.push(4))).toBe(false);
+    expect(sched.schedule(() => { calls.push(4); })).toBe(false);
     expect(sched.attempt).toBe(3);
   });
 
@@ -47,15 +47,15 @@ describe('RestartScheduler', () => {
     const calls: number[] = [];
 
     // Attempt 1: base 100ms → jittered [50, 150]
-    sched.schedule(() => calls.push(1));
+    sched.schedule(() => { calls.push(1); });
     t.tick(150);
 
     // Attempt 2: base 200ms → jittered [100, 300]
-    sched.schedule(() => calls.push(2));
+    sched.schedule(() => { calls.push(2); });
     t.tick(300);
 
     // Attempt 3: base min(400, 300) = 300ms → jittered capped at 300
-    sched.schedule(() => calls.push(3));
+    sched.schedule(() => { calls.push(3); });
 
     expect(calls).toStrictEqual([1, 2]);
 

@@ -2,8 +2,8 @@ import type { Message } from './types.ts';
 import { Message as Msg } from './types.ts';
 
 export interface MessageBuffer {
-  /** Buffer a message. Returns false if full. */
-  push: (msg: Message) => boolean;
+  /** Offer a message to the buffer. Returns false if the buffer is full. */
+  offer: (msg: Message) => boolean;
   /** Remove a buffered request by ID. Returns true if found. */
   cancel: (targetId: number | string) => boolean;
   /** Drain and return all buffered messages. */
@@ -15,7 +15,7 @@ export const createMessageBuffer = (maxSize: number): MessageBuffer => {
   const items: Message[] = [];
 
   return {
-    push(msg) {
+    offer(msg) {
       if (items.length >= maxSize) return false;
       items.push(msg);
       return true;

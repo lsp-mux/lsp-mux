@@ -323,14 +323,14 @@ export const createManagedServer = (
 
       if (state === 'restarting' || state === 'starting') {
         if (isDocSync) return true;
-        return !!buffer.push(msg);
+        return !!buffer.offer(msg);
       }
 
       // Lazy start: first message to an idle server triggers spawn
       if (state === 'idle' && initParams !== undefined && isLazyStartEnabled) {
         state = 'starting';
         callbacks.onStateChange(state);
-        if (!isDocSync) buffer.push(msg);
+        if (!isDocSync) buffer.offer(msg);
         void performInitSequence('starting');
         return true;
       }

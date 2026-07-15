@@ -9,8 +9,8 @@ describe('MessageBuffer', () => {
     const r1 = createRequest(faker.number.int(), faker.string.alpha(8));
     const r2 = createRequest(faker.number.int(), faker.string.alpha(8));
 
-    expect(buf.push(r1)).toBe(true);
-    expect(buf.push(r2)).toBe(true);
+    expect(buf.offer(r1)).toBe(true);
+    expect(buf.offer(r2)).toBe(true);
     expect(buf).toHaveLength(2);
 
     const flushed = buf.flush();
@@ -22,9 +22,9 @@ describe('MessageBuffer', () => {
   it('rejects when full', ({ expect }) => {
     const buf = createMessageBuffer(2);
 
-    expect(buf.push(createRequest(faker.number.int(), faker.string.alpha(8)))).toBe(true);
-    expect(buf.push(createRequest(faker.number.int(), faker.string.alpha(8)))).toBe(true);
-    expect(buf.push(createRequest(faker.number.int(), faker.string.alpha(8)))).toBe(false);
+    expect(buf.offer(createRequest(faker.number.int(), faker.string.alpha(8)))).toBe(true);
+    expect(buf.offer(createRequest(faker.number.int(), faker.string.alpha(8)))).toBe(true);
+    expect(buf.offer(createRequest(faker.number.int(), faker.string.alpha(8)))).toBe(false);
     expect(buf).toHaveLength(2);
   });
 
@@ -33,9 +33,9 @@ describe('MessageBuffer', () => {
     const id1 = faker.number.int();
     const id2 = faker.number.int();
     const id3 = faker.number.int();
-    buf.push(createRequest(id1, faker.string.alpha(8)));
-    buf.push(createRequest(id2, faker.string.alpha(8)));
-    buf.push(createRequest(id3, faker.string.alpha(8)));
+    buf.offer(createRequest(id1, faker.string.alpha(8)));
+    buf.offer(createRequest(id2, faker.string.alpha(8)));
+    buf.offer(createRequest(id3, faker.string.alpha(8)));
 
     expect(buf.cancel(id2)).toBe(true);
     expect(buf).toHaveLength(2);
@@ -48,7 +48,7 @@ describe('MessageBuffer', () => {
   it('returns false when cancelling non-existent ID', ({ expect }) => {
     const buf = createMessageBuffer(10);
     const id = faker.number.int();
-    buf.push(createRequest(id, faker.string.alpha(8)));
+    buf.offer(createRequest(id, faker.string.alpha(8)));
 
     expect(buf.cancel(id + 1)).toBe(false);
     expect(buf).toHaveLength(1);
@@ -57,8 +57,8 @@ describe('MessageBuffer', () => {
   it('does not cancel notifications (only requests)', ({ expect }) => {
     const buf = createMessageBuffer(10);
     const id = faker.number.int();
-    buf.push(createNotification(faker.string.alpha(10)));
-    buf.push(createRequest(id, faker.string.alpha(8)));
+    buf.offer(createNotification(faker.string.alpha(10)));
+    buf.offer(createRequest(id, faker.string.alpha(8)));
 
     // notifications have no id — cancel(id) should only match the request
     expect(buf.cancel(id)).toBe(true);
