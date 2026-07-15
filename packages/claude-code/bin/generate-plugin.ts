@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import path from 'node:path';
 import { loadProxyConfig, loadServerConfig, proxyMainEntry } from 'lsp-proxy/config';
 import { createLogger } from 'lsp-proxy/logger';
 
@@ -53,11 +53,11 @@ const main = async (): Promise<void> => {
     plugins: [{ name: 'lsp-proxy', source: './', description: pluginJson.description }],
   };
 
-  await writeFile(join(configDir, '.lsp.json'), JSON.stringify(lspJson, undefined, jsonIndent) + '\n');
-  const pluginDir = join(configDir, '.claude-plugin');
+  await writeFile(path.join(configDir, '.lsp.json'), JSON.stringify(lspJson, undefined, jsonIndent) + '\n');
+  const pluginDir = path.join(configDir, '.claude-plugin');
   await mkdir(pluginDir, { recursive: true });
-  await writeFile(join(pluginDir, 'plugin.json'), JSON.stringify(pluginJson, undefined, jsonIndent) + '\n');
-  await writeFile(join(pluginDir, 'marketplace.json'), JSON.stringify(marketplaceJson, undefined, jsonIndent) + '\n');
+  await writeFile(path.join(pluginDir, 'plugin.json'), JSON.stringify(pluginJson, undefined, jsonIndent) + '\n');
+  await writeFile(path.join(pluginDir, 'marketplace.json'), JSON.stringify(marketplaceJson, undefined, jsonIndent) + '\n');
 
   const extCount = Object.keys(extensionToLanguage).length;
   log.info(`Generated .lsp.json (${String(extCount)} extensions from ${proxyConfig.servers.join(', ')})`);

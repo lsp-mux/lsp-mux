@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { faker } from '@faker-js/faker';
 import { beforeEach, describe, it, vi } from 'vitest';
@@ -37,10 +37,10 @@ import type { Logger } from '../src/logger.ts';
 import { normalizeFileUri } from '../src/uri.ts';
 import { type WatcherDelegate, WorkspaceWatcher, type WorkspaceWatcherOptions } from '../src/workspace-watcher.ts';
 
-const WORKSPACE = join(import.meta.dirname, 'fake-workspace');
+const WORKSPACE = path.join(import.meta.dirname, 'fake-workspace');
 
 const toUri = (relativePath: string) =>
-  normalizeFileUri(pathToFileURL(join(WORKSPACE, relativePath)).href);
+  normalizeFileUri(pathToFileURL(path.join(WORKSPACE, relativePath)).href);
 
 const createDelegate = (): MockProxy<WatcherDelegate> => {
   const delegate = mock<WatcherDelegate>();

@@ -1,6 +1,6 @@
 import { type FSWatcher, watch } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
-import { join } from 'node:path';
+import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import * as fw from './file-watcher.ts';
 import { createFlushScheduler } from './flush-scheduler.ts';
@@ -136,7 +136,7 @@ export class WorkspaceWatcher {
       if (this.delegate.isStopped()) break;
 
       try {
-        const fullPath = join(root, relativePath);
+        const fullPath = path.join(root, relativePath);
 
         if (!await fw.isWithinRoot(fullPath, resolvedRoot)) {
           this.log.warn(`Skipping event outside workspace root: ${relativePath}`);

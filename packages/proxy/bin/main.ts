@@ -1,7 +1,7 @@
 import { createWriteStream, mkdirSync, watch } from 'node:fs';
 import { readdir, stat, unlink } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
+import path from 'node:path';
 import { milliseconds } from 'date-fns';
 import { loadProxyConfig, loadServerConfig, ownPackageDir } from '../src/config.ts';
 import { createLogger } from '../src/logger.ts';
@@ -13,7 +13,7 @@ const parseArg = (flag: string): string | undefined => {
   const idx = process.argv.indexOf(flag);
   const arg = process.argv[idx + 1];
   if (idx === -1 || !arg) return undefined;
-  return resolve(arg);
+  return path.resolve(arg);
 };
 
 // Debounce window for coalescing rapid config-file writes before reload.
@@ -31,16 +31,16 @@ const watchConfigForLogLevel = (configDir: string, log: Logger): Disposable => {
     }, configWatchDebounceMs);
   };
 
-  const tryWatch = (path: string) => {
+  const tryWatch = (filePath: string) => {
     try {
-      return watch(path, reload);
+      return watch(filePath, reload);
     } catch {
       return undefined;
     }
   };
   const watchers = [
-    tryWatch(join(configDir, '.lsp-proxy.json')),
-    tryWatch(join(configDir, '.lsp-proxy.local.json')),
+    tryWatch(path.join(configDir, '.lsp-proxy.json')),
+    tryWatch(path.join(configDir, '.lsp-proxy.local.json')),
   ];
 
   return {
@@ -69,10 +69,10 @@ const pruneOldLogs = async (logDir: string): Promise<void> => {
     files
       .filter(f => f.endsWith('.log'))
       .map(async (f) => {
-        const path = join(logDir, f);
+        const filePath = path.join(logDir, f);
         try {
-          const s = await stat(path);
-          if (now - s.mtimeMs > logMaxAgeMs) await unlink(path);
+          const s = await stat(filePath);
+          if (now - s.mtimeMs > logMaxAgeMs) await unlink(filePath);
         } catch { /* ENOENT from concurrent cleanup or permission error — ignore */ }
       }),
   );
@@ -80,9 +80,9 @@ const pruneOldLogs = async (logDir: string): Promise<void> => {
 
 const defaultLogDir = (): string => {
   if (process.platform === 'win32') {
-    return join(process.env['LOCALAPPDATA'] ?? join(homedir(), 'AppData', 'Local'), 'lsp-proxy', 'logs');
+    return path.join(process.env['LOCALAPPDATA'] ?? path.join(homedir(), 'AppData', 'Local'), 'lsp-proxy', 'logs');
   }
-  return join(process.env['XDG_DATA_HOME'] ?? join(homedir(), '.local', 'share'), 'lsp-proxy', 'logs');
+  return path.join(process.env['XDG_DATA_HOME'] ?? path.join(homedir(), '.local', 'share'), 'lsp-proxy', 'logs');
 };
 
 const main = async (): Promise<void> => {
@@ -95,7 +95,7 @@ const main = async (): Promise<void> => {
   void pruneOldLogs(logDir);
   // Timestamp + PID: multiple editors may launch proxies in the same second.
   const timestamp = new Date().toISOString().replaceAll(/[:.]/g, '-');
-  const logFile = createWriteStream(join(logDir, `${timestamp}-${String(process.pid)}.log`));
+  const logFile = createWriteStream(path.join(logDir, `${timestamp}-${String(process.pid)}.log`));
   const log = createLogger(logFile);
 
   log.setLevel(proxyConfig.logLevel);

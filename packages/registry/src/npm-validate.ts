@@ -1,5 +1,5 @@
 import { access } from 'node:fs/promises';
-import { join } from 'node:path';
+import path from 'node:path';
 
 /**
  * Verify that an npm package is installed in the config directory's
@@ -10,7 +10,7 @@ export const validateNpmPackage = async (
   configDir: string,
   serverName: string,
 ): Promise<void> => {
-  const pkgPath = join(configDir, 'node_modules', npmPackage);
+  const pkgPath = path.join(configDir, 'node_modules', npmPackage);
   try {
     await access(pkgPath);
   } catch {

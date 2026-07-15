@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, rm } from 'node:fs/promises';
-import { join } from 'node:path';
+import path from 'node:path';
 import { PassThrough, Writable } from 'node:stream';
 import { pathToFileURL } from 'node:url';
 import { test } from 'vitest';
@@ -11,7 +11,7 @@ import { LspProxy } from '../../src/proxy.ts';
 import type { ServerConfig } from '../../src/types.ts';
 import { normalizeFileUri } from '../../src/uri.ts';
 
-export const mockServer = join(import.meta.dirname, '..', 'helpers', 'mock-server.ts');
+export const mockServer = path.join(import.meta.dirname, '..', 'helpers', 'mock-server.ts');
 
 export const mockServerConfig: ServerConfig = {
   command: process.execPath,
@@ -106,12 +106,12 @@ export const it = test.extend<{
     }
   },
   workspace: async ({}, use) => {
-    const dir = join(import.meta.dirname, '..', '..', 'dist', 'test-workspaces', randomUUID().slice(0, 8));
+    const dir = path.join(import.meta.dirname, '..', '..', 'dist', 'test-workspaces', randomUUID().slice(0, 8));
     await mkdir(dir, { recursive: true });
     let seq = 100;
     const uri = normalizeFileUri(pathToFileURL(dir).href);
     const file = (rel: string) => {
-      const p = join(dir, rel);
+      const p = path.join(dir, rel);
       return { path: p, uri: normalizeFileUri(pathToFileURL(p).href) };
     };
     await use({ dir, uri, file, nextSeq: () => seq++ });

@@ -1,14 +1,14 @@
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import path from 'node:path';
 
-const entriesDir = join(import.meta.dirname, '..', 'entries');
-const outFile = join(import.meta.dirname, '..', 'src', 'entries.generated.ts');
+const entriesDir = path.join(import.meta.dirname, '..', 'entries');
+const outFile = path.join(import.meta.dirname, '..', 'src', 'entries.generated.ts');
 
 const files = readdirSync(entriesDir).filter(f => f.endsWith('.json')).sort();
 
 const properties = files.map((f) => {
-  const name = basename(f, '.json');
-  const json = readFileSync(join(entriesDir, f), 'utf-8').trimEnd();
+  const name = path.basename(f, '.json');
+  const json = readFileSync(path.join(entriesDir, f), 'utf-8').trimEnd();
   return `  ${JSON.stringify(name)}: ${json}`;
 });
 

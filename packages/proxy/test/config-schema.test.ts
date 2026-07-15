@@ -1,4 +1,4 @@
-import { isAbsolute, join } from 'node:path';
+import path from 'node:path';
 import * as v from 'valibot';
 import { describe, it } from 'vitest';
 import { ProxyConfigSchema, ServerConfigSchema } from '../src/config-schema.ts';
@@ -120,11 +120,11 @@ describe('loadServerConfig', () => {
   });
 
   it('resolves relative paths and preserves non-path args', async ({ expect }) => {
-    const configDir = join(import.meta.dirname, 'fixtures');
+    const configDir = path.join(import.meta.dirname, 'fixtures');
     const { command, args: [serverBin = '', flagArg = ''] } = await loadServerConfig('relative-paths', configDir);
 
-    expect(isAbsolute(command)).toBe(true);
-    expect(isAbsolute(serverBin)).toBe(true);
+    expect(path.isAbsolute(command)).toBe(true);
+    expect(path.isAbsolute(serverBin)).toBe(true);
     expect(flagArg).toBe('--stdio');
   });
 });

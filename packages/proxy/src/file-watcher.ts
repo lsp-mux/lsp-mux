@@ -1,5 +1,5 @@
 import { realpath } from 'node:fs/promises';
-import { basename, dirname, relative, resolve, sep } from 'node:path';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import picomatch from 'picomatch';
 import * as v from 'valibot';
@@ -100,7 +100,7 @@ const resolveBaseUri = (baseUri: string | { uri: string; name: string }, workspa
   if (workspaceRoot && raw.startsWith('file://')) {
     try {
       const absPath = fileURLToPath(raw);
-      return relative(workspaceRoot, absPath).replaceAll('\\', '/');
+      return path.relative(workspaceRoot, absPath).replaceAll('\\', '/');
     } catch {
       // fileURLToPath failed (malformed URI) — fall through to trailing-slash strip
     }
@@ -207,7 +207,7 @@ export const resolveRoot = async (root: string): Promise<string> => {
   try {
     return await realpath(root);
   } catch {
-    return resolve(root);
+    return path.resolve(root);
   }
 };
 
@@ -224,7 +224,7 @@ export const resolveRoot = async (root: string): Promise<string> => {
  */
 export const isWithinRoot = async (fullPath: string, resolvedRoot: string): Promise<boolean> => {
   const isContainedIn = (child: string, root: string): boolean =>
-    child === root || child.startsWith(root + sep);
+    child === root || child.startsWith(root + path.sep);
 
   try {
     return isContainedIn(await realpath(fullPath), resolvedRoot);
@@ -235,11 +235,11 @@ export const isWithinRoot = async (fullPath: string, resolvedRoot: string): Prom
     // symlinked workspace roots where resolve(fullPath) would produce a path
     // in the symlink namespace that never matches the real-path root.
     try {
-      const resolvedParent = await realpath(dirname(fullPath));
-      return isContainedIn(resolve(resolvedParent, basename(fullPath)), resolvedRoot);
+      const resolvedParent = await realpath(path.dirname(fullPath));
+      return isContainedIn(path.resolve(resolvedParent, path.basename(fullPath)), resolvedRoot);
     } catch {
       // Parent also doesn't exist — fall back to lexical normalization
-      return isContainedIn(resolve(fullPath), resolve(resolvedRoot));
+      return isContainedIn(path.resolve(fullPath), path.resolve(resolvedRoot));
     }
   }
 };

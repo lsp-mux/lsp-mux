@@ -1,6 +1,6 @@
 /** @module-tag slow */
 import { writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import path from 'node:path';
 import { describe, vi } from 'vitest';
 import type { ExpectStatic } from 'vitest';
 import type { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
@@ -16,7 +16,7 @@ const waitForWatcherActive = (
   r: StreamMessageReader,
 ) =>
   vi.waitFor(async () => {
-    await writeFile(join(dir, 'probe.ts'), 'probe');
+    await writeFile(path.join(dir, 'probe.ts'), 'probe');
     const probe = await request(w, r, nextSeq(), '$/watcherEvents');
 
     expect(probe).toMatchObject({
@@ -39,7 +39,7 @@ describe.sequential('LspProxy file watchers', () => {
       await waitForWatcherActive(expect, workspace, writer, reader);
 
       // Write a .ts file — should trigger the registered watcher
-      await writeFile(join(workspace.dir, 'new-file.ts'), 'export const x = 1;');
+      await writeFile(path.join(workspace.dir, 'new-file.ts'), 'export const x = 1;');
 
       await vi.waitFor(async () => {
         const res = await request(writer, reader, workspace.nextSeq(), '$/watcherEvents');
@@ -97,7 +97,7 @@ describe.sequential('LspProxy file watchers', () => {
       });
 
       // Verify the watcher registration still works
-      await writeFile(join(workspace.dir, 'mixed-test.ts'), 'export const x = 1;');
+      await writeFile(path.join(workspace.dir, 'mixed-test.ts'), 'export const x = 1;');
 
       await vi.waitFor(async () => {
         const res = await request(writer, reader, workspace.nextSeq(), '$/watcherEvents');
@@ -141,7 +141,7 @@ describe.sequential('LspProxy file watchers', () => {
       });
 
       // Write a new file — should NOT dispatch to the server
-      await writeFile(join(workspace.dir, 'after-unreg.ts'), 'should not arrive');
+      await writeFile(path.join(workspace.dir, 'after-unreg.ts'), 'should not arrive');
 
       // Wait long enough for a flush cycle
       await new Promise<void>((r) => {
@@ -175,7 +175,7 @@ describe.sequential('LspProxy file watchers', () => {
       // After restart, the server should re-register its watchers via initialized
       // and file events should work again
       await vi.waitFor(async () => {
-        await writeFile(join(workspace.dir, 'after-restart.ts'), 'restarted');
+        await writeFile(path.join(workspace.dir, 'after-restart.ts'), 'restarted');
         const res = await request(writer, reader, workspace.nextSeq(), '$/watcherEvents');
 
         expect(res).toMatchObject({
@@ -208,10 +208,10 @@ describe.sequential('LspProxy file watchers', () => {
       // Write 4 files sequentially — with cap of 2, only the first 2 unique
       // paths get into pendingEvents before the cap blocks new entries.
       // bp-1 and bp-2 fill the cap; bp-3 and bp-4 are dropped.
-      await writeFile(join(workspace.dir, 'bp-1.ts'), 'a');
-      await writeFile(join(workspace.dir, 'bp-2.ts'), 'b');
-      await writeFile(join(workspace.dir, 'bp-3.ts'), 'c');
-      await writeFile(join(workspace.dir, 'bp-4.ts'), 'd');
+      await writeFile(path.join(workspace.dir, 'bp-1.ts'), 'a');
+      await writeFile(path.join(workspace.dir, 'bp-2.ts'), 'b');
+      await writeFile(path.join(workspace.dir, 'bp-3.ts'), 'c');
+      await writeFile(path.join(workspace.dir, 'bp-4.ts'), 'd');
 
       // Wait for bp-1 to appear (proves flush completed)
       await vi.waitFor(async () => {
@@ -308,9 +308,9 @@ describe.sequential('LspProxy file watchers', () => {
 
       // Write multiple files simultaneously — they should be batched into one notification
       await Promise.all([
-        writeFile(join(workspace.dir, 'batch-a.ts'), 'export const a = 1;'),
-        writeFile(join(workspace.dir, 'batch-b.ts'), 'export const b = 2;'),
-        writeFile(join(workspace.dir, 'batch-c.ts'), 'export const c = 3;'),
+        writeFile(path.join(workspace.dir, 'batch-a.ts'), 'export const a = 1;'),
+        writeFile(path.join(workspace.dir, 'batch-b.ts'), 'export const b = 2;'),
+        writeFile(path.join(workspace.dir, 'batch-c.ts'), 'export const c = 3;'),
       ]);
 
       // At least two of the batch files should appear in a single changes array
