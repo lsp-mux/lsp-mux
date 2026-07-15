@@ -32,6 +32,9 @@ const openDocuments = new Map<string, { uri: string; languageId: string; version
 const watcherEvents: unknown[] = [];
 const configNotifications: unknown[] = [];
 const receivedResponses: unknown[] = [];
+/* eslint-disable-next-line vitest/require-hook --
+   mock-server is a spawned LSP subprocess entry point, not a vitest module;
+   its top-level state can't live in a hook. */
 let serverRequestSeq = 1000;
 
 const respond = (id: number | string | null, result: ResponseMessage['result']): void => {
@@ -55,6 +58,9 @@ const publishDiagnostics = (uri: string): void => {
   });
 };
 
+/* eslint-disable-next-line vitest/require-hook --
+   mock-server is a spawned LSP subprocess entry point, not a vitest module;
+   the top-level listener is its main loop, not test setup. */
 reader.listen((msg) => {
   // Track response messages (for verifying server-to-client routing)
   if (Msg.isResponse(msg)) {
@@ -64,6 +70,9 @@ reader.listen((msg) => {
 
   // Crash on either request or notification form
   if ((Msg.isNotification(msg) || Msg.isRequest(msg)) && msg.method === '$/crash') {
+    /* eslint-disable-next-line n/no-process-exit, unicorn/no-process-exit --
+       Tests simulate a server crash; the reader keeps the loop alive, so
+       process.exitCode wouldn't terminate the subprocess. */
     process.exit(1);
   }
 
@@ -136,6 +145,9 @@ reader.listen((msg) => {
   }
 
   if (Msg.isNotification(msg)) {
+    /* eslint-disable-next-line n/no-process-exit, unicorn/no-process-exit --
+       LSP `exit` means terminate now; the reader keeps the loop alive, so
+       process.exitCode wouldn't terminate the subprocess. */
     if (msg.method === 'exit') process.exit(0);
 
     switch (msg.method) {

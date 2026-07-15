@@ -1,9 +1,24 @@
-import { configure, defaultEntryPoints } from '@gtbuchanan/eslint-config';
+import { configure } from '@gtbuchanan/eslint-config';
 import type { Linter } from 'eslint';
 
-const config: Promise<Linter.Config[]> = configure({
-  entryPoints: [...defaultEntryPoints, 'test/helpers/mock-server.ts'],
-  tsconfigRootDir: import.meta.dirname,
-});
+const base = await configure({ tsconfigRootDir: import.meta.dirname });
+
+const config: Linter.Config[] = [
+  ...base,
+  {
+    /*
+     * The test harness exports a `test.extend()` fixture named `it`. The
+     * vitest plugin only detects `.extend()` fixtures declared in-file, so it
+     * can't tell the imported `it(...)` is a test block and require-hook flags
+     * every test as setup. Whitelist it, mirroring how the shared config
+     * whitelists it.for/test.for. The glob must match the shared config's
+     * test-file patterns so the vitest plugin namespace resolves here.
+     */
+    files: ['**/test/**/*.ts'],
+    rules: {
+      'vitest/require-hook': ['warn', { allowedFunctionCalls: ['it', 'it.for', 'test.for'] }],
+    },
+  },
+];
 
 export default config;
