@@ -604,10 +604,10 @@ export class LspProxy {
 
     try {
       const root = fileURLToPath(rootUri);
-      const isExists = await stat(root).then(() => true, () => false);
-      if (isExists) this.workspaceRoot = root;
+      await stat(root);
+      this.workspaceRoot = root;
     } catch {
-      // Malformed URI — ignore
+      // Malformed URI or nonexistent root — ignore
     }
   }
 
@@ -812,6 +812,9 @@ export class LspProxy {
   }
 
   private writeToClient(msg: Message): void {
+    /* eslint-disable-next-line unicorn/prefer-await --
+       Called from the synchronous clientReader.listen dispatch; fire-and-
+       forget so message processing isn't blocked on flush. Log failures. */
     this.clientWriter.write(msg).catch((error: unknown) => {
       this.log.warn('Client write failed:', error);
     });

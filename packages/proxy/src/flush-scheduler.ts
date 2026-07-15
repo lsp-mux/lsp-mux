@@ -50,6 +50,9 @@ export const createFlushScheduler = (options: FlushSchedulerOptions): FlushSched
   // doFlush's finally block handles state reset; this catch prevents
   // unhandled promise rejection when onFlush throws.
   const triggerFlush = (): void => {
+    /* eslint-disable-next-line unicorn/prefer-await --
+       Runs as a Timers.setTimeout callback (typed () => void); an async
+       callback would trip no-misused-promises. Catch here (see above). */
     doFlush().catch(noop);
   };
 

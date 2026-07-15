@@ -115,7 +115,9 @@ export const it = test.extend<{
       return { path: p, uri: normalizeFileUri(pathToFileURL(p).href) };
     };
     await use({ dir, uri, file, nextSeq: () => seq++ });
-    await rm(dir, { recursive: true, force: true }).catch(() => { /* ignore */ });
+    try {
+      await rm(dir, { recursive: true, force: true });
+    } catch { /* ignore */ }
   },
 });
 

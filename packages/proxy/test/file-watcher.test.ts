@@ -319,7 +319,9 @@ describe('file-watcher', () => {
 
     afterAll(async () => {
       if (tmpBase) {
-        await rm(tmpBase, { recursive: true, force: true }).catch(() => { /* cleanup */ });
+        try {
+          await rm(tmpBase, { recursive: true, force: true });
+        } catch { /* cleanup */ }
       }
     });
 

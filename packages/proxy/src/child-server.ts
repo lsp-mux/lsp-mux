@@ -1,8 +1,8 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import type { Logger } from './logger.ts';
-import type { Message, ServerConfig } from './types.ts';
 import { noop } from './types.ts';
+import type { Message, ServerConfig } from './types.ts';
 
 export interface ChildServerEvents {
   readonly onMessage: (msg: Message) => void;
@@ -79,7 +79,10 @@ export class ChildServer {
 
   write(msg: Message): void {
     if (!this.disposed && this.writer) {
-      // Stream may already be destroyed — safe to ignore
+      /* eslint-disable-next-line unicorn/prefer-await --
+         Fire-and-forget write to the child's stdin; not awaited so the
+         caller isn't blocked on flush. Ignore failures — the stream may
+         already be destroyed. */
       this.writer.write(msg).catch(noop);
     }
   }

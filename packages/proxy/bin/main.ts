@@ -122,8 +122,10 @@ const main = async (): Promise<void> => {
   process.exit(0);
 };
 
-main().catch((error: unknown) => {
+try {
+  await main();
+} catch (error: unknown) {
   // Logger may not be initialized — write to stderr as fallback
   process.stderr.write(`[lsp-proxy] Fatal: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`);
   process.exit(1);
-});
+}
