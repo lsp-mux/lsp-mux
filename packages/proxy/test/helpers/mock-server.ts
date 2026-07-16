@@ -13,7 +13,7 @@ import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js
 import { DidChangeParamsSchema, DidCloseParamsSchema, DidOpenParamsSchema } from '../../src/document-tracker.ts';
 import { Message as Msg, createNotification, createRequest } from '../../src/types.ts';
 
-const serverName = process.argv.find(a => a.startsWith('--name='))?.slice(7) ?? 'mock';
+const serverName = process.argv.find(arg => arg.startsWith('--name='))?.slice(7) ?? 'mock';
 const isRegisterWatchers = process.argv.includes('--register-watchers');
 const isRegisterMixed = process.argv.includes('--register-mixed');
 const isIncrementalSync = process.argv.includes('--incremental-sync');
@@ -221,7 +221,7 @@ reader.listen((msg) => {
         if (doc) {
           doc.version = params.textDocument.version;
           // Apply full-content change (TextDocumentSyncKind.Full)
-          const fullChange = params.contentChanges.find(c => c.range === undefined);
+          const fullChange = params.contentChanges.find(change => change.range === undefined);
           if (fullChange) doc.text = fullChange.text;
         }
         break;

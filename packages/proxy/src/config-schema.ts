@@ -5,9 +5,9 @@ const StringArraySchema = v.array(v.string());
 
 const NotificationLogLevelSchema = v.pipe(
   LevelSchema,
-  v.transform((l): 'debug' | 'info' | 'warn' | 'error' => {
+  v.transform((level): 'debug' | 'info' | 'warn' | 'error' => {
     const map = { DEBUG: 'debug', INFO: 'info', WARN: 'warn', ERROR: 'error' } as const;
-    return map[l];
+    return map[level];
   }),
 );
 

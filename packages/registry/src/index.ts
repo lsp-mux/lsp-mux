@@ -20,7 +20,7 @@ const metadataKeys: ReadonlySet<string> = new Set(['npm']);
 
 /** Return the server config fields from a registry entry (strips registry metadata). */
 export const serverConfigFromEntry = (entry: RegistryEntry): Record<string, unknown> =>
-  Object.fromEntries(Object.entries(entry).filter(([k]) => !metadataKeys.has(k)));
+  Object.fromEntries(Object.entries(entry).filter(([key]) => !metadataKeys.has(key)));
 
 /** List all server names available in the registry. */
 export const listRegistryEntries = (): readonly string[] =>

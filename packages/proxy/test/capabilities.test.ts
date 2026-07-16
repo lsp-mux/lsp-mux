@@ -63,12 +63,12 @@ describe('mergeCapabilities', () => {
   });
 
   it('concatenates array values', ({ expect }) => {
-    const [a, b, c] = [faker.string.alpha(4), faker.string.alpha(4), faker.string.alpha(4)];
+    const [first, second, third] = [faker.string.alpha(4), faker.string.alpha(4), faker.string.alpha(4)];
 
     expect(mergeCapabilities([
-      { experimental: [a, b] },
-      { experimental: [c] },
-    ])).toStrictEqual({ experimental: [a, b, c] });
+      { experimental: [first, second] },
+      { experimental: [third] },
+    ])).toStrictEqual({ experimental: [first, second, third] });
   });
 
   it('uses later value when types differ (fallback)', ({ expect }) => {

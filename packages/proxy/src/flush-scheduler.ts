@@ -31,18 +31,18 @@ interface AsyncState {
 }
 
 export const createFlushScheduler = (options: FlushSchedulerOptions): FlushScheduler => {
-  const { debounceMs, maxWaitMs, onFlush, timers: t = defaultTimers } = options;
+  const { debounceMs, maxWaitMs, onFlush, timers = defaultTimers } = options;
   let debounceTimer: unknown;
   let maxWaitTimer: unknown;
-  const s: AsyncState = { flushInProgress: false, notifiedDuringFlush: false, disposed: false };
+  const state: AsyncState = { flushInProgress: false, notifiedDuringFlush: false, disposed: false };
 
   const clearTimers = (): void => {
     if (debounceTimer) {
-      t.clearTimeout(debounceTimer);
+      timers.clearTimeout(debounceTimer);
       debounceTimer = undefined;
     }
     if (maxWaitTimer) {
-      t.clearTimeout(maxWaitTimer);
+      timers.clearTimeout(maxWaitTimer);
       maxWaitTimer = undefined;
     }
   };
@@ -56,32 +56,32 @@ export const createFlushScheduler = (options: FlushSchedulerOptions): FlushSched
     doFlush().catch(noop);
   };
 
-  const needsRecheck = (): boolean => s.notifiedDuringFlush && !s.disposed;
+  const needsRecheck = (): boolean => state.notifiedDuringFlush && !state.disposed;
 
   const notify = (): void => {
-    if (s.disposed) return;
-    if (s.flushInProgress) {
-      s.notifiedDuringFlush = true;
+    if (state.disposed) return;
+    if (state.flushInProgress) {
+      state.notifiedDuringFlush = true;
       return;
     }
-    if (debounceTimer) t.clearTimeout(debounceTimer);
-    debounceTimer = t.setTimeout(triggerFlush, debounceMs);
-    maxWaitTimer ??= t.setTimeout(triggerFlush, maxWaitMs);
+    if (debounceTimer) timers.clearTimeout(debounceTimer);
+    debounceTimer = timers.setTimeout(triggerFlush, debounceMs);
+    maxWaitTimer ??= timers.setTimeout(triggerFlush, maxWaitMs);
   };
 
   const doFlush = async (): Promise<void> => {
-    if (s.flushInProgress || s.disposed) return;
+    if (state.flushInProgress || state.disposed) return;
     // INVARIANT: clearTimers() resets both debounce and maxWait. This ensures
     // maxWait measures from the first notify() *after* the last flush, not from
     // the first notify() ever. If this line is removed or moved, maxWait could
     // fire during a subsequent flush cycle unexpectedly.
     clearTimers();
-    s.flushInProgress = true;
-    s.notifiedDuringFlush = false;
+    state.flushInProgress = true;
+    state.notifiedDuringFlush = false;
     try {
       await onFlush();
     } finally {
-      s.flushInProgress = false;
+      state.flushInProgress = false;
       if (needsRecheck()) {
         // Re-enter the debounce cycle instead of flushing immediately.
         // This prevents I/O saturation under sustained load (continuous
@@ -93,7 +93,7 @@ export const createFlushScheduler = (options: FlushSchedulerOptions): FlushSched
   };
 
   const dispose = (): void => {
-    s.disposed = true;
+    state.disposed = true;
     clearTimers();
   };
 

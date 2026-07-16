@@ -82,7 +82,7 @@ const resolveServers = (
 
 /** Create a router from server entries (in config order). */
 export const createRouter = (servers: readonly ServerEntry[]): Router => {
-  const allServers = servers.map(s => s.name);
+  const allServers = servers.map(server => server.name);
   const extToLang = buildExtToLang(servers);
   const langToServers = buildLangToServers(servers);
 

@@ -5,20 +5,20 @@ export const isPlainObject = (v: unknown): v is Record<string, unknown> =>
 
 const isArray = (v: unknown): v is unknown[] => Array.isArray(v);
 
-const mergeValues = (a: unknown, b: unknown): unknown => {
-  if (typeof a === 'boolean' && typeof b === 'boolean') return a || b;
-  if (typeof a === 'number' && typeof b === 'number') return Math.max(a, b);
-  if (isArray(a) && isArray(b)) return [...a, ...b];
-  if (isPlainObject(a) && isPlainObject(b)) return deepMerge(a, b);
-  return b;
+const mergeValues = (left: unknown, right: unknown): unknown => {
+  if (typeof left === 'boolean' && typeof right === 'boolean') return left || right;
+  if (typeof left === 'number' && typeof right === 'number') return Math.max(left, right);
+  if (isArray(left) && isArray(right)) return [...left, ...right];
+  if (isPlainObject(left) && isPlainObject(right)) return deepMerge(left, right);
+  return right;
 };
 
 const deepMerge = (
-  a: Record<string, unknown>,
-  b: Record<string, unknown>,
+  left: Record<string, unknown>,
+  right: Record<string, unknown>,
 ): Record<string, unknown> => {
-  const result: Record<string, unknown> = { ...a };
-  for (const [key, value] of Object.entries(b)) {
+  const result: Record<string, unknown> = { ...left };
+  for (const [key, value] of Object.entries(right)) {
     result[key] = key in result ? mergeValues(result[key], value) : value;
   }
   return result;

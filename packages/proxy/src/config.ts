@@ -39,16 +39,16 @@ const tryLoadJsonFile = async (filePath: string): Promise<Record<string, unknown
   }
 };
 
-const isRelativePath = (p: string): boolean =>
-  p.startsWith('./') || p.startsWith('../');
+const isRelativePath = (filePath: string): boolean =>
+  filePath.startsWith('./') || filePath.startsWith('../');
 
-const resolveRelative = (p: string, baseDir: string): string =>
-  isRelativePath(p) ? path.resolve(baseDir, p) : p;
+const resolveRelative = (filePath: string, baseDir: string): string =>
+  isRelativePath(filePath) ? path.resolve(baseDir, filePath) : filePath;
 
 const resolveServerPaths = (config: ServerConfig, configDir: string): ServerConfig => ({
   ...config,
   command: resolveRelative(config.command, configDir),
-  args: config.args.map(a => resolveRelative(a, configDir)),
+  args: config.args.map(arg => resolveRelative(arg, configDir)),
 });
 
 export const loadProxyConfig = async (

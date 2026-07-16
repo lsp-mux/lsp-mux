@@ -12,12 +12,12 @@ import { type ServerConfig, type Workspace, it, mockServerConfig } from './harne
 const waitForWatcherActive = (
   expect: ExpectStatic,
   { dir, nextSeq }: Workspace,
-  w: StreamMessageWriter,
-  r: StreamMessageReader,
+  writer: StreamMessageWriter,
+  reader: StreamMessageReader,
 ) =>
   vi.waitFor(async () => {
     await writeFile(path.join(dir, 'probe.ts'), 'probe');
-    const probe = await request(w, r, nextSeq(), '$/watcherEvents');
+    const probe = await request(writer, reader, nextSeq(), '$/watcherEvents');
 
     expect(probe).toMatchObject({
       result: expect.arrayContaining([expect.anything()]) as unknown,
@@ -133,16 +133,16 @@ describe.sequential('LspProxy file watchers', () => {
       await request(writer, reader, workspace.nextSeq(), '$/unregisterWatchers');
 
       // Small delay to let the unregister propagate
-      await new Promise<void>((r) => {
-        setTimeout(r, 100);
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 100);
       });
 
       // Write a new file — should NOT dispatch to the server
       await writeFile(path.join(workspace.dir, 'after-unreg.ts'), 'should not arrive');
 
       // Wait long enough for a flush cycle
-      await new Promise<void>((r) => {
-        setTimeout(r, 500);
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 500);
       });
 
       // Verify no new events were dispatched — result should be unchanged

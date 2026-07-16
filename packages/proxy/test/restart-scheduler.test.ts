@@ -8,15 +8,15 @@ describe('RestartScheduler', () => {
   const policy = { maxRetries: 3, baseDelayMs: 100, maxDelayMs: 500 };
 
   it('schedules with exponential backoff', ({ expect }) => {
-    const t = createClock();
-    const sched = createRestartScheduler({ policy, timers: t });
+    const clock = createClock();
+    const sched = createRestartScheduler({ policy, timers: clock });
     const calls: number[] = [];
 
     // Attempt 1: base 100 * 2^0 = 100ms, jittered to [50, 150]
     expect(sched.schedule(() => { calls.push(1); })).toBe(true);
     expect(sched.attempt).toBe(1);
 
-    t.tick(150); // max jittered delay for base 100
+    clock.tick(150); // max jittered delay for base 100
 
     expect(calls).toStrictEqual([1]);
 
@@ -24,7 +24,7 @@ describe('RestartScheduler', () => {
     expect(sched.schedule(() => { calls.push(2); })).toBe(true);
     expect(sched.attempt).toBe(2);
 
-    t.tick(300);
+    clock.tick(300);
 
     expect(calls).toStrictEqual([1, 2]);
 
@@ -32,7 +32,7 @@ describe('RestartScheduler', () => {
     expect(sched.schedule(() => { calls.push(3); })).toBe(true);
     expect(sched.attempt).toBe(3);
 
-    t.tick(600);
+    clock.tick(600);
 
     expect(calls).toStrictEqual([1, 2, 3]);
 
@@ -42,36 +42,36 @@ describe('RestartScheduler', () => {
   });
 
   it('caps delay at maxDelayMs', ({ expect }) => {
-    const t = createClock();
-    const sched = createRestartScheduler({ policy: { maxRetries: 10, baseDelayMs: 100, maxDelayMs: 300 }, timers: t });
+    const clock = createClock();
+    const sched = createRestartScheduler({ policy: { maxRetries: 10, baseDelayMs: 100, maxDelayMs: 300 }, timers: clock });
     const calls: number[] = [];
 
     // Attempt 1: base 100ms → jittered [50, 150]
     sched.schedule(() => { calls.push(1); });
-    t.tick(150);
+    clock.tick(150);
 
     // Attempt 2: base 200ms → jittered [100, 300]
     sched.schedule(() => { calls.push(2); });
-    t.tick(300);
+    clock.tick(300);
 
     // Attempt 3: base min(400, 300) = 300ms → jittered capped at 300
     sched.schedule(() => { calls.push(3); });
 
     expect(calls).toStrictEqual([1, 2]);
 
-    t.tick(450);
+    clock.tick(450);
 
     expect(calls).toStrictEqual([1, 2, 3]);
   });
 
   it('reset restores attempt counter', ({ expect }) => {
-    const t = createClock();
-    const sched = createRestartScheduler({ policy, timers: t });
+    const clock = createClock();
+    const sched = createRestartScheduler({ policy, timers: clock });
 
     sched.schedule(() => { /* no-op */ });
-    t.tick(150);
+    clock.tick(150);
     sched.schedule(() => { /* no-op */ });
-    t.tick(300);
+    clock.tick(300);
 
     expect(sched.attempt).toBe(2);
 
@@ -85,19 +85,19 @@ describe('RestartScheduler', () => {
     expect(sched.schedule(called)).toBe(true);
     expect(sched.attempt).toBe(1);
 
-    t.tick(150);
+    clock.tick(150);
 
     expect(called).toHaveBeenCalledTimes(1);
   });
 
   it('cancel prevents pending callback', ({ expect }) => {
-    const t = createClock();
-    const sched = createRestartScheduler({ policy, timers: t });
+    const clock = createClock();
+    const sched = createRestartScheduler({ policy, timers: clock });
     const called = vi.fn<Parameters<RestartScheduler['schedule']>[0]>();
 
     sched.schedule(called);
     sched.cancel();
-    t.tick(1000);
+    clock.tick(1000);
 
     expect(called).not.toHaveBeenCalled();
   });
@@ -120,7 +120,7 @@ describe('RestartScheduler', () => {
 
     // Schedule 10 attempts to get enough samples to verify jitter variance
     const noop = (): void => { /* no-op */ };
-    for (let i = 0; i < 10; i++) {
+    for (let iteration = 0; iteration < 10; iteration++) {
       const sched = createRestartScheduler({ policy, timers: capturingTimers });
       sched.schedule(noop);
     }
@@ -130,11 +130,11 @@ describe('RestartScheduler', () => {
     // and NOT all identical (which would indicate no jitter).
     expect(delays).toHaveLength(10);
 
-    for (const d of delays) {
-      expect(d).toBeGreaterThanOrEqual(50);
-      expect(d).toBeLessThanOrEqual(150);
+    for (const delay of delays) {
+      expect(delay).toBeGreaterThanOrEqual(50);
+      expect(delay).toBeLessThanOrEqual(150);
     }
-    const isAllSame = delays.every(d => d === delays[0]);
+    const isAllSame = delays.every(delay => delay === delays[0]);
 
     expect(isAllSame).toBe(false);
   });

@@ -102,7 +102,7 @@ export const it = test.extend<{
       for (const line of logBuffer) process.stderr.write(line);
       throw error;
     } finally {
-      for (const p of instances) p.dispose();
+      for (const instance of instances) instance.dispose();
     }
   },
   workspace: async ({}, use) => {
@@ -111,8 +111,8 @@ export const it = test.extend<{
     let seq = 100;
     const uri = normalizeFileUri(pathToFileURL(dir).href);
     const file = (rel: string) => {
-      const p = path.join(dir, rel);
-      return { path: p, uri: normalizeFileUri(pathToFileURL(p).href) };
+      const filePath = path.join(dir, rel);
+      return { path: filePath, uri: normalizeFileUri(pathToFileURL(filePath).href) };
     };
     await use({ dir, uri, file, nextSeq: () => seq++ });
     try {

@@ -126,11 +126,11 @@ export const register = (
   options: v.InferOutput<typeof RegisterOptionsSchema>,
   workspaceRoot?: string,
 ): WatchRegistrations => {
-  const watchers = options.watchers.map((w): CompiledWatcher => {
-    const glob = compileGlob(w.globPattern, workspaceRoot);
+  const watchers = options.watchers.map((watcher): CompiledWatcher => {
+    const glob = compileGlob(watcher.globPattern, workspaceRoot);
     return {
       globPattern: glob,
-      kind: w.kind ?? WatchKind.All,
+      kind: watcher.kind ?? WatchKind.All,
       match: picomatch(glob, { dot: true }),
     };
   });

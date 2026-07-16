@@ -46,7 +46,7 @@ const watchConfigForLogLevel = (configDir: string, log: Logger): Disposable => {
   return {
     [Symbol.dispose]() {
       clearTimeout(debounce);
-      for (const w of watchers) w?.close();
+      for (const watcher of watchers) watcher?.close();
     },
   };
 };
@@ -67,12 +67,12 @@ const pruneOldLogs = async (logDir: string): Promise<void> => {
   }
   await Promise.all(
     files
-      .filter(f => f.endsWith('.log'))
-      .map(async (f) => {
-        const filePath = path.join(logDir, f);
+      .filter(fileName => fileName.endsWith('.log'))
+      .map(async (fileName) => {
+        const filePath = path.join(logDir, fileName);
         try {
-          const s = await stat(filePath);
-          if (now - s.mtimeMs > logMaxAgeMs) await unlink(filePath);
+          const stats = await stat(filePath);
+          if (now - stats.mtimeMs > logMaxAgeMs) await unlink(filePath);
         } catch { /* ENOENT from concurrent cleanup or permission error — ignore */ }
       }),
   );

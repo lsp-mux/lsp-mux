@@ -33,7 +33,7 @@ export interface RestartSchedulerOptions {
   timers?: Timers | undefined;
 }
 
-export const createRestartScheduler = ({ policy, timers: t = defaultTimers }: RestartSchedulerOptions): RestartScheduler => {
+export const createRestartScheduler = ({ policy, timers = defaultTimers }: RestartSchedulerOptions): RestartScheduler => {
   let count = 0;
   let timer: unknown;
 
@@ -45,7 +45,7 @@ export const createRestartScheduler = ({ policy, timers: t = defaultTimers }: Re
       // clamped so jittered delay never exceeds the configured max.
       const jitter = Math.min(base * (jitterRatio + Math.random()), policy.maxDelayMs);
       count++;
-      timer = t.setTimeout(callback, jitter);
+      timer = timers.setTimeout(callback, jitter);
       return true;
     },
 
@@ -58,7 +58,7 @@ export const createRestartScheduler = ({ policy, timers: t = defaultTimers }: Re
         return;
       }
 
-      t.clearTimeout(timer);
+      timers.clearTimeout(timer);
       timer = undefined;
     },
 

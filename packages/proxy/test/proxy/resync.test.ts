@@ -234,8 +234,8 @@ describe('LspProxy file resync', () => {
     });
 
     // Rapid successive writes — proxy should converge to the final content
-    for (let i = 1; i <= 5; i++) {
-      await writeFile(tmpFile, `version-${String(i)}`);
+    for (let version = 1; version <= 5; version++) {
+      await writeFile(tmpFile, `version-${String(version)}`);
     }
 
     await vi.waitFor(async () => {

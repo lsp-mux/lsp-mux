@@ -9,8 +9,8 @@ import { type ServerConfig, it } from './harness.ts';
 const testUri = fakeUri();
 const replayedUri = fakeUri();
 
-const crashAndWait = (w: StreamMessageWriter, r: StreamMessageReader, id: number) =>
-  request(w, r, id, '$/crash');
+const crashAndWait = (writer: StreamMessageWriter, reader: StreamMessageReader, id: number) =>
+  request(writer, reader, id, '$/crash');
 
 describe('LspProxy restart behavior', () => {
   it('restarts after crash and flushes buffered requests', async ({ createProxy, expect }) => {
@@ -109,7 +109,7 @@ describe('LspProxy restart behavior', () => {
     await request(writer, reader, 42, '$/crash');
 
     // start() should resolve (not hang as a zombie)
-    const timeout = new Promise((_, reject) => {
+    const timeout = new Promise((_resolve, reject) => {
       setTimeout(() => {
         reject(new Error('zombie'));
       }, 3000);

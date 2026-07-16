@@ -28,7 +28,7 @@ describe('ProxyConfigSchema', () => {
       servers: ['vtsls'],
       watcherExclude: ['**/node_modules/**'],
     });
-    const count = result.watcherExclude.filter((p: string) => p === '**/node_modules/**').length;
+    const count = result.watcherExclude.filter((pattern: string) => pattern === '**/node_modules/**').length;
 
     expect(count).toBe(1);
   });

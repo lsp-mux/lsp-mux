@@ -43,7 +43,7 @@ describe('MessageBuffer', () => {
 
     const flushed = buf.flush();
 
-    expect(flushed.map(m => 'id' in m ? m.id : undefined)).toStrictEqual([id1, id3]);
+    expect(flushed.map(msg => 'id' in msg ? msg.id : undefined)).toStrictEqual([id1, id3]);
   });
 
   it('returns false when cancelling non-existent ID', ({ expect }) => {

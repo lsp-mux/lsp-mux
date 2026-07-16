@@ -4,11 +4,11 @@ import path from 'node:path';
 const entriesDir = path.join(import.meta.dirname, '..', 'entries');
 const outFile = path.join(import.meta.dirname, '..', 'src', 'entries.generated.ts');
 
-const files = readdirSync(entriesDir).filter(f => f.endsWith('.json')).sort();
+const files = readdirSync(entriesDir).filter(fileName => fileName.endsWith('.json')).sort();
 
-const properties = files.map((f) => {
-  const name = path.basename(f, '.json');
-  const json = readFileSync(path.join(entriesDir, f), 'utf-8').trimEnd();
+const properties = files.map((fileName) => {
+  const name = path.basename(fileName, '.json');
+  const json = readFileSync(path.join(entriesDir, fileName), 'utf-8').trimEnd();
   return `  ${JSON.stringify(name)}: ${json}`;
 });
 

@@ -180,8 +180,8 @@ describe('Multi-server proxy', () => {
       2,
     );
 
-    expect(msgs.find(m => isResponse(m, 100))).toMatchObject({ error: expect.objectContaining({}) as unknown });
-    expect(getDiagnostics(msgs.find(m => isDiagnosticForUri(m, crashUri)))).toStrictEqual([
+    expect(msgs.find(msg => isResponse(msg, 100))).toMatchObject({ error: expect.objectContaining({}) as unknown });
+    expect(getDiagnostics(msgs.find(msg => isDiagnosticForUri(msg, crashUri)))).toStrictEqual([
       expect.objectContaining({ source: 'beta' }),
     ]);
   });

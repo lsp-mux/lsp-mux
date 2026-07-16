@@ -1,7 +1,7 @@
 import * as v from 'valibot';
 
 const LEVELS = ['DEBUG', 'INFO', 'WARN', 'ERROR'] as const;
-const levelIndex: Record<string, number> = Object.fromEntries(LEVELS.map((l, i) => [l, i]));
+const levelIndex: Record<string, number> = Object.fromEntries(LEVELS.map((level, index) => [level, index]));
 export const LevelSchema = v.picklist(LEVELS);
 export type Level = v.InferOutput<typeof LevelSchema>;
 
@@ -23,7 +23,7 @@ export const createLogger = (
     if ((levelIndex[level] ?? 0) < minIndex) return;
     const ts = new Date().toISOString();
     const msg = args
-      .map(a => (a instanceof Error ? (a.stack ?? a.message) : String(a)))
+      .map(arg => (arg instanceof Error ? (arg.stack ?? arg.message) : String(arg)))
       .join(' ');
     output.write(`[${ts}] [lsp-proxy] [${level}] ${msg}\n`);
   };

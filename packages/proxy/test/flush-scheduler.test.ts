@@ -5,15 +5,15 @@ import type { FlushSchedulerOptions } from '../src/flush-scheduler.ts';
 
 describe('FlushScheduler', () => {
   it('calls onFlush after debounceMs', async ({ expect }) => {
-    const t = createClock();
+    const clock = createClock();
     const onFlush = vi.fn<FlushSchedulerOptions['onFlush']>().mockResolvedValue(undefined);
-    const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 1000, onFlush, timers: t });
+    const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 1000, onFlush, timers: clock });
 
     scheduler.notify();
 
     expect(onFlush).not.toHaveBeenCalled();
 
-    await t.tickAsync(100);
+    await clock.tickAsync(100);
 
     expect(onFlush).toHaveBeenCalledTimes(1);
 
@@ -21,18 +21,18 @@ describe('FlushScheduler', () => {
   });
 
   it('resets debounce on each notify', async ({ expect }) => {
-    const t = createClock();
+    const clock = createClock();
     const onFlush = vi.fn<FlushSchedulerOptions['onFlush']>().mockResolvedValue(undefined);
-    const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 2000, onFlush, timers: t });
+    const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 2000, onFlush, timers: clock });
 
     scheduler.notify();
-    await t.tickAsync(80);
+    await clock.tickAsync(80);
     scheduler.notify(); // reset debounce
-    await t.tickAsync(80);
+    await clock.tickAsync(80);
 
     expect(onFlush).not.toHaveBeenCalled(); // only 80ms since last notify
 
-    await t.tickAsync(20);
+    await clock.tickAsync(20);
 
     expect(onFlush).toHaveBeenCalledTimes(1);
 
@@ -40,21 +40,21 @@ describe('FlushScheduler', () => {
   });
 
   it('forces flush at maxWaitMs even when debounce keeps resetting', async ({ expect }) => {
-    const t = createClock();
+    const clock = createClock();
     const onFlush = vi.fn<FlushSchedulerOptions['onFlush']>().mockResolvedValue(undefined);
-    const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 300, onFlush, timers: t });
+    const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 300, onFlush, timers: clock });
 
     // Notify every 50ms — debounce (100ms) never fires
     scheduler.notify();
-    for (let i = 0; i < 5; i++) {
-      await t.tickAsync(50);
+    for (let iteration = 0; iteration < 5; iteration++) {
+      await clock.tickAsync(50);
       scheduler.notify();
     }
 
-    // 250ms elapsed, debounce hasn't fired
+    // 250ms elapsed, debounce hasn'clock fired
     expect(onFlush).not.toHaveBeenCalled();
 
-    await t.tickAsync(50); // 300ms total → maxWait fires
+    await clock.tickAsync(50); // 300ms total → maxWait fires
 
     expect(onFlush).toHaveBeenCalledTimes(1);
 
@@ -62,10 +62,10 @@ describe('FlushScheduler', () => {
   });
 
   it('re-enters debounce cycle when notified during flush (not immediate)', async ({ expect }) => {
-    const t = createClock();
+    const clock = createClock();
     let flushCount = 0;
     const onFlush = vi.fn<FlushSchedulerOptions['onFlush']>().mockResolvedValue(undefined);
-    const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 1000, onFlush, timers: t });
+    const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 1000, onFlush, timers: clock });
 
     onFlush.mockImplementation(() => {
       flushCount++;
@@ -76,15 +76,15 @@ describe('FlushScheduler', () => {
     });
 
     scheduler.notify();
-    await t.tickAsync(100); // first flush fires
+    await clock.tickAsync(100); // first flush fires
 
     // Re-check should NOT fire immediately — it goes through debounce
-    await t.tickAsync(1);
+    await clock.tickAsync(1);
 
     expect(onFlush).toHaveBeenCalledTimes(1); // still just the first flush
 
     // After debounceMs, the re-check flush fires
-    await t.tickAsync(99);
+    await clock.tickAsync(99);
 
     expect(onFlush).toHaveBeenCalledTimes(2);
 
@@ -92,30 +92,30 @@ describe('FlushScheduler', () => {
   });
 
   it('does not run concurrent flushes', async ({ expect }) => {
-    const t = createClock();
+    const clock = createClock();
     let resolveFlush!: () => void;
-    const flushPromise = new Promise<void>((r) => {
-      resolveFlush = r;
+    const flushPromise = new Promise<void>((resolve) => {
+      resolveFlush = resolve;
     });
     const onFlush = vi.fn<FlushSchedulerOptions['onFlush']>().mockReturnValueOnce(flushPromise).mockResolvedValue(undefined);
-    const scheduler = createFlushScheduler({ debounceMs: 50, maxWaitMs: 1000, onFlush, timers: t });
+    const scheduler = createFlushScheduler({ debounceMs: 50, maxWaitMs: 1000, onFlush, timers: clock });
 
     scheduler.notify();
-    await t.tickAsync(50); // first flush starts (blocked)
+    await clock.tickAsync(50); // first flush starts (blocked)
 
     expect(onFlush).toHaveBeenCalledTimes(1);
 
     scheduler.notify(); // arrives during flush
-    await t.tickAsync(50); // debounce would fire, but flush is in progress
+    await clock.tickAsync(50); // debounce would fire, but flush is in progress
 
     expect(onFlush).toHaveBeenCalledTimes(1); // still only one call
 
     resolveFlush(); // unblock first flush
-    await t.tickAsync(0); // let first flush complete
+    await clock.tickAsync(0); // let first flush complete
 
     expect(onFlush).toHaveBeenCalledTimes(1); // re-check goes through debounce, not immediate
 
-    await t.tickAsync(50); // debounce fires
+    await clock.tickAsync(50); // debounce fires
 
     expect(onFlush).toHaveBeenCalledTimes(2); // second flush from debounced re-check
 
@@ -123,33 +123,33 @@ describe('FlushScheduler', () => {
   });
 
   it('dispose cancels pending timers', async ({ expect }) => {
-    const t = createClock();
+    const clock = createClock();
     const onFlush = vi.fn<FlushSchedulerOptions['onFlush']>().mockResolvedValue(undefined);
-    const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 1000, onFlush, timers: t });
+    const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 1000, onFlush, timers: clock });
 
     scheduler.notify();
     scheduler.dispose();
 
-    await t.tickAsync(200);
+    await clock.tickAsync(200);
 
     expect(onFlush).not.toHaveBeenCalled();
   });
 
   it('recovers after onFlush throws', async ({ expect }) => {
-    const t = createClock();
+    const clock = createClock();
     const onFlush = vi.fn<FlushSchedulerOptions['onFlush']>()
       .mockRejectedValueOnce(new Error('boom'))
       .mockResolvedValue(undefined);
-    const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 1000, onFlush, timers: t });
+    const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 1000, onFlush, timers: clock });
 
     scheduler.notify();
-    await t.tickAsync(100); // first flush fires and throws
+    await clock.tickAsync(100); // first flush fires and throws
 
     expect(onFlush).toHaveBeenCalledTimes(1);
 
     // Scheduler should not be stuck — a new notify should trigger another flush
     scheduler.notify();
-    await t.tickAsync(100);
+    await clock.tickAsync(100);
 
     expect(onFlush).toHaveBeenCalledTimes(2);
 
@@ -157,32 +157,32 @@ describe('FlushScheduler', () => {
   });
 
   it('does not flush after dispose', async ({ expect }) => {
-    const t = createClock();
+    const clock = createClock();
     const onFlush = vi.fn<FlushSchedulerOptions['onFlush']>().mockResolvedValue(undefined);
-    const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 1000, onFlush, timers: t });
+    const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 1000, onFlush, timers: clock });
 
     scheduler.dispose();
     scheduler.notify(); // should be a no-op
 
-    await t.tickAsync(200);
+    await clock.tickAsync(200);
 
     expect(onFlush).not.toHaveBeenCalled();
   });
 
   it('resets maxWait timer after flush completes', async ({ expect }) => {
-    const t = createClock();
+    const clock = createClock();
     const onFlush = vi.fn<FlushSchedulerOptions['onFlush']>().mockResolvedValue(undefined);
-    const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 300, onFlush, timers: t });
+    const scheduler = createFlushScheduler({ debounceMs: 100, maxWaitMs: 300, onFlush, timers: clock });
 
     // First batch
     scheduler.notify();
-    await t.tickAsync(100);
+    await clock.tickAsync(100);
 
     expect(onFlush).toHaveBeenCalledTimes(1);
 
     // Second batch — maxWait should restart from now, not from the first notify
     scheduler.notify();
-    await t.tickAsync(100);
+    await clock.tickAsync(100);
 
     expect(onFlush).toHaveBeenCalledTimes(2);
 

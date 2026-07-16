@@ -70,10 +70,10 @@ const WorkspaceConfigurationSchema = v.object({
 const LogMessageSchema = v.object({
   type: v.pipe(
     v.number(),
-    v.transform((n): 'error' | 'warn' | 'info' | 'debug' => {
-      if (n === lspMessageType.Error) return 'error';
-      if (n === lspMessageType.Warning) return 'warn';
-      return n === lspMessageType.Info ? 'info' : 'debug';
+    v.transform((type): 'error' | 'warn' | 'info' | 'debug' => {
+      if (type === lspMessageType.Error) return 'error';
+      if (type === lspMessageType.Warning) return 'warn';
+      return type === lspMessageType.Info ? 'info' : 'debug';
     }),
   ),
   message: v.string(),
@@ -319,9 +319,9 @@ export class LspProxy {
       // converts pull results to push notifications the client can consume.
       if (this.compensations.proactivePullDiagnostics && uri && msg.method !== 'textDocument/didClose') {
         const isAllStarting = this.router.serversForUri(uri)
-          .every((n) => {
-            const s = this.servers.get(n)?.state;
-            return s === 'starting' || s === 'idle';
+          .every((serverName) => {
+            const state = this.servers.get(serverName)?.state;
+            return state === 'starting' || state === 'idle';
           });
         if (isAllStarting) {
           setTimeout(() => {
@@ -596,7 +596,7 @@ export class LspProxy {
       this.watchRegistrations = fw.unregisterServer(this.watchRegistrations, serverName);
     }
 
-    const isAllStopped = [...this.servers.values()].every(s => s.state === 'stopped');
+    const isAllStopped = [...this.servers.values()].every(server => server.state === 'stopped');
     if (isAllStopped && this.state === 'running') {
       this.log.error('All servers stopped — proxy stopping');
       this.dispose();
@@ -716,8 +716,8 @@ export class LspProxy {
 
     const requests = serverNames
       .map(name => this.servers.get(name))
-      .filter(s => s !== undefined)
-      .map(s => s.sendRequest('textDocument/diagnostic', msg.params));
+      .filter(server => server !== undefined)
+      .map(server => server.sendRequest('textDocument/diagnostic', msg.params));
 
     const responses = await Promise.all(requests);
 
@@ -745,10 +745,10 @@ export class LspProxy {
     const responses = await Promise.all(
       serverNames
         .map(name => this.servers.get(name))
-        .filter(s => s !== undefined)
-        .map(async (s) => {
-          const res = await s.sendRequest('textDocument/diagnostic', params);
-          return { name: s.name, res };
+        .filter(server => server !== undefined)
+        .map(async (server) => {
+          const res = await server.sendRequest('textDocument/diagnostic', params);
+          return { name: server.name, res };
         }),
     );
 
