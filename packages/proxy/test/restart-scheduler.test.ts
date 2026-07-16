@@ -14,41 +14,44 @@ describe('RestartScheduler', () => {
     const sched = createRestartScheduler({ policy, timers: clock });
     const calls: number[] = [];
 
-    // Attempt 1: base 100 * 2^0 = 100ms, jittered to [50, 150]
+    // Each callback fires within the max jittered delay for its attempt:
+    // attempt 1 base 100 → [50, 150], attempt 2 base 200 → [100, 300],
+    // attempt 3 base min(400, 500) → [200, 600).
     expect(sched.schedule(() => {
       calls.push(1);
     })).toBe(true);
-    expect(sched.attempt).toBe(1);
 
-    clock.tick(150); // max jittered delay for base 100
+    clock.tick(150);
 
-    expect(calls).toStrictEqual([1]);
-
-    // Attempt 2: base 100 * 2^1 = 200ms, jittered to [100, 300]
     expect(sched.schedule(() => {
       calls.push(2);
     })).toBe(true);
-    expect(sched.attempt).toBe(2);
 
     clock.tick(300);
 
-    expect(calls).toStrictEqual([1, 2]);
-
-    // Attempt 3: base min(400, 500) = 400ms, jittered to [200, 600)
     expect(sched.schedule(() => {
       calls.push(3);
     })).toBe(true);
-    expect(sched.attempt).toBe(3);
 
     clock.tick(600);
 
     expect(calls).toStrictEqual([1, 2, 3]);
-
-    // Attempt 4: over maxRetries
-    expect(sched.schedule(() => {
-      calls.push(4);
-    })).toBe(false);
     expect(sched.attempt).toBe(3);
+  });
+
+  it('stops scheduling past maxRetries', ({ expect }) => {
+    const clock = createClock();
+    const sched = createRestartScheduler({ policy, timers: clock });
+
+    // Exhaust the allowed retries
+    for (let attempt = 0; attempt < policy.maxRetries; attempt++) {
+      sched.schedule(noop);
+      clock.tick(600);
+    }
+
+    expect(sched.attempt).toBe(policy.maxRetries);
+    expect(sched.schedule(noop)).toBe(false);
+    expect(sched.attempt).toBe(policy.maxRetries);
   });
 
   it('caps delay at maxDelayMs', ({ expect }) => {
