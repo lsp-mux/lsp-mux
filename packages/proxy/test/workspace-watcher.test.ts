@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { faker } from '@faker-js/faker';
-import { beforeEach, describe, it, vi } from 'vitest';
+import { describe, it, vi } from 'vitest';
 import { type MockProxy, mock } from 'vitest-mock-extended';
 
 vi.mock('node:fs/promises', () => ({
@@ -56,45 +56,70 @@ const nodeError = (code: string): NodeJS.ErrnoException => {
   return err;
 };
 
-let log: MockProxy<Logger>;
-let onFlush: () => Promise<void>;
-let watchCallback: (event: string, filename: string | null) => void;
-let mockFsWatcher: MockProxy<FSWatcher>;
+interface Fixture {
+  log: MockProxy<Logger>;
+  mockFsWatcher: MockProxy<FSWatcher>;
+  startWatcher: (
+    delegate: WatcherDelegate,
+    opts?: Omit<Partial<WorkspaceWatcherOptions>, 'log'>,
+  ) => Promise<WorkspaceWatcher>;
+  addEvent: (filename: string) => void;
+  onFlush: () => Promise<void>;
+}
 
-beforeEach(() => {
-  log = mock<Logger>();
+/*
+ * Per-test fixture: wires the module-level fs/watcher/scheduler mocks and
+ * exposes the lazily-captured watch callback and flush trigger. Instantiate
+ * at the start of each test so no mock state leaks between cases.
+ */
+const createFixture = (): Fixture => {
+  const log = mock<Logger>();
+  const mockFsWatcher = mock<FSWatcher>();
+  const captured: {
+    watchCallback?: (event: string, filename: string | null) => void;
+    onFlush?: () => Promise<void>;
+  } = {};
+
   vi.mocked(createLogger).mockReturnValue(log);
-  mockFsWatcher = mock<FSWatcher>();
-
   vi.mocked(fw.resolveRoot).mockResolvedValue(WORKSPACE);
   vi.mocked(fw.isWithinRoot).mockResolvedValue(true);
-  vi.mocked(stat).mockResolvedValue({ size: 100 } as ReturnType<typeof stat> extends Promise<infer T> ? T : never);
+  vi.mocked(stat).mockResolvedValue({ size: 100 } as Awaited<ReturnType<typeof stat>>);
   vi.mocked(readFile).mockResolvedValue(faker.lorem.sentence());
-
   vi.mocked(watch).mockImplementation((...args: unknown[]) => {
-    watchCallback = args[2] as typeof watchCallback;
+    captured.watchCallback = args[2] as NonNullable<typeof captured.watchCallback>;
     return mockFsWatcher;
   });
   vi.mocked(createFlushScheduler).mockImplementation((opts) => {
-    onFlush = opts.onFlush;
+    captured.onFlush = opts.onFlush;
     return mock<FlushScheduler>();
   });
-});
 
-const startWatcher = async (delegate: WatcherDelegate, opts?: Omit<Partial<WorkspaceWatcherOptions>, 'log'>) => {
-  const watcher = new WorkspaceWatcher({ log, workspaceRoot: WORKSPACE, ...opts }, delegate);
-  await watcher.start();
-  return watcher;
+  const startWatcher = async (
+    delegate: WatcherDelegate,
+    opts?: Omit<Partial<WorkspaceWatcherOptions>, 'log'>,
+  ): Promise<WorkspaceWatcher> => {
+    const watcher = new WorkspaceWatcher({ log, workspaceRoot: WORKSPACE, ...opts }, delegate);
+    await watcher.start();
+    return watcher;
+  };
+  const addEvent = (filename: string): void => {
+    if (!captured.watchCallback) throw new Error('watch not started; call startWatcher first');
+    captured.watchCallback('change', filename);
+  };
+  const onFlush = (): Promise<void> => {
+    if (!captured.onFlush) throw new Error('scheduler not started; call startWatcher first');
+    return captured.onFlush();
+  };
+
+  return { log, mockFsWatcher, startWatcher, addEvent, onFlush };
 };
 
-const addEvent = (filename: string) => {
-  watchCallback('change', filename);
-};
-
-// Sequential: tests share module-level vi.mock state
+// Sequential: the module-level vi.mock'd fs/watcher are shared; each test
+// re-wires them via createFixture().
 describe.sequential('WorkspaceWatcher', () => {
   describe('flushFileEvents', () => {
     it('dispatches matched events via delegate', async ({ expect }) => {
+      const { startWatcher, addEvent, onFlush } = createFixture();
       const changes: fw.FileChange[] = [{ uri: toUri('test.ts'), type: fw.FileChangeType.Changed }];
       const delegate = createDelegate();
       delegate.matchEvent.mockReturnValue(new Map([['mock', changes]]));
@@ -110,6 +135,7 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('classifies ENOENT stat error as Deleted', async ({ expect }) => {
+      const { startWatcher, addEvent, onFlush } = createFixture();
       vi.mocked(stat).mockRejectedValue(nodeError('ENOENT'));
       const delegate = createDelegate();
 
@@ -123,6 +149,7 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('classifies non-ENOENT stat error as Changed', async ({ expect }) => {
+      const { startWatcher, addEvent, onFlush } = createFixture();
       vi.mocked(stat).mockRejectedValue(nodeError('EACCES'));
       const delegate = createDelegate();
 
@@ -136,6 +163,7 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('skips events outside workspace root', async ({ expect }) => {
+      const { startWatcher, addEvent, onFlush, log } = createFixture();
       vi.mocked(fw.isWithinRoot).mockResolvedValue(false);
       const delegate = createDelegate();
 
@@ -148,6 +176,7 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('stops processing when isStopped returns true', async ({ expect }) => {
+      const { startWatcher, addEvent, onFlush } = createFixture();
       const delegate = createDelegate();
       delegate.isStopped.mockReturnValue(true);
 
@@ -160,6 +189,7 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('resyncs tracked files on change', async ({ expect }) => {
+      const { startWatcher, addEvent, onFlush } = createFixture();
       const oldContent = faker.lorem.sentence();
       const newContent = faker.lorem.sentence();
       const doc = { uri: toUri('tracked.ts'), languageId: 'typescript', version: 1, content: oldContent };
@@ -176,6 +206,7 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('handles per-file errors without aborting batch', async ({ expect }) => {
+      const { startWatcher, addEvent, onFlush, log } = createFixture();
       vi.mocked(fw.isWithinRoot)
         .mockRejectedValueOnce(new Error('boom'))
         .mockResolvedValueOnce(true);
@@ -194,10 +225,11 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('normalizes backslashes in filenames', async ({ expect }) => {
+      const { startWatcher, addEvent, onFlush } = createFixture();
       const delegate = createDelegate();
 
       await startWatcher(delegate);
-      watchCallback('change', String.raw`sub\file.ts`);
+      addEvent(String.raw`sub\file.ts`);
       await onFlush();
 
       expect(delegate.matchEvent).toHaveBeenCalledWith(
@@ -208,6 +240,7 @@ describe.sequential('WorkspaceWatcher', () => {
 
   describe('resyncTrackedFile', () => {
     it('returns unchanged when content matches disk', async ({ expect }) => {
+      const { startWatcher, addEvent, onFlush } = createFixture();
       const content = faker.lorem.sentence();
       const doc = { uri: toUri('same.ts'), languageId: 'typescript', version: 1, content };
       vi.mocked(readFile).mockResolvedValue(content);
@@ -222,6 +255,7 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('returns unchanged when document not tracked', async ({ expect }) => {
+      const { startWatcher, addEvent, onFlush } = createFixture();
       const delegate = createDelegate();
       delegate.getDocument.mockReturnValue(undefined);
 
@@ -233,6 +267,7 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('returns deleted on stat ENOENT', async ({ expect }) => {
+      const { startWatcher, addEvent, onFlush } = createFixture();
       const doc = { uri: toUri('vanished.ts'), languageId: 'typescript', version: 1, content: faker.lorem.sentence() };
       // First stat (flush existence check) succeeds, second stat (resync) fails
       vi.mocked(stat)
@@ -253,6 +288,7 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('returns unchanged on stat non-ENOENT error', async ({ expect }) => {
+      const { startWatcher, addEvent, onFlush } = createFixture();
       const doc = { uri: toUri('perm.ts'), languageId: 'typescript', version: 1, content: faker.lorem.sentence() };
       vi.mocked(stat)
         .mockResolvedValueOnce({ size: 10 } as Awaited<ReturnType<typeof stat>>)
@@ -272,6 +308,7 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('returns deleted on readFile ENOENT', async ({ expect }) => {
+      const { startWatcher, addEvent, onFlush } = createFixture();
       const doc = { uri: toUri('gone.ts'), languageId: 'typescript', version: 1, content: faker.lorem.sentence() };
       vi.mocked(readFile).mockRejectedValue(nodeError('ENOENT'));
       const delegate = createDelegate();
@@ -288,6 +325,7 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('skips files exceeding stat 2x pre-filter', async ({ expect }) => {
+      const { startWatcher, addEvent, onFlush, log } = createFixture();
       const doc = { uri: toUri('huge.ts'), languageId: 'typescript', version: 1, content: faker.lorem.sentence() };
       vi.mocked(stat).mockResolvedValue({ size: 300 } as Awaited<ReturnType<typeof stat>>);
       const delegate = createDelegate();
@@ -303,6 +341,7 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('skips files exceeding byteLength threshold', async ({ expect }) => {
+      const { startWatcher, addEvent, onFlush, log } = createFixture();
       const doc = { uri: toUri('big.ts'), languageId: 'typescript', version: 1, content: faker.lorem.sentence() };
       // stat.size passes 2x filter (150 < 200) but byteLength (150) > maxResyncBytes (100)
       vi.mocked(stat).mockResolvedValue({ size: 150 } as Awaited<ReturnType<typeof stat>>);
@@ -319,6 +358,7 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('skips when version changed during read (optimistic concurrency)', async ({ expect }) => {
+      const { startWatcher, addEvent, onFlush, log } = createFixture();
       const oldContent = faker.lorem.sentence();
       const clientContent = faker.lorem.sentence();
       const diskContent = faker.lorem.sentence();
@@ -344,6 +384,7 @@ describe.sequential('WorkspaceWatcher', () => {
 
   describe('backpressure', () => {
     it('drops events exceeding maxPendingEvents and warns once', async ({ expect }) => {
+      const { startWatcher, addEvent, onFlush, log } = createFixture();
       const delegate = createDelegate();
 
       await startWatcher(delegate, { maxPendingEvents: 2 });
@@ -359,6 +400,7 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('allows duplicate paths within the cap', async ({ expect }) => {
+      const { startWatcher, addEvent, onFlush, log } = createFixture();
       const delegate = createDelegate();
 
       await startWatcher(delegate, { maxPendingEvents: 1 });
@@ -373,6 +415,7 @@ describe.sequential('WorkspaceWatcher', () => {
 
   describe('lifecycle', () => {
     it('dispose cleans up scheduler and watcher', async ({ expect }) => {
+      const { startWatcher, mockFsWatcher } = createFixture();
       const delegate = createDelegate();
       const watcher = await startWatcher(delegate);
 
@@ -385,6 +428,7 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('symbol.dispose calls dispose', async ({ expect }) => {
+      const { startWatcher, mockFsWatcher } = createFixture();
       const delegate = createDelegate();
       const watcher = await startWatcher(delegate);
 
@@ -394,6 +438,7 @@ describe.sequential('WorkspaceWatcher', () => {
     });
 
     it('isDegraded is false initially', async ({ expect }) => {
+      const { startWatcher } = createFixture();
       const delegate = createDelegate();
       const watcher = await startWatcher(delegate);
 
