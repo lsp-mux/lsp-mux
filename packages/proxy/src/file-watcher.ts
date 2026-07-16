@@ -218,6 +218,9 @@ export const resolveRoot = async (root: string): Promise<string> => {
   }
 };
 
+const isContainedIn = (child: string, root: string): boolean =>
+  child === root || child.startsWith(root + path.sep);
+
 /**
  * Check whether a path is within a pre-resolved workspace root.
  * Guards against path traversal via `..` segments and symlinks.
@@ -231,9 +234,6 @@ export const resolveRoot = async (root: string): Promise<string> => {
  * @param resolvedRoot — result of `resolveRoot()`, cached by the caller
  */
 export const isWithinRoot = async (fullPath: string, resolvedRoot: string): Promise<boolean> => {
-  const isContainedIn = (child: string, root: string): boolean =>
-    child === root || child.startsWith(root + path.sep);
-
   try {
     return isContainedIn(await realpath(fullPath), resolvedRoot);
   } catch {

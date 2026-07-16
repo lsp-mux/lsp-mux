@@ -4,6 +4,8 @@ import { createRestartScheduler } from '../src/restart-scheduler.ts';
 import type { RestartScheduler } from '../src/restart-scheduler.ts';
 import type { Timers } from '../src/types.ts';
 
+const noop = (): void => { /* no-op */ };
+
 describe('RestartScheduler', () => {
   const policy = { maxRetries: 3, baseDelayMs: 100, maxDelayMs: 500 };
 
@@ -133,7 +135,6 @@ describe('RestartScheduler', () => {
     };
 
     // Schedule 10 attempts to get enough samples to verify jitter variance
-    const noop = (): void => { /* no-op */ };
     for (let iteration = 0; iteration < 10; iteration++) {
       const sched = createRestartScheduler({ policy, timers: capturingTimers });
       sched.schedule(noop);

@@ -3,6 +3,8 @@ import { describe, it } from 'vitest';
 import { createMessageBuffer } from '../src/message-buffer.ts';
 import { createNotification, createRequest } from '../src/types.ts';
 
+const randomRequest = () => createRequest(faker.number.int(), faker.string.alpha(8));
+
 describe('MessageBuffer', () => {
   it('buffers and flushes messages in order', ({ expect }) => {
     const buf = createMessageBuffer(10);
@@ -21,7 +23,6 @@ describe('MessageBuffer', () => {
 
   it('rejects when full', ({ expect }) => {
     const buf = createMessageBuffer(2);
-    const randomRequest = () => createRequest(faker.number.int(), faker.string.alpha(8));
 
     expect(buf.offer(randomRequest())).toBe(true);
     expect(buf.offer(randomRequest())).toBe(true);
