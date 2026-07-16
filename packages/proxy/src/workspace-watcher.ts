@@ -213,7 +213,7 @@ export class WorkspaceWatcher {
 
     let text: string;
     try {
-      text = await readFile(filePath, 'utf-8');
+      text = await readFile(filePath, 'utf8');
     } catch (error) {
       return isEnoent(error) ? 'deleted' : 'unchanged';
     }

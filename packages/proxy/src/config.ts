@@ -24,7 +24,7 @@ export const ownPackageDir = path.join(selfDir, '..');
 export const proxyMainEntry = path.join(selfDir, '..', 'bin', `main${path.extname(selfPath)}`);
 
 const parseJsonFile = async (filePath: string): Promise<unknown> =>
-  JSON.parse(await readFile(filePath, 'utf-8'));
+  JSON.parse(await readFile(filePath, 'utf8'));
 
 const tryLoadJsonFile = async (filePath: string): Promise<Record<string, unknown> | undefined> => {
   try {

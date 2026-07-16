@@ -8,7 +8,7 @@ const files = readdirSync(entriesDir).filter(fileName => fileName.endsWith('.jso
 
 const properties = files.map((fileName) => {
   const name = path.basename(fileName, '.json');
-  const json = readFileSync(path.join(entriesDir, fileName), 'utf-8').trimEnd();
+  const json = readFileSync(path.join(entriesDir, fileName), 'utf8').trimEnd();
   return `  ${JSON.stringify(name)}: ${json}`;
 });
 
