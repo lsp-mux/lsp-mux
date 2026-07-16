@@ -136,32 +136,7 @@ export class WorkspaceWatcher {
       if (this.delegate.isStopped()) break;
 
       try {
-        const fullPath = path.join(root, relativePath);
-
-        if (!await fw.isWithinRoot(fullPath, resolvedRoot)) {
-          this.log.warn(`Skipping event outside workspace root: ${relativePath}`);
-          continue;
-        }
-
-        const fileUri = normalizeFileUri(pathToFileURL(fullPath).href);
-        const isTracked = this.delegate.getDocument(fileUri) !== undefined;
-
-        let isFileExists: boolean;
-        try {
-          await stat(fullPath);
-          isFileExists = true;
-        } catch (error) {
-          // Only ENOENT means truly deleted; permission/symlink errors → treat as existing
-          isFileExists = !isEnoent(error);
-        }
-        let changeType = fw.classifyChange(isFileExists);
-
-        if (changeType !== fw.FileChangeType.Deleted && isTracked) {
-          const result = await this.resyncTrackedFile(fileUri);
-          if (result === 'deleted') changeType = fw.FileChangeType.Deleted;
-        }
-
-        const matches = this.delegate.matchEvent(relativePath, changeType, fileUri);
+        const matches = await this.classifyEvent(relativePath, root, resolvedRoot);
         for (const [serverName, changes] of matches) {
           const existing = batched.get(serverName);
           if (existing) {
@@ -187,12 +162,43 @@ export class WorkspaceWatcher {
     }
   }
 
-  private async resyncTrackedFile(uri: string): Promise<'resynced' | 'unchanged' | 'deleted'> {
-    const tracked = this.delegate.getDocument(uri);
-    if (!tracked) return 'unchanged';
+  private async classifyEvent(
+    relativePath: string,
+    root: string,
+    resolvedRoot: string,
+  ): Promise<ReadonlyMap<string, fw.FileChange[]>> {
+    const fullPath = path.join(root, relativePath);
 
-    const filePath = fileURLToPath(uri);
+    if (!await fw.isWithinRoot(fullPath, resolvedRoot)) {
+      this.log.warn(`Skipping event outside workspace root: ${relativePath}`);
+      return new Map();
+    }
 
+    const fileUri = normalizeFileUri(pathToFileURL(fullPath).href);
+    const isTracked = this.delegate.getDocument(fileUri) !== undefined;
+
+    let isFileExists: boolean;
+    try {
+      await stat(fullPath);
+      isFileExists = true;
+    } catch (error) {
+      // Only ENOENT means truly deleted; permission/symlink errors → treat as existing
+      isFileExists = !isEnoent(error);
+    }
+    let changeType = fw.classifyChange(isFileExists);
+
+    if (changeType !== fw.FileChangeType.Deleted && isTracked) {
+      const result = await this.resyncTrackedFile(fileUri);
+      if (result === 'deleted') changeType = fw.FileChangeType.Deleted;
+    }
+
+    return this.delegate.matchEvent(relativePath, changeType, fileUri);
+  }
+
+  private async readForResync(
+    uri: string,
+    filePath: string,
+  ): Promise<'unchanged' | 'deleted' | { text: string }> {
     // Stat pre-filter: 2x threshold so near-boundary files still get the
     // exact byteLength check after readFile (UTF-8 multi-byte expansion).
     try {
@@ -218,7 +224,18 @@ export class WorkspaceWatcher {
       return 'unchanged';
     }
 
-    if (text === tracked.content) return 'unchanged';
+    return { text };
+  }
+
+  private async resyncTrackedFile(uri: string): Promise<'resynced' | 'unchanged' | 'deleted'> {
+    const tracked = this.delegate.getDocument(uri);
+    if (!tracked) return 'unchanged';
+
+    const filePath = fileURLToPath(uri);
+    const read = await this.readForResync(uri, filePath);
+    if (read === 'unchanged' || read === 'deleted') return read;
+
+    if (read.text === tracked.content) return 'unchanged';
 
     const current = this.delegate.getDocument(uri);
     if (current?.version !== tracked.version) {
@@ -226,7 +243,7 @@ export class WorkspaceWatcher {
       return 'unchanged';
     }
 
-    this.delegate.resyncDocument(uri, tracked.version, text);
+    this.delegate.resyncDocument(uri, tracked.version, read.text);
 
     this.log.info(`Resynced ${uri} from disk`);
     return 'resynced';

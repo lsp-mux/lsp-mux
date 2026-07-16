@@ -191,18 +191,59 @@ export const createManagedServer = (
     log.info(`${name}: scheduling ${label} (attempt ${String(scheduler.attempt)}/${String(scheduler.maxRetries)})`);
   };
 
+  const sendPostInitNotifications = (child: ChildServer): void => {
+    child.write(createNotification('initialized', {}));
+    if (config.settings) {
+      child.write(createNotification('workspace/didChangeConfiguration', {
+        settings: config.settings,
+      }));
+    }
+  };
+
+  const replayDocuments = (child: ChildServer): void => {
+    const documents = callbacks.getDocuments();
+    for (const doc of documents) {
+      child.write(createNotification('textDocument/didOpen', {
+        textDocument: {
+          uri: doc.uri,
+          languageId: doc.languageId,
+          version: doc.version,
+          text: doc.content,
+        },
+      }));
+    }
+    log.info(`${name}: replayed ${String(documents.length)} document(s)`);
+  };
+
+  const flushBufferedMessages = (child: ChildServer): void => {
+    const flushed = buffer.flush();
+    for (const msg of flushed) {
+      if (Msg.isRequest(msg)) pendingRequests.add(msg.id);
+      child.write(msg);
+    }
+    if (flushed.length > 0) log.info(`${name}: flushed ${String(flushed.length)} buffered message(s)`);
+  };
+
   const performInitSequence = async (expectedState: 'starting' | 'restarting'): Promise<void> => {
     if (state !== expectedState) return;
 
     const label = expectedState === 'starting' ? 'lazy start' : 'restart';
+
+    // A newer start/restart may supersede this child mid-sequence; retry
+    // only while the server is still expected to be initializing.
+    const isSuperseded = (child: ChildServer): boolean =>
+      state !== expectedState || server !== child;
+    const retryIfStillExpected = (): void => {
+      if (state === expectedState) scheduleRetry(expectedState);
+    };
 
     try {
       const child = spawnServer();
 
       const initResponse = await sendProxyRequest(child, 'initialize', initParams);
 
-      if (state !== expectedState || server !== child) {
-        if (state === expectedState) scheduleRetry(expectedState);
+      if (isSuperseded(child)) {
+        retryIfStillExpected();
         return;
       }
 
@@ -214,38 +255,13 @@ export const createManagedServer = (
         return;
       }
 
-      child.write(createNotification('initialized', {}));
-      if (config.settings) {
-        child.write(createNotification('workspace/didChangeConfiguration', {
-          settings: config.settings,
-        }));
-      }
+      sendPostInitNotifications(child);
       isEverInitialized = true;
+      replayDocuments(child);
+      flushBufferedMessages(child);
 
-      // Replay tracked document state
-      const documents = callbacks.getDocuments();
-      for (const doc of documents) {
-        child.write(createNotification('textDocument/didOpen', {
-          textDocument: {
-            uri: doc.uri,
-            languageId: doc.languageId,
-            version: doc.version,
-            text: doc.content,
-          },
-        }));
-      }
-      log.info(`${name}: replayed ${String(documents.length)} document(s)`);
-
-      // Flush buffered messages
-      const flushed = buffer.flush();
-      for (const msg of flushed) {
-        if (Msg.isRequest(msg)) pendingRequests.add(msg.id);
-        child.write(msg);
-      }
-      if (flushed.length > 0) log.info(`${name}: flushed ${String(flushed.length)} buffered message(s)`);
-
-      if (state !== expectedState || server !== child) {
-        if (state === expectedState) scheduleRetry(expectedState);
+      if (isSuperseded(child)) {
+        retryIfStillExpected();
         return;
       }
 
@@ -257,7 +273,7 @@ export const createManagedServer = (
       log.error(`${name}: ${label} failed:`, error);
       server?.dispose();
       server = undefined;
-      if (state === expectedState) scheduleRetry(expectedState);
+      retryIfStillExpected();
     }
   };
 

@@ -60,14 +60,31 @@ export const loadProxyConfig = async (
   return v.parse(ProxyConfigSchema, merged);
 };
 
-export const loadServerConfig = async (
-  name: string,
-  configDir = ownPackageDir,
-): Promise<ServerConfig> => {
+const assertValidServerName = (name: string): void => {
   // basename on POSIX doesn't treat '\' as a separator, so check explicitly
   if (path.basename(name) !== name || name.includes('\\')) {
     throw new Error(`Invalid server name: ${name}`);
   }
+};
+
+const validateNpmIfNeeded = async (
+  registryEntry: ReturnType<typeof lookupRegistryEntry>,
+  userOverride: Record<string, unknown> | undefined,
+  configDir: string,
+  name: string,
+): Promise<void> => {
+  // Skip npm check when user overrides the command — they're taking
+  // ownership of where the server binary lives.
+  if (registryEntry?.npm && !userOverride?.['command']) {
+    await validateNpmPackage(registryEntry.npm, configDir, name);
+  }
+};
+
+export const loadServerConfig = async (
+  name: string,
+  configDir = ownPackageDir,
+): Promise<ServerConfig> => {
+  assertValidServerName(name);
 
   const registryEntry = lookupRegistryEntry(name);
   const userOverride = await tryLoadJsonFile(path.join(configDir, 'servers', `${name}.json`));
@@ -87,11 +104,7 @@ export const loadServerConfig = async (
 
   const validated = v.parse(ServerConfigSchema, merged);
 
-  // Skip npm check when user overrides the command — they're taking
-  // ownership of where the server binary lives.
-  if (registryEntry?.npm && !userOverride?.['command']) {
-    await validateNpmPackage(registryEntry.npm, configDir, name);
-  }
+  await validateNpmIfNeeded(registryEntry, userOverride, configDir, name);
 
   return resolveServerPaths(validated, configDir);
 };
