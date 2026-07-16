@@ -170,6 +170,7 @@ export const unregisterServer = (
 /**
  * Match a file event against all registrations.
  * Returns a map of serverName → FileChange[] for dispatch.
+ * @param state Current watch registrations to match the event against
  * @param relativePath Forward-slash-separated path relative to workspace root
  * @param changeType LSP FileChangeType (1=Created, 2=Changed, 3=Deleted)
  * @param fileUri Full file:// URI for the changed file
@@ -222,6 +223,7 @@ export const resolveRoot = async (root: string): Promise<string> => {
  * lexical `resolve()` so they stay in the same namespace — otherwise a
  * symlinked workspace root (realpath) would never match a deleted file path
  * (resolve fallback in the symlink namespace).
+ * @param fullPath — absolute path to the changed file
  * @param resolvedRoot — result of `resolveRoot()`, cached by the caller
  */
 export const isWithinRoot = async (fullPath: string, resolvedRoot: string): Promise<boolean> => {
