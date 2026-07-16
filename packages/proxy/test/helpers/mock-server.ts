@@ -27,15 +27,14 @@ const isPullDiagnostics = process.argv.includes('--pull-diagnostics');
 const reader = new StreamMessageReader(process.stdin);
 const writer = new StreamMessageWriter(process.stdout);
 
-let initializeParams: unknown;
 const openDocuments = new Map<string, { uri: string; languageId: string; version: number; text: string }>();
 const watcherEvents: unknown[] = [];
 const configNotifications: unknown[] = [];
 const receivedResponses: unknown[] = [];
-/* eslint-disable-next-line vitest/require-hook --
-   mock-server is a spawned LSP subprocess entry point, not a vitest module;
-   its top-level state can't live in a hook. */
-let serverRequestSeq = 1000;
+const state: { initializeParams: unknown; serverRequestSeq: number } = {
+  initializeParams: undefined,
+  serverRequestSeq: 1000,
+};
 
 const respond = (id: number | string | null, result: ResponseMessage['result']): void => {
   const response: ResponseMessage = { jsonrpc: '2.0', id, ...(result !== undefined && { result }) };
@@ -79,12 +78,12 @@ reader.listen((msg) => {
   if (Msg.isRequest(msg)) {
     switch (msg.method) {
       case 'initialize': {
-        initializeParams = msg.params;
+        state.initializeParams = msg.params;
         respond(msg.id, { capabilities: { textDocumentSync: isIncrementalSync ? 2 : 1, hoverProvider: true } });
         return;
       }
       case '$/initParams': {
-        respond(msg.id, initializeParams as object);
+        respond(msg.id, state.initializeParams as object);
         return;
       }
       case 'shutdown': {
@@ -111,7 +110,7 @@ reader.listen((msg) => {
       }
       case '$/unregisterWatchers': {
         if (isUnregisterOnCommand) {
-          void writer.write(createRequest(serverRequestSeq++, 'client/unregisterCapability', {
+          void writer.write(createRequest(state.serverRequestSeq++, 'client/unregisterCapability', {
             unregisterations: [{
               id: `${serverName}-watcher-ts`,
               method: 'workspace/didChangeWatchedFiles',
@@ -153,7 +152,7 @@ reader.listen((msg) => {
     switch (msg.method) {
       case 'initialized': {
         if (isRegisterConfig) {
-          void writer.write(createRequest(serverRequestSeq++, 'client/registerCapability', {
+          void writer.write(createRequest(state.serverRequestSeq++, 'client/registerCapability', {
             registrations: [{
               id: `${serverName}-config`,
               method: 'workspace/didChangeConfiguration',
@@ -161,18 +160,18 @@ reader.listen((msg) => {
           }));
         }
         if (isRequestConfig) {
-          void writer.write(createRequest(serverRequestSeq++, 'workspace/configuration', {
+          void writer.write(createRequest(state.serverRequestSeq++, 'workspace/configuration', {
             items: [{ scopeUri: 'file:///test.ts', section: '' }],
           }));
         }
         if (isSendCustomRequest) {
-          void writer.write(createRequest(serverRequestSeq++, 'window/showMessageRequest', {
+          void writer.write(createRequest(state.serverRequestSeq++, 'window/showMessageRequest', {
             type: 3,
             message: 'Test request from server',
           }));
         }
         if (isRegisterWatchers) {
-          void writer.write(createRequest(serverRequestSeq++, 'client/registerCapability', {
+          void writer.write(createRequest(state.serverRequestSeq++, 'client/registerCapability', {
             registrations: [{
               id: `${serverName}-watcher-ts`,
               method: 'workspace/didChangeWatchedFiles',
@@ -183,7 +182,7 @@ reader.listen((msg) => {
           }));
         }
         if (isRegisterMixed) {
-          void writer.write(createRequest(serverRequestSeq++, 'client/registerCapability', {
+          void writer.write(createRequest(state.serverRequestSeq++, 'client/registerCapability', {
             registrations: [
               {
                 id: `${serverName}-watcher-ts`,
