@@ -16,6 +16,12 @@ const config: Linter.Config[] = [
      */
     files: ['**/test/**/*.ts'],
     rules: {
+      /*
+       * `@module-tag` is a @gtbuchanan/vitest-config convention for tagging a
+       * test module (e.g. `@module-tag slow` for the slow bucket). Preserve
+       * the shared config's `defaultValue` tag alongside it.
+       */
+      'jsdoc/check-tag-names': ['warn', { typed: true, definedTags: ['defaultValue', 'module-tag'] }],
       'vitest/require-hook': ['warn', { allowedFunctionCalls: ['it', 'it.for', 'test.for'] }],
     },
   },
