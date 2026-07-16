@@ -167,6 +167,13 @@ export const unregisterServer = (
   return isChanged ? next : state;
 };
 
+const hasMatchingWatcher = (
+  watchers: readonly CompiledWatcher[],
+  kindBit: number,
+  relativePath: string,
+): boolean =>
+  watchers.some(watcher => (watcher.kind & kindBit) !== 0 && watcher.match(relativePath));
+
 /**
  * Match a file event against all registrations.
  * Returns a map of serverName → FileChange[] for dispatch.
@@ -189,13 +196,10 @@ export const matchEvent = (
     // Skip if this server already matched (dedup across registrations)
     if (matched.has(reg.serverName)) continue;
 
-    for (const watcher of reg.watchers) {
-      if ((watcher.kind & kindBit) === 0) continue;
-      if (!watcher.match(relativePath)) continue;
-
+    // One matching watcher per registration is sufficient
+    if (hasMatchingWatcher(reg.watchers, kindBit, relativePath)) {
       result.set(reg.serverName, [{ uri: fileUri, type: changeType }]);
       matched.add(reg.serverName);
-      break; // One match per registration is sufficient
     }
   }
 
