@@ -93,7 +93,7 @@ reader.listen((msg) => {
         return;
       }
       case '$/documents': {
-        respond(msg.id, [...openDocuments.values()]);
+        respond(msg.id, openDocuments.values().toArray());
         return;
       }
       case '$/watcherEvents': {

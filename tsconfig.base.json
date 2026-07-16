@@ -3,7 +3,8 @@
   "compilerOptions": {
     "lib": [
       "ES2024",
-      "ESNext.Disposable"
+      "ESNext.Disposable",
+      "ESNext.Iterator"
     ],
     "rewriteRelativeImportExtensions": true
   },

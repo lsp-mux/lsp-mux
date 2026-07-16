@@ -596,7 +596,7 @@ export class LspProxy {
       this.watchRegistrations = fw.unregisterServer(this.watchRegistrations, serverName);
     }
 
-    const isAllStopped = [...this.servers.values()].every(server => server.state === 'stopped');
+    const isAllStopped = this.servers.values().every(server => server.state === 'stopped');
     if (isAllStopped && this.state === 'running') {
       this.log.error('All servers stopped — proxy stopping');
       this.dispose();

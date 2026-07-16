@@ -108,7 +108,7 @@ export const apply = (docs: DocumentMap, method: string, params: unknown): Docum
   }
 };
 
-export const toArray = (docs: DocumentMap): readonly TrackedDocument[] => [...docs.values()];
+export const toArray = (docs: DocumentMap): readonly TrackedDocument[] => docs.values().toArray();
 
 // --- Pure helpers ---
 
