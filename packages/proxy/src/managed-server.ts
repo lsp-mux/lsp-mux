@@ -1,10 +1,10 @@
 import { ChildServer } from './child-server.ts';
 import type { Logger } from './logger.ts';
 import { createMessageBuffer } from './message-buffer.ts';
-import { defaultRestartPolicy, createRestartScheduler } from './restart-scheduler.ts';
+import { createRestartScheduler, defaultRestartPolicy } from './restart-scheduler.ts';
 import type { RestartPolicy } from './restart-scheduler.ts';
 import type { Message, RequestMessage, ResponseMessage, ServerConfig, TrackedDocument } from './types.ts';
-import { documentSyncMethods, lspErrorCodes, Message as Msg, createNotification, createRequest } from './types.ts';
+import { Message as Msg, createNotification, createRequest, documentSyncMethods, lspErrorCodes } from './types.ts';
 
 const maxBufferSize = 1000;
 
