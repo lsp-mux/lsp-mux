@@ -6,11 +6,11 @@ import {
   serverConfigFromEntry, validateNpmPackage,
 } from 'lsp-proxy-registry';
 import * as v from 'valibot';
+import { ProxyConfigSchema, ServerConfigSchema } from './config-schema.ts';
+import type { ProxyConfig, ServerConfig } from './config-schema.ts';
 
 const configFile = '.lsp-proxy.json';
 const localConfigFile = '.lsp-proxy.local.json';
-import { ProxyConfigSchema, ServerConfigSchema } from './config-schema.ts';
-import type { ProxyConfig, ServerConfig } from './config-schema.ts';
 
 const selfPath = fileURLToPath(import.meta.url);
 const selfDir = path.dirname(selfPath);
