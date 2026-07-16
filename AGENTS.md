@@ -42,7 +42,7 @@ pnpm workspace monorepo:
 
 ## Architecture
 
-```
+```text
 Claude Code (stdio)
     |
     v

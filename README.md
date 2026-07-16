@@ -44,7 +44,7 @@ for missing features (e.g., local file watching when the client lacks
 format to ensure consistent behavior across servers that emit non-standard
 URIs.
 
-```
+```text
 Client (stdio) <--> lsp-proxy <--> vtsls
                                \-> eslint
 ```
@@ -76,14 +76,14 @@ the prerequisite patch and register the plugin in Claude Code:
 pnpm dlx tweakcc --apply --patches "fix-lsp-support"
 ```
 
-```
+```text
 /plugin marketplace add /absolute/path/to/global/lsp-proxy-config-default
 /plugin install lsp-proxy@lsp-proxy
 ```
 
 Disable any conflicting LSP plugins:
 
-```
+```text
 /plugin disable vtsls@claude-code-lsps
 ```
 
@@ -121,7 +121,7 @@ claude --plugin-dir /path/to/packages/config-default
 
 In Claude Code:
 
-```
+```text
 /plugin marketplace add /absolute/path/to/packages/config-default
 /plugin install lsp-proxy@lsp-proxy
 ```
@@ -130,7 +130,7 @@ In Claude Code:
 
 Disable individual LSP plugins that handle the same file types:
 
-```
+```text
 /plugin disable vtsls@claude-code-lsps
 ```
 
