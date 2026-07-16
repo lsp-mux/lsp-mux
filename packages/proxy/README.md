@@ -93,4 +93,4 @@ Each server config is resolved from the
 Relative paths in `command` and `args` are resolved against the config
 directory at load time.
 
-Requires Node.js >= 22.16.
+Requires Node.js >= 24.0.0.

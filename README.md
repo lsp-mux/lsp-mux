@@ -62,7 +62,7 @@ Client (stdio) <--> lsp-proxy <--> vtsls
 
 ### Standalone (npm)
 
-Requires Node.js >= 22.16. Install the default config package with vtsls
+Requires Node.js >= 24.0.0. Install the default config package with vtsls
 and ESLint:
 
 ```sh
