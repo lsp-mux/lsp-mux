@@ -56,7 +56,7 @@ export const createFlushScheduler = (options: FlushSchedulerOptions): FlushSched
     doFlush().catch(noop);
   };
 
-  const needsRecheck = (): boolean => state.notifiedDuringFlush && !state.disposed;
+  const shouldRecheck = (): boolean => state.notifiedDuringFlush && !state.disposed;
 
   const notify = (): void => {
     if (state.disposed) return;
@@ -82,7 +82,7 @@ export const createFlushScheduler = (options: FlushSchedulerOptions): FlushSched
       await onFlush();
     } finally {
       state.flushInProgress = false;
-      if (needsRecheck()) {
+      if (shouldRecheck()) {
         // Re-enter the debounce cycle instead of flushing immediately.
         // This prevents I/O saturation under sustained load (continuous
         // file writes would otherwise cause back-to-back flushes with

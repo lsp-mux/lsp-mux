@@ -83,8 +83,8 @@ export const empty = (): WatchRegistrations => new Map();
  * This is the safe default — WatchKind.Change-only watchers (e.g.,
  * tsconfig watchers) won't silently drop atomic-save events.
  */
-export const classifyChange = (exists: boolean): number =>
-  exists ? FileChangeType.Changed : FileChangeType.Deleted;
+export const classifyChange = (isPresent: boolean): number =>
+  isPresent ? FileChangeType.Changed : FileChangeType.Deleted;
 
 /**
  * Create an exclude matcher from glob patterns.

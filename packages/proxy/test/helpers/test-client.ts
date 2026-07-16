@@ -5,7 +5,7 @@ import { Message as Msg, createNotification, createRequest } from '../../src/typ
 /** Collect messages from a reader until a predicate matches. */
 export const waitForMessage = (
   reader: StreamMessageReader,
-  predicate: (msg: Message) => boolean,
+  isMatch: (msg: Message) => boolean,
   timeoutMs = 10_000,
 ): Promise<Message> =>
   new Promise((resolve, reject) => {
@@ -14,7 +14,7 @@ export const waitForMessage = (
       timeoutMs,
     );
     const disposable = reader.listen((msg) => {
-      if (!predicate(msg)) {
+      if (!isMatch(msg)) {
         return;
       }
 
@@ -27,7 +27,7 @@ export const waitForMessage = (
 /** Collect N messages matching a predicate. */
 export const collectMessages = (
   reader: StreamMessageReader,
-  predicate: (msg: Message) => boolean,
+  isMatch: (msg: Message) => boolean,
   count: number,
   timeoutMs = 10_000,
 ): Promise<Message[]> =>
@@ -38,7 +38,7 @@ export const collectMessages = (
       timeoutMs,
     );
     const disposable = reader.listen((msg) => {
-      if (!predicate(msg)) {
+      if (!isMatch(msg)) {
         return;
       }
 
