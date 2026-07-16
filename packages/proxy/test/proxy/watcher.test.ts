@@ -24,6 +24,19 @@ const waitForWatcherActive = (
     });
   }, { timeout: 5000, interval: 100 });
 
+/** Asymmetric matcher for a single watcher change event referencing `uri`. */
+const changeContaining = (expect: ExpectStatic, uri: string): unknown =>
+  expect.objectContaining({ uri: expect.stringContaining(uri) as unknown }) as unknown;
+
+/** Asymmetric matcher for a `$/watcherEvents` result carrying changes for `uris`. */
+const watcherEventContaining = (expect: ExpectStatic, ...uris: string[]): unknown => {
+  const changes = uris.map(uri => changeContaining(expect, uri));
+  const event = expect.objectContaining({
+    changes: expect.arrayContaining(changes) as unknown,
+  }) as unknown;
+  return expect.arrayContaining([event]) as unknown;
+};
+
 // Sequential: crash+restart test needs stable timing for watcher re-registration
 describe.sequential('LspProxy file watchers', () => {
   describe('watcher registration', () => {
@@ -45,15 +58,7 @@ describe.sequential('LspProxy file watchers', () => {
         const res = await request(writer, reader, workspace.nextSeq(), '$/watcherEvents');
 
         expect(res).toMatchObject({
-          result: expect.arrayContaining([
-            expect.objectContaining({
-              changes: expect.arrayContaining([
-                expect.objectContaining({
-                  uri: expect.stringContaining('new-file.ts') as unknown,
-                }),
-              ]) as unknown,
-            }),
-          ]) as unknown,
+          result: watcherEventContaining(expect, 'new-file.ts'),
         });
       }, { timeout: 5000, interval: 100 });
     });
@@ -103,15 +108,7 @@ describe.sequential('LspProxy file watchers', () => {
         const res = await request(writer, reader, workspace.nextSeq(), '$/watcherEvents');
 
         expect(res).toMatchObject({
-          result: expect.arrayContaining([
-            expect.objectContaining({
-              changes: expect.arrayContaining([
-                expect.objectContaining({
-                  uri: expect.stringContaining('mixed-test.ts') as unknown,
-                }),
-              ]) as unknown,
-            }),
-          ]) as unknown,
+          result: watcherEventContaining(expect, 'mixed-test.ts'),
         });
       }, { timeout: 5000, interval: 100 });
     });
@@ -179,15 +176,7 @@ describe.sequential('LspProxy file watchers', () => {
         const res = await request(writer, reader, workspace.nextSeq(), '$/watcherEvents');
 
         expect(res).toMatchObject({
-          result: expect.arrayContaining([
-            expect.objectContaining({
-              changes: expect.arrayContaining([
-                expect.objectContaining({
-                  uri: expect.stringContaining('after-restart.ts') as unknown,
-                }),
-              ]) as unknown,
-            }),
-          ]) as unknown,
+          result: watcherEventContaining(expect, 'after-restart.ts'),
         });
       }, { timeout: 5000, interval: 100 });
     });
@@ -218,15 +207,7 @@ describe.sequential('LspProxy file watchers', () => {
         const res = await request(writer, reader, workspace.nextSeq(), '$/watcherEvents');
 
         expect(res).toMatchObject({
-          result: expect.arrayContaining([
-            expect.objectContaining({
-              changes: expect.arrayContaining([
-                expect.objectContaining({
-                  uri: expect.stringContaining('bp-1.ts') as unknown,
-                }),
-              ]) as unknown,
-            }),
-          ]) as unknown,
+          result: watcherEventContaining(expect, 'bp-1.ts'),
         });
       }, { timeout: 5000, interval: 100 });
 
@@ -234,15 +215,7 @@ describe.sequential('LspProxy file watchers', () => {
       const final = await request(writer, reader, workspace.nextSeq(), '$/watcherEvents');
       for (const dropped of ['bp-3.ts', 'bp-4.ts']) {
         expect(final).not.toMatchObject({
-          result: expect.arrayContaining([
-            expect.objectContaining({
-              changes: expect.arrayContaining([
-                expect.objectContaining({
-                  uri: expect.stringContaining(dropped) as unknown,
-                }),
-              ]) as unknown,
-            }),
-          ]) as unknown,
+          result: watcherEventContaining(expect, dropped),
         });
       }
     });
@@ -319,18 +292,7 @@ describe.sequential('LspProxy file watchers', () => {
         const res = await request(writer, reader, workspace.nextSeq(), '$/watcherEvents');
 
         expect(res).toMatchObject({
-          result: expect.arrayContaining([
-            expect.objectContaining({
-              changes: expect.arrayContaining([
-                expect.objectContaining({
-                  uri: expect.stringContaining('batch-a.ts') as unknown,
-                }),
-                expect.objectContaining({
-                  uri: expect.stringContaining('batch-b.ts') as unknown,
-                }),
-              ]) as unknown,
-            }),
-          ]) as unknown,
+          result: watcherEventContaining(expect, 'batch-a.ts', 'batch-b.ts'),
         });
       }, { timeout: 5000, interval: 100 });
     });

@@ -7,10 +7,12 @@ import { fakeUri } from '../helpers/fake.ts';
 import { collectMessages, initializeProxy, notify, request } from '../helpers/test-client.ts';
 import { type ServerConfig, it, mockServerConfig, namedConfig } from './harness.ts';
 
+const DiagnosticSchema = v.object({ source: v.optional(v.string()) });
+
 const DiagNotificationSchema = v.object({
   params: v.object({
     uri: v.string(),
-    diagnostics: v.array(v.object({ source: v.optional(v.string()) })),
+    diagnostics: v.array(DiagnosticSchema),
   }),
 });
 

@@ -1,29 +1,41 @@
 import * as v from 'valibot';
 import { LevelSchema } from './logger.ts';
 
+const StringArraySchema = v.array(v.string());
+
+const NotificationLogLevelSchema = v.pipe(
+  LevelSchema,
+  v.transform((l): 'debug' | 'info' | 'warn' | 'error' => {
+    const map = { DEBUG: 'debug', INFO: 'info', WARN: 'warn', ERROR: 'error' } as const;
+    return map[l];
+  }),
+);
+
 const NotificationConfigSchema = v.object({
-  logLevel: v.pipe(
-    LevelSchema,
-    v.transform((l): 'debug' | 'info' | 'warn' | 'error' => {
-      const map = { DEBUG: 'debug', INFO: 'info', WARN: 'warn', ERROR: 'error' } as const;
-      return map[l];
-    }),
-  ),
+  logLevel: NotificationLogLevelSchema,
 });
 
-export const ServerConfigSchema = v.object({
-  command: v.pipe(v.string(), v.nonEmpty('command must not be empty')),
-  args: v.array(v.string()),
-  languages: v.pipe(
-    v.record(v.string(), v.array(v.string())),
-    v.check(
-      langs => Object.keys(langs).length > 0,
-      'languages must define at least one language',
-    ),
+const CommandSchema = v.pipe(v.string(), v.nonEmpty('command must not be empty'));
+
+const LanguagesSchema = v.pipe(
+  v.record(v.string(), StringArraySchema),
+  v.check(
+    langs => Object.keys(langs).length > 0,
+    'languages must define at least one language',
   ),
+);
+
+const SettingsSchema = v.record(v.string(), v.unknown());
+
+const NotificationsSchema = v.record(v.string(), NotificationConfigSchema);
+
+export const ServerConfigSchema = v.object({
+  command: CommandSchema,
+  args: StringArraySchema,
+  languages: LanguagesSchema,
   transport: v.picklist(['stdio']),
-  settings: v.optional(v.record(v.string(), v.unknown())),
-  notifications: v.optional(v.record(v.string(), NotificationConfigSchema)),
+  settings: v.optional(SettingsSchema),
+  notifications: v.optional(NotificationsSchema),
 });
 
 export type ServerConfig = v.InferOutput<typeof ServerConfigSchema>;
@@ -36,19 +48,25 @@ const defaultWatcherExclude = [
   '**/dist/**',
 ];
 
+const ServerNameSchema = v.pipe(v.string(), v.nonEmpty('server name must not be empty'));
+
+const ServersSchema = v.pipe(
+  v.array(ServerNameSchema),
+  v.minLength(1, 'at least one server must be configured'),
+  v.check(
+    names => new Set(names).size === names.length,
+    'server names must be unique',
+  ),
+);
+
+const LogDirSchema = v.optional(v.string());
+
 export const ProxyConfigSchema = v.pipe(
   v.object({
-    servers: v.pipe(
-      v.array(v.pipe(v.string(), v.nonEmpty('server name must not be empty'))),
-      v.minLength(1, 'at least one server must be configured'),
-      v.check(
-        names => new Set(names).size === names.length,
-        'server names must be unique',
-      ),
-    ),
-    watcherExclude: v.optional(v.array(v.string())),
+    servers: ServersSchema,
+    watcherExclude: v.optional(StringArraySchema),
     logLevel: v.optional(LevelSchema),
-    logDir: v.optional(v.string()),
+    logDir: LogDirSchema,
   }),
   v.transform(cfg => ({
     ...cfg,

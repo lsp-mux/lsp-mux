@@ -21,10 +21,11 @@ describe('MessageBuffer', () => {
 
   it('rejects when full', ({ expect }) => {
     const buf = createMessageBuffer(2);
+    const randomRequest = () => createRequest(faker.number.int(), faker.string.alpha(8));
 
-    expect(buf.offer(createRequest(faker.number.int(), faker.string.alpha(8)))).toBe(true);
-    expect(buf.offer(createRequest(faker.number.int(), faker.string.alpha(8)))).toBe(true);
-    expect(buf.offer(createRequest(faker.number.int(), faker.string.alpha(8)))).toBe(false);
+    expect(buf.offer(randomRequest())).toBe(true);
+    expect(buf.offer(randomRequest())).toBe(true);
+    expect(buf.offer(randomRequest())).toBe(false);
     expect(buf).toHaveLength(2);
   });
 

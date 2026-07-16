@@ -98,11 +98,15 @@ describe('router', () => {
     const router = createRouter([vtsls]);
 
     it('handles URIs with query strings', ({ expect }) => {
-      expect(router.serversForUri(`${fakeUri('.ts')}?version=${String(faker.number.int())}`)).toStrictEqual([nameA]);
+      const uri = `${fakeUri('.ts')}?version=${String(faker.number.int())}`;
+
+      expect(router.serversForUri(uri)).toStrictEqual([nameA]);
     });
 
     it('handles URIs with fragments', ({ expect }) => {
-      expect(router.serversForUri(`${fakeUri('.ts')}#L${String(faker.number.int())}`)).toStrictEqual([nameA]);
+      const uri = `${fakeUri('.ts')}#L${String(faker.number.int())}`;
+
+      expect(router.serversForUri(uri)).toStrictEqual([nameA]);
     });
 
     it('handles URIs with no extension', ({ expect }) => {

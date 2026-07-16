@@ -274,16 +274,16 @@ describe('LspProxy lifecycle', () => {
     // Server should have received settings with workspaceFolder injected
     const responses = await request(writer, reader, 11, '$/receivedResponses');
 
+    const settingsMatcher = expect.objectContaining({
+      validate: 'on',
+      /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
+      nodePath: null,
+      workspaceFolder: expect.objectContaining({ uri: workspace.uri }) as unknown,
+    }) as unknown;
+
     expect(responses).toMatchObject({
       result: expect.arrayContaining([
-        expect.objectContaining({
-          result: [expect.objectContaining({
-            validate: 'on',
-            /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
-            nodePath: null,
-            workspaceFolder: expect.objectContaining({ uri: workspace.uri }) as unknown,
-          })],
-        }),
+        expect.objectContaining({ result: [settingsMatcher] }),
       ]) as unknown,
     });
   });

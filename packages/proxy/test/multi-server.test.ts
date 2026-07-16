@@ -20,10 +20,12 @@ const twoServerConfigs = () => new Map([
   ['beta', namedConfig('beta')],
 ]);
 
+const DiagnosticSchema = v.object({ source: v.optional(v.string()) });
+
 const DiagNotificationSchema = v.object({
   params: v.object({
     uri: v.string(),
-    diagnostics: v.array(v.object({ source: v.optional(v.string()) })),
+    diagnostics: v.array(DiagnosticSchema),
   }),
 });
 

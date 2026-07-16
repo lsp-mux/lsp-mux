@@ -30,10 +30,12 @@ const changeTypeToKind: Record<number, number> = {
 
 const WorkspaceFolderSchema = v.object({ uri: v.string(), name: v.string() });
 
+const BaseUriSchema = v.union([v.string(), WorkspaceFolderSchema]);
+
 const GlobPatternSchema = v.union([
   v.string(),
   v.object({
-    baseUri: v.union([v.string(), WorkspaceFolderSchema]),
+    baseUri: BaseUriSchema,
     pattern: v.string(),
   }),
 ]);

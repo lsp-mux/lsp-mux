@@ -33,30 +33,38 @@ const PublishDiagnosticsSchema = v.object({
   diagnostics: v.array(v.unknown()),
 });
 
+const OptionalNullableStringSchema = v.optional(v.nullable(v.string()));
+
 const InitializeParamsSchema = v.object({
-  rootUri: v.optional(v.nullable(v.string())),
+  rootUri: OptionalNullableStringSchema,
+});
+
+const RegistrationSchema = v.object({
+  id: v.string(),
+  method: v.string(),
+  registerOptions: v.optional(v.unknown()),
 });
 
 const RegisterCapabilitySchema = v.object({
-  registrations: v.array(v.object({
-    id: v.string(),
-    method: v.string(),
-    registerOptions: v.optional(v.unknown()),
-  })),
+  registrations: v.array(RegistrationSchema),
+});
+
+const UnregistrationSchema = v.object({
+  id: v.string(),
+  method: v.string(),
 });
 
 const UnregisterCapabilitySchema = v.object({
-  unregisterations: v.array(v.object({
-    id: v.string(),
-    method: v.string(),
-  })),
+  unregisterations: v.array(UnregistrationSchema),
+});
+
+const ConfigurationItemSchema = v.object({
+  scopeUri: OptionalNullableStringSchema,
+  section: OptionalNullableStringSchema,
 });
 
 const WorkspaceConfigurationSchema = v.object({
-  items: v.array(v.object({
-    scopeUri: v.optional(v.nullable(v.string())),
-    section: v.optional(v.nullable(v.string())),
-  })),
+  items: v.array(ConfigurationItemSchema),
 });
 
 const LogMessageSchema = v.object({

@@ -93,13 +93,15 @@ export const createRouter = (servers: readonly ServerEntry[]): Router => {
   };
 };
 
+const UriSchema = v.object({ uri: v.string() });
+
 const ParamsUriSchema = v.union([
   v.pipe(
-    v.object({ textDocument: v.object({ uri: v.string() }) }),
+    v.object({ textDocument: UriSchema }),
     v.transform(({ textDocument }) => textDocument.uri),
   ),
   v.pipe(
-    v.object({ uri: v.string() }),
+    UriSchema,
     v.transform(({ uri }) => uri),
   ),
 ]);
