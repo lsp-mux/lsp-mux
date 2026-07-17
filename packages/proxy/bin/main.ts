@@ -22,12 +22,17 @@ const configWatchDebounceMs = 200;
 const watchConfigForLogLevel = (configDir: string, log: Logger): Disposable => {
   let debounce: ReturnType<typeof setTimeout> | undefined;
 
+  const applyLatestLogLevel = async (): Promise<void> => {
+    try {
+      const cfg = await loadProxyConfig(configDir);
+      log.setLevel(cfg.logLevel);
+    } catch { /* ignore read/parse errors during write */ }
+  };
+
   const reload = (): void => {
     clearTimeout(debounce);
     debounce = setTimeout(() => {
-      void loadProxyConfig(configDir)
-        .then((cfg) => { log.setLevel(cfg.logLevel); })
-        .catch(() => { /* ignore read/parse errors during write */ });
+      void applyLatestLogLevel();
     }, configWatchDebounceMs);
   };
 
