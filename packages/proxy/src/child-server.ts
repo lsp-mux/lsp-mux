@@ -40,7 +40,8 @@ export class ChildServer {
     });
 
     proc.stderr.on('data', (chunk: Buffer) => {
-      for (const line of chunk.toString().split('\n').filter(Boolean)) {
+      for (const line of chunk.toString().split('\n')) {
+        if (!line) continue;
         this.log.debug(`[${this.name}] ${line}`);
       }
     });
