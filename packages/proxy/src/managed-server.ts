@@ -265,6 +265,10 @@ export const createManagedServer = (
         return;
       }
 
+      /* eslint-disable-next-line require-atomic-updates --
+         Unconditional transition after the isSuperseded guard above — a
+         constant assignment, not derived from a stale read, so there is no
+         interleaving race. */
       state = 'running';
       scheduler.reset();
       callbacks.onStateChange(state);

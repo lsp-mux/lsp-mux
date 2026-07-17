@@ -81,6 +81,11 @@ export const createFlushScheduler = (options: FlushSchedulerOptions): FlushSched
     try {
       await onFlush();
     } finally {
+      /* eslint-disable-next-line require-atomic-updates --
+         Unconditional reset of the AsyncState holder in finally — a constant
+         assignment, not a read-modify-write, so there is no interleaving
+         race. The holder exists precisely to make post-await mutations
+         explicit (see AsyncState). */
       state.flushInProgress = false;
       if (shouldRecheck()) {
         // Re-enter the debounce cycle instead of flushing immediately.
