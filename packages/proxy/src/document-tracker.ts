@@ -112,22 +112,23 @@ export const toArray = (docs: DocumentMap): readonly TrackedDocument[] => docs.v
 
 // --- Pure helpers ---
 
+/** Earliest of two indexOf results, treating -1 (not found) as absent. */
+const firstFound = (left: number, right: number): number => {
+  if (left === -1) return right;
+  if (right === -1) return left;
+  return Math.min(left, right);
+};
+
 const positionToOffset = (text: string, pos: Position): number => {
   let offset = 0;
   for (let line = 0; line < pos.line; line++) {
     const cr = text.indexOf('\r', offset);
     const lf = text.indexOf('\n', offset);
-    const eol =
-      cr === -1 && lf === -1
-        ? -1
-        : cr === -1
-          ? lf
-          : lf === -1
-            ? cr
-            : Math.min(cr, lf);
+    const eol = firstFound(cr, lf);
     if (eol === -1) return text.length;
     // Skip \r\n as a single line terminator
-    offset = text[eol] === '\r' && text[eol + 1] === '\n' ? eol + crlfLength : eol + 1;
+    const isCrlf = text[eol] === '\r' && text[eol + 1] === '\n';
+    offset = eol + (isCrlf ? crlfLength : 1);
   }
   return Math.min(offset + pos.character, text.length);
 };
