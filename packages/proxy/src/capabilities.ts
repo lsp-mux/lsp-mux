@@ -19,7 +19,7 @@ const deepMerge = (
 ): Record<string, unknown> => {
   const result: Record<string, unknown> = { ...left };
   for (const [key, value] of Object.entries(right)) {
-    result[key] = key in result ? mergeValues(result[key], value) : value;
+    result[key] = Object.hasOwn(result, key) ? mergeValues(result[key], value) : value;
   }
   return result;
 };

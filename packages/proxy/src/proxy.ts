@@ -571,7 +571,7 @@ export class LspProxy {
 
     const result = parsed.output.items.map((item) => {
       const section = item.section;
-      if (section && section in settings) return settings[section];
+      if (section && Object.hasOwn(settings, section)) return settings[section];
       return { ...settings, workspaceFolder };
     });
 
