@@ -59,8 +59,6 @@ export class WorkspaceWatcher {
   private readonly delegate: WatcherDelegate;
   private readonly log: Logger;
 
-  get isDegraded(): boolean { return this._isDegraded; }
-
   constructor(options: WorkspaceWatcherOptions, delegate: WatcherDelegate) {
     this.workspaceRoot = options.workspaceRoot;
     this.isExcluded = fw.createExcludeMatcher(options.watcherExclude ?? []);
@@ -68,56 +66,6 @@ export class WorkspaceWatcher {
     this.maxPendingEvents = options.maxPendingEvents ?? defaultMaxPendingEvents;
     this.delegate = delegate;
     this.log = options.log;
-  }
-
-  async start(): Promise<void> {
-    this.resolvedRoot = await fw.resolveRoot(this.workspaceRoot);
-
-    if (process.platform === 'linux') {
-      const major = Number(process.versions.node.split('.', 1)[0]);
-      if (major < minRecursiveWatchNodeMajor) {
-        this.log.warn(`Recursive file watching may not work on Linux with Node.js ${process.versions.node} (requires ≥20.x)`);
-      }
-    }
-
-    const root = this.workspaceRoot;
-    const pending = this.pendingEvents;
-
-    this.scheduler = createFlushScheduler({
-      debounceMs: watcherDebounceMs,
-      maxWaitMs: watcherMaxWaitMs,
-      onFlush: () => this.flushFileEvents(),
-    });
-
-    this.watcher = watch(
-      root,
-      { recursive: true },
-      (_event, filename) => {
-        if (!filename) return;
-        if (this.delegate.isStopped()) return;
-
-        const normalized = filename.replaceAll('\\', '/');
-        if (this.isExcluded(normalized)) return;
-
-        if (pending.size >= this.maxPendingEvents && !pending.has(normalized)) {
-          if (!this.pendingOverflowWarned) {
-            this.log.warn(`Pending file events exceeded cap (${String(this.maxPendingEvents)}) — dropping new events until flush`);
-            this.pendingOverflowWarned = true;
-          }
-          return;
-        }
-
-        pending.add(normalized);
-        this.scheduler?.notify();
-      },
-    );
-
-    this.watcher.on('error', (err) => {
-      this.log.error('Workspace watcher error — file watching may be degraded:', err);
-      this._isDegraded = true;
-    });
-
-    this.log.info(`Watching workspace: ${this.workspaceRoot}`);
   }
 
   private async flushFileEvents(): Promise<void> {
@@ -247,6 +195,58 @@ export class WorkspaceWatcher {
 
     this.log.info(`Resynced ${uri} from disk`);
     return 'resynced';
+  }
+
+  get isDegraded(): boolean { return this._isDegraded; }
+
+  async start(): Promise<void> {
+    this.resolvedRoot = await fw.resolveRoot(this.workspaceRoot);
+
+    if (process.platform === 'linux') {
+      const major = Number(process.versions.node.split('.', 1)[0]);
+      if (major < minRecursiveWatchNodeMajor) {
+        this.log.warn(`Recursive file watching may not work on Linux with Node.js ${process.versions.node} (requires ≥20.x)`);
+      }
+    }
+
+    const root = this.workspaceRoot;
+    const pending = this.pendingEvents;
+
+    this.scheduler = createFlushScheduler({
+      debounceMs: watcherDebounceMs,
+      maxWaitMs: watcherMaxWaitMs,
+      onFlush: () => this.flushFileEvents(),
+    });
+
+    this.watcher = watch(
+      root,
+      { recursive: true },
+      (_event, filename) => {
+        if (!filename) return;
+        if (this.delegate.isStopped()) return;
+
+        const normalized = filename.replaceAll('\\', '/');
+        if (this.isExcluded(normalized)) return;
+
+        if (pending.size >= this.maxPendingEvents && !pending.has(normalized)) {
+          if (!this.pendingOverflowWarned) {
+            this.log.warn(`Pending file events exceeded cap (${String(this.maxPendingEvents)}) — dropping new events until flush`);
+            this.pendingOverflowWarned = true;
+          }
+          return;
+        }
+
+        pending.add(normalized);
+        this.scheduler?.notify();
+      },
+    );
+
+    this.watcher.on('error', (err) => {
+      this.log.error('Workspace watcher error — file watching may be degraded:', err);
+      this._isDegraded = true;
+    });
+
+    this.log.info(`Watching workspace: ${this.workspaceRoot}`);
   }
 
   dispose(): void {

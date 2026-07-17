@@ -165,8 +165,6 @@ export class LspProxy {
   private workspaceRoot: string | undefined;
   private watcher: WorkspaceWatcher | undefined;
 
-  get isWatcherDegraded(): boolean { return this.watcher?.isDegraded ?? false; }
-
   private readonly servers: Map<string, ManagedServer>;
   private readonly serverConfigs: ReadonlyMap<string, ServerConfig>;
   private readonly router: Router;
@@ -210,23 +208,6 @@ export class LspProxy {
     }
 
     this.router = createRouter(serverEntries);
-  }
-
-  start(): Promise<void> {
-    this.log.info('Proxy starting');
-    this.clientReader.listen((msg) => {
-      this.handleClientMessage(msg);
-    });
-    this.clientReader.onError((err) => {
-      this.log.error('Client reader error:', err);
-    });
-    this.clientReader.onClose(() => {
-      this.log.info('Client connection closed');
-      this.dispose();
-    });
-    return new Promise((resolve) => {
-      this.resolveDone = resolve;
-    });
   }
 
   // ── Client → Server ──────────────────────────────────────────────────
@@ -825,6 +806,27 @@ export class LspProxy {
        forget so message processing isn't blocked on flush. Log failures. */
     this.clientWriter.write(msg).catch((error: unknown) => {
       this.log.warn('Client write failed:', error);
+    });
+  }
+
+  // ── Lifecycle / Public API ───────────────────────────────────────────
+
+  get isWatcherDegraded(): boolean { return this.watcher?.isDegraded ?? false; }
+
+  start(): Promise<void> {
+    this.log.info('Proxy starting');
+    this.clientReader.listen((msg) => {
+      this.handleClientMessage(msg);
+    });
+    this.clientReader.onError((err) => {
+      this.log.error('Client reader error:', err);
+    });
+    this.clientReader.onClose(() => {
+      this.log.info('Client connection closed');
+      this.dispose();
+    });
+    return new Promise((resolve) => {
+      this.resolveDone = resolve;
     });
   }
 
