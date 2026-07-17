@@ -10,8 +10,7 @@ export const deepMerge = (
   override: Record<string, unknown>,
 ): Record<string, unknown> => {
   const result: Record<string, unknown> = { ...base };
-  for (const key of Object.keys(override)) {
-    const overrideVal = override[key];
+  for (const [key, overrideVal] of Object.entries(override)) {
     if (overrideVal === undefined) continue;
     const baseVal = result[key];
     result[key] = isPlainObject(baseVal) && isPlainObject(overrideVal)
