@@ -14,25 +14,33 @@ import type { Logger } from '../src/logger.ts';
 import { normalizeFileUri } from '../src/uri.ts';
 import { type WatcherDelegate, WorkspaceWatcher, type WorkspaceWatcherOptions } from '../src/workspace-watcher.ts';
 
+/* eslint-disable-next-line vitest/prefer-import-in-mock --
+   Node's overloaded fs signatures aren't reproduced by vi.fn<typeof fn>(),
+   so the typed import() form rejects the partial factory (Partial<T> shape
+   mismatch on the overloaded member). Keep the string form. */
 vi.mock('node:fs/promises', () => ({
   stat: vi.fn<typeof stat>(),
   readFile: vi.fn<typeof readFile>(),
 }));
+/* eslint-disable-next-line vitest/prefer-import-in-mock --
+   Node's overloaded fs.watch signature isn't reproduced by vi.fn<typeof
+   watch>(), so the typed import() form rejects the partial factory. Keep the
+   string form. */
 vi.mock('node:fs', () => ({
   watch: vi.fn<typeof watch>(),
 }));
-vi.mock('../src/flush-scheduler.ts', () => ({
+vi.mock(import('../src/flush-scheduler.ts'), () => ({
   createFlushScheduler: vi.fn<typeof createFlushScheduler>(),
 }));
-vi.mock('../src/file-watcher.ts', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../src/file-watcher.ts')>();
+vi.mock(import('../src/file-watcher.ts'), async (importOriginal) => {
+  const actual = await importOriginal();
   return {
     ...actual,
     resolveRoot: vi.fn<typeof fw.resolveRoot>(),
     isWithinRoot: vi.fn<typeof fw.isWithinRoot>(),
   };
 });
-vi.mock('../src/logger.ts', () => ({
+vi.mock(import('../src/logger.ts'), () => ({
   createLogger: vi.fn<typeof createLogger>(),
 }));
 
