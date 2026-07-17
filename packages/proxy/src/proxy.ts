@@ -129,6 +129,21 @@ export interface ProxyOptions {
 }
 
 /**
+ * Rewrite the textDocument.uri in a document sync notification to a
+ *  normalized form. Used when the client sends non-standard file URIs.
+ */
+const rewriteDocSyncUri = (msg: NotificationMessage, normalizedUri: string): NotificationMessage => {
+  const params = msg.params;
+  if (!isPlainObject(params)) return msg;
+  const td = params['textDocument'];
+  if (!isPlainObject(td)) return msg;
+  return createNotification(msg.method, {
+    ...params,
+    textDocument: { ...td, uri: normalizedUri },
+  });
+};
+
+/**
  * Multi-server LSP proxy.
  *
  * Sits between the client (stdio) and one or more child LSP servers.
@@ -303,7 +318,7 @@ export class LspProxy {
       const rawUri = extractUri(msg);
       const uri = rawUri ? normalizeFileUri(rawUri) : undefined;
       const normalized = uri && uri !== rawUri
-        ? this.rewriteDocSyncUri(msg, uri)
+        ? rewriteDocSyncUri(msg, uri)
         : msg;
 
       // Reset version offset on open/close — client version is authoritative
@@ -664,21 +679,6 @@ export class LspProxy {
   }
 
   // ── URI / Version Rewriting ──────────────────────────────────────────
-
-  /**
-   * Rewrite the textDocument.uri in a document sync notification to a
-   *  normalized form. Used when the client sends non-standard file URIs.
-   */
-  private rewriteDocSyncUri(msg: NotificationMessage, normalizedUri: string): NotificationMessage {
-    const params = msg.params;
-    if (!isPlainObject(params)) return msg;
-    const td = params['textDocument'];
-    if (!isPlainObject(td)) return msg;
-    return createNotification(msg.method, {
-      ...params,
-      textDocument: { ...td, uri: normalizedUri },
-    });
-  }
 
   /**
    * Rewrite the textDocument.version in a document sync notification if a
