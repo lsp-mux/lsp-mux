@@ -4,7 +4,9 @@ import path from 'node:path';
 const entriesDir = path.join(import.meta.dirname, '..', 'entries');
 const outFile = path.join(import.meta.dirname, '..', 'src', 'entries.generated.ts');
 
-const files = readdirSync(entriesDir).filter(fileName => fileName.endsWith('.json')).sort();
+const files = readdirSync(entriesDir)
+  .filter(fileName => fileName.endsWith('.json'))
+  .toSorted((left, right) => left.localeCompare(right));
 
 const properties = files.map((fileName) => {
   const name = path.basename(fileName, '.json');
