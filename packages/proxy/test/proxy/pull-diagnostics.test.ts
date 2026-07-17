@@ -1,10 +1,15 @@
 /** @module-tag slow */
-import { faker } from '@faker-js/faker';
 import * as v from 'valibot';
 import { describe } from 'vitest';
 import type { Message } from 'vscode-jsonrpc';
 import { fakeUri } from '../helpers/fake.ts';
-import { collectMessages, initializeProxy, notify, request } from '../helpers/test-client.ts';
+import {
+  collectMessages,
+  initializeProxy,
+  notify,
+  openDocument,
+  request,
+} from '../helpers/test-client.ts';
 import { type ServerConfig, it, mockServerConfig, namedConfig } from './harness.ts';
 
 const DiagnosticSchema = v.object({ source: v.optional(v.string()) });
@@ -27,7 +32,10 @@ const getDiagnostics = (msg: Message | undefined) => {
 };
 
 describe('Pull diagnostics', () => {
-  it('proactively pulls and publishes diagnostics after didOpen', async ({ createProxy, expect }) => {
+  it('proactively pulls and publishes diagnostics after didOpen', async ({
+    createProxy,
+    expect,
+  }) => {
     const config: ServerConfig = {
       ...mockServerConfig,
       args: [...mockServerConfig.args, '--pull-diagnostics'],
@@ -43,9 +51,7 @@ describe('Pull diagnostics', () => {
       1,
     );
 
-    await notify(writer, 'textDocument/didOpen', {
-      textDocument: { uri, languageId: 'typescript', version: 1, text: faker.lorem.word() },
-    });
+    await openDocument(writer, { uri });
 
     // The proxy should proactively pull diagnostics and publish them
     const msgs = await diagPromise;
@@ -58,7 +64,10 @@ describe('Pull diagnostics', () => {
     );
   });
 
-  it('skips proactive pull when client supports pull diagnostics natively', async ({ createProxy, expect }) => {
+  it('skips proactive pull when client supports pull diagnostics natively', async ({
+    createProxy,
+    expect,
+  }) => {
     const config: ServerConfig = {
       ...mockServerConfig,
       args: [...mockServerConfig.args, '--pull-diagnostics'],
@@ -89,9 +98,7 @@ describe('Pull diagnostics', () => {
       1,
     );
 
-    await notify(writer, 'textDocument/didOpen', {
-      textDocument: { uri, languageId: 'typescript', version: 1, text: faker.lorem.word() },
-    });
+    await openDocument(writer, { uri });
 
     const pushMsgs = await diagPromise;
 
@@ -120,9 +127,7 @@ describe('Pull diagnostics', () => {
 
     const uri = fakeUri();
 
-    await notify(writer, 'textDocument/didOpen', {
-      textDocument: { uri, languageId: 'typescript', version: 1, text: faker.lorem.word() },
-    });
+    await openDocument(writer, { uri });
 
     // Wait for merged diagnostics containing both servers' pull results
     // plus the push diagnostics from didOpen

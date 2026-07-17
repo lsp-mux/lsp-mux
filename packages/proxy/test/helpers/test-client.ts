@@ -1,6 +1,8 @@
+import { faker } from '@faker-js/faker';
 import type { Message, ResponseMessage } from 'vscode-jsonrpc';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import { Message as Msg, createNotification, createRequest } from '../../src/types.ts';
+import { fakeUri } from './fake.ts';
 
 /** Collect messages from a reader until a predicate matches. */
 export const waitForMessage = (
@@ -34,7 +36,9 @@ export const collectMessages = (
   new Promise((resolve, reject) => {
     const collected: Message[] = [];
     const timer = setTimeout(
-      () => { reject(new Error(`Timeout: collected ${String(collected.length)}/${String(count)} messages`)); },
+      () => {
+        reject(new Error(`Timeout: collected ${String(collected.length)}/${String(count)} messages`));
+      },
       timeoutMs,
     );
     const disposable = reader.listen((msg) => {
@@ -82,9 +86,30 @@ export const request = (
   });
 
 /** Send a notification (fire and forget). */
-export const notify = async (writer: StreamMessageWriter, method: string, params?: object): Promise<void> => {
+export const notify = async (
+  writer: StreamMessageWriter,
+  method: string,
+  params?: object,
+): Promise<void> => {
   await writer.write(createNotification(method, params));
 };
+
+/**
+ * Open a throwaway TypeScript document (e.g. to trigger lazy server start).
+ * Override uri/text/version when the test cares about the content.
+ */
+export const openDocument = (
+  writer: StreamMessageWriter,
+  overrides: { uri?: string; text?: string; version?: number } = {},
+): Promise<void> =>
+  notify(writer, 'textDocument/didOpen', {
+    textDocument: {
+      uri: overrides.uri ?? fakeUri(),
+      languageId: 'typescript',
+      version: overrides.version ?? 1,
+      text: overrides.text ?? faker.lorem.word(),
+    },
+  });
 
 /** Perform the full initialize handshake. */
 export const initializeProxy = async (

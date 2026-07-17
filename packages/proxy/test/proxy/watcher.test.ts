@@ -5,7 +5,13 @@ import { describe, vi } from 'vitest';
 import type { ExpectStatic } from 'vitest';
 import type { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import { Message as Msg } from '../../src/types.ts';
-import { initializeProxy, notify, request, waitForMessage } from '../helpers/test-client.ts';
+import {
+  initializeProxy,
+  notify,
+  openDocument,
+  request,
+  waitForMessage,
+} from '../helpers/test-client.ts';
 import { type ServerConfig, type Workspace, it, mockServerConfig } from './harness.ts';
 
 /** Poll until the proxy's file watcher is active and dispatching events. */
@@ -85,9 +91,7 @@ describe.sequential('LspProxy file watchers', () => {
       );
 
       // didOpen triggers lazy start — server sends registerCapability on initialized
-      await notify(writer, 'textDocument/didOpen', {
-        textDocument: { uri: 'file:///trigger.ts', languageId: 'typescript', version: 1, text: '' },
-      });
+      await openDocument(writer, { uri: 'file:///trigger.ts', text: '' });
 
       // Verify only the non-watcher registration was forwarded
       const forwarded = await forwardedPromise;
@@ -249,9 +253,7 @@ describe.sequential('LspProxy file watchers', () => {
       await notify(writer, 'initialized', {});
 
       // didOpen triggers lazy start — server registers watchers on initialized
-      await notify(writer, 'textDocument/didOpen', {
-        textDocument: { uri: 'file:///trigger.ts', languageId: 'typescript', version: 1, text: '' },
-      });
+      await openDocument(writer, { uri: 'file:///trigger.ts', text: '' });
 
       // Watcher registration should be forwarded to client (not intercepted)
       const forwarded = await forwardedPromise;

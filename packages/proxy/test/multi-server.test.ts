@@ -5,7 +5,14 @@ import { describe } from 'vitest';
 import type { Message, ResponseMessage } from 'vscode-jsonrpc';
 import { Message as Msg, createRequest } from '../src/types.ts';
 import { fakeUri } from './helpers/fake.ts';
-import { collectMessages, initializeProxy, notify, request, waitForMessage } from './helpers/test-client.ts';
+import {
+  collectMessages,
+  initializeProxy,
+  notify,
+  openDocument,
+  request,
+  waitForMessage,
+} from './helpers/test-client.ts';
 import { it, namedConfig } from './proxy/harness.ts';
 
 const testUri = fakeUri();
@@ -67,9 +74,7 @@ describe('Multi-server proxy', () => {
     await initializeProxy({ writer, reader });
 
     // Open a .ts file — only alpha should start
-    await notify(writer, 'textDocument/didOpen', {
-      textDocument: { uri: testUri, languageId: 'typescript', version: 1, text: faker.lorem.word() },
-    });
+    await openDocument(writer, { uri: testUri, text: faker.lorem.word() });
 
     // Hover on .ts goes to alpha (primary for .ts)
     const hover = await request({ writer, reader }, 10, 'textDocument/hover', {
@@ -82,7 +87,7 @@ describe('Multi-server proxy', () => {
     // Shutdown should succeed instantly — beta was never started
     const shutdownRes = await request({ writer, reader }, 99, 'shutdown');
 
-    /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
+    /* eslint-disable-next-line unicorn/no-null -- LSP protocol uses null on the wire. */
     expect(shutdownRes).toMatchObject({ result: null });
   });
 
@@ -96,14 +101,7 @@ describe('Multi-server proxy', () => {
       2,
     );
 
-    await notify(writer, 'textDocument/didOpen', {
-      textDocument: {
-        uri: multiUri,
-        languageId: 'typescript',
-        version: 1,
-        text: faker.lorem.sentence(),
-      },
-    });
+    await openDocument(writer, { uri: multiUri, text: faker.lorem.sentence() });
 
     const diagnosticMsgs = await diagPromise;
 
@@ -135,14 +133,7 @@ describe('Multi-server proxy', () => {
       2,
     );
 
-    await notify(writer, 'textDocument/didOpen', {
-      textDocument: {
-        uri: fanoutUri,
-        languageId: 'typescript',
-        version: 1,
-        text: faker.lorem.sentence(),
-      },
-    });
+    await openDocument(writer, { uri: fanoutUri, text: faker.lorem.sentence() });
 
     const msgs = await diagPromise;
 
@@ -162,9 +153,7 @@ describe('Multi-server proxy', () => {
       2,
     );
 
-    await notify(writer, 'textDocument/didOpen', {
-      textDocument: { uri: crashUri, languageId: 'typescript', version: 1, text: faker.lorem.word() },
-    });
+    await openDocument(writer, { uri: crashUri, text: faker.lorem.word() });
 
     await bothDiags;
 
@@ -192,7 +181,7 @@ describe('Multi-server proxy', () => {
 
     const res = await request({ writer, reader }, 200, 'shutdown');
 
-    /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
+    /* eslint-disable-next-line unicorn/no-null -- LSP protocol uses null on the wire. */
     expect(res).toMatchObject({ result: null });
   });
 
@@ -212,7 +201,10 @@ describe('Multi-server proxy', () => {
     expect(hover).toMatchObject({ result: { echo: 'textDocument/hover' } });
   });
 
-  it('forces textDocumentSync to Full even when a server advertises Incremental', async ({ createProxy, expect }) => {
+  it('forces textDocumentSync to Full even when a server advertises Incremental', async ({
+    createProxy,
+    expect,
+  }) => {
     const configs = new Map([
       ['alpha', namedConfig('alpha')],
       ['beta', namedConfig('beta', '--incremental-sync')],
@@ -229,7 +221,10 @@ describe('Multi-server proxy', () => {
     });
   });
 
-  it('routes client ack to originating server only (not broadcast)', async ({ createProxy, expect }) => {
+  it('routes client ack to originating server only (not broadcast)', async ({
+    createProxy,
+    expect,
+  }) => {
     const configs = new Map([
       ['alpha', namedConfig('alpha')],
       ['beta', namedConfig('beta', '--register-mixed')],
@@ -239,7 +234,7 @@ describe('Multi-server proxy', () => {
 
     await request({ writer, reader }, 0, 'initialize', {
       processId: process.pid,
-      /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
+      /* eslint-disable-next-line unicorn/no-null -- LSP protocol uses null on the wire. */
       rootUri: null,
       capabilities: {},
     });
@@ -252,14 +247,12 @@ describe('Multi-server proxy', () => {
     );
 
     // didOpen triggers lazy start of both servers — beta sends registerCapability on initialized
-    await notify(writer, 'textDocument/didOpen', {
-      textDocument: { uri: triggerUri, languageId: 'typescript', version: 1, text: faker.lorem.word() },
-    });
+    await openDocument(writer, { uri: triggerUri, text: faker.lorem.word() });
 
     // Client acks the forwarded registration
     const forwarded = await forwardedPromise;
     if (Msg.isRequest(forwarded)) {
-      /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
+      /* eslint-disable-next-line unicorn/no-null -- LSP protocol uses null on the wire. */
       const ack: ResponseMessage = { jsonrpc: '2.0', id: forwarded.id, result: null };
       await writer.write(ack);
     }

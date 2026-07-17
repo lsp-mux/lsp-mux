@@ -1,7 +1,7 @@
 /** @module-tag slow */
 import { writeFile } from 'node:fs/promises';
 import { describe, vi } from 'vitest';
-import { initializeProxy, notify, request } from '../helpers/test-client.ts';
+import { initializeProxy, notify, openDocument, request } from '../helpers/test-client.ts';
 import { it } from './harness.ts';
 
 describe('LspProxy file resync', () => {
@@ -13,14 +13,7 @@ describe('LspProxy file resync', () => {
     await initializeProxy({ writer, reader }, workspace.uri);
 
     await writeFile(tmpFile, 'const original = 1;');
-    await notify(writer, 'textDocument/didOpen', {
-      textDocument: {
-        uri: tmpUri,
-        languageId: 'typescript',
-        version: 1,
-        text: 'const original = 1;',
-      },
-    });
+    await openDocument(writer, { uri: tmpUri, text: 'const original = 1;' });
 
     await writeFile(tmpFile, 'const modified = 2;');
 
@@ -35,7 +28,11 @@ describe('LspProxy file resync', () => {
     }, { timeout: 5000, interval: 100 });
   });
 
-  it('maintains monotonically increasing versions after resync', async ({ createProxy, workspace, expect }) => {
+  it('maintains monotonically increasing versions after resync', async ({
+    createProxy,
+    workspace,
+    expect,
+  }) => {
     const { writer, reader } = createProxy();
 
     const { path: tmpFile, uri: tmpUri } = workspace.file('resync-test.ts');
@@ -44,9 +41,7 @@ describe('LspProxy file resync', () => {
 
     // Open at version 1 → server sees v1
     await writeFile(tmpFile, 'v1');
-    await notify(writer, 'textDocument/didOpen', {
-      textDocument: { uri: tmpUri, languageId: 'typescript', version: 1, text: 'v1' },
-    });
+    await openDocument(writer, { uri: tmpUri, text: 'v1' });
 
     // External tool writes → resync bumps to v2
     await writeFile(tmpFile, 'v1-resynced');
@@ -86,9 +81,7 @@ describe('LspProxy file resync', () => {
 
     // Open at version 1
     await writeFile(tmpFile, 'original');
-    await notify(writer, 'textDocument/didOpen', {
-      textDocument: { uri: tmpUri, languageId: 'typescript', version: 1, text: 'original' },
-    });
+    await openDocument(writer, { uri: tmpUri, text: 'original' });
 
     // External write → resync bumps offset to 1 (server sees v2)
     await writeFile(tmpFile, 'resynced');
@@ -109,9 +102,7 @@ describe('LspProxy file resync', () => {
 
     // Reopen at version 1 — server should see v1 (offset was cleared)
     await writeFile(tmpFile, 'reopened');
-    await notify(writer, 'textDocument/didOpen', {
-      textDocument: { uri: tmpUri, languageId: 'typescript', version: 1, text: 'reopened' },
-    });
+    await openDocument(writer, { uri: tmpUri, text: 'reopened' });
 
     const res = await request({ writer, reader }, workspace.nextSeq(), '$/documents');
 
@@ -122,7 +113,11 @@ describe('LspProxy file resync', () => {
     });
   });
 
-  it('server receives correct version after close and reopen post-resync', async ({ createProxy, workspace, expect }) => {
+  it('server receives correct version after close and reopen post-resync', async ({
+    createProxy,
+    workspace,
+    expect,
+  }) => {
     const { writer, reader } = createProxy();
 
     const { path: tmpFile, uri: tmpUri } = workspace.file('resync-test.ts');
@@ -131,9 +126,7 @@ describe('LspProxy file resync', () => {
 
     // Open at version 1
     await writeFile(tmpFile, 'original');
-    await notify(writer, 'textDocument/didOpen', {
-      textDocument: { uri: tmpUri, languageId: 'typescript', version: 1, text: 'original' },
-    });
+    await openDocument(writer, { uri: tmpUri, text: 'original' });
 
     // External write → resync bumps server version to 2 (offset=1)
     await writeFile(tmpFile, 'resynced');
@@ -152,9 +145,7 @@ describe('LspProxy file resync', () => {
 
     // Reopen at version 1 — server should see v1, NOT v2
     await writeFile(tmpFile, 'reopened');
-    await notify(writer, 'textDocument/didOpen', {
-      textDocument: { uri: tmpUri, languageId: 'typescript', version: 1, text: 'reopened' },
-    });
+    await openDocument(writer, { uri: tmpUri, text: 'reopened' });
 
     // Query server directly — it should have version 1 (offset was cleared)
     const res = await request({ writer, reader }, workspace.nextSeq(), '$/documents');
@@ -166,7 +157,11 @@ describe('LspProxy file resync', () => {
     });
   });
 
-  it('multiple resyncs produce monotonically increasing versions', async ({ createProxy, workspace, expect }) => {
+  it('multiple resyncs produce monotonically increasing versions', async ({
+    createProxy,
+    workspace,
+    expect,
+  }) => {
     const { writer, reader } = createProxy();
 
     const { path: tmpFile, uri: tmpUri } = workspace.file('resync-test.ts');
@@ -175,9 +170,7 @@ describe('LspProxy file resync', () => {
 
     // Open at version 1 → server sees v1
     await writeFile(tmpFile, 'v1');
-    await notify(writer, 'textDocument/didOpen', {
-      textDocument: { uri: tmpUri, languageId: 'typescript', version: 1, text: 'v1' },
-    });
+    await openDocument(writer, { uri: tmpUri, text: 'v1' });
 
     // First external write → resync to v2 (offset=1)
     await writeFile(tmpFile, 'disk-v2');
@@ -220,7 +213,11 @@ describe('LspProxy file resync', () => {
     }, { timeout: 5000, interval: 100 });
   });
 
-  it('converges to final content after rapid successive writes', async ({ createProxy, workspace, expect }) => {
+  it('converges to final content after rapid successive writes', async ({
+    createProxy,
+    workspace,
+    expect,
+  }) => {
     const { writer, reader } = createProxy();
 
     const { path: tmpFile, uri: tmpUri } = workspace.file('resync-test.ts');
@@ -229,9 +226,7 @@ describe('LspProxy file resync', () => {
 
     // Open a file
     await writeFile(tmpFile, 'version-0');
-    await notify(writer, 'textDocument/didOpen', {
-      textDocument: { uri: tmpUri, languageId: 'typescript', version: 1, text: 'version-0' },
-    });
+    await openDocument(writer, { uri: tmpUri, text: 'version-0' });
 
     // Rapid successive writes — proxy should converge to the final content
     for (let version = 1; version <= 5; version++) {
@@ -249,7 +244,11 @@ describe('LspProxy file resync', () => {
     }, { timeout: 5000, interval: 100 });
   });
 
-  it('skips resync for files exceeding maxResyncBytes', async ({ createProxy, workspace, expect }) => {
+  it('skips resync for files exceeding maxResyncBytes', async ({
+    createProxy,
+    workspace,
+    expect,
+  }) => {
     const { writer, reader } = createProxy({ maxResyncBytes: 10 });
 
     const { path: tmpFile, uri: tmpUri } = workspace.file('resync-test.ts');
@@ -258,15 +257,11 @@ describe('LspProxy file resync', () => {
 
     // Open the target file and a small "fence" file
     await writeFile(tmpFile, 'small');
-    await notify(writer, 'textDocument/didOpen', {
-      textDocument: { uri: tmpUri, languageId: 'typescript', version: 1, text: 'small' },
-    });
+    await openDocument(writer, { uri: tmpUri, text: 'small' });
 
     const { path: fenceFile, uri: fenceUri } = workspace.file('fence.ts');
     await writeFile(fenceFile, 'original');
-    await notify(writer, 'textDocument/didOpen', {
-      textDocument: { uri: fenceUri, languageId: 'typescript', version: 1, text: 'original' },
-    });
+    await openDocument(writer, { uri: fenceUri, text: 'original' });
 
     // External write: target exceeds threshold, fence stays small
     await writeFile(tmpFile, 'x'.repeat(100));

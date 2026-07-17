@@ -3,7 +3,7 @@ import { faker } from '@faker-js/faker';
 import { describe } from 'vitest';
 import type { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import { fakeUri } from '../helpers/fake.ts';
-import { initializeProxy, notify, request } from '../helpers/test-client.ts';
+import { initializeProxy, notify, openDocument, request } from '../helpers/test-client.ts';
 import { type ServerConfig, it } from './harness.ts';
 
 const testUri = fakeUri();
@@ -35,14 +35,7 @@ describe('LspProxy restart behavior', () => {
 
     await initializeProxy({ writer, reader });
 
-    await notify(writer, 'textDocument/didOpen', {
-      textDocument: {
-        uri: replayedUri,
-        languageId: 'typescript',
-        version: 1,
-        text: faker.lorem.sentence(),
-      },
-    });
+    await openDocument(writer, { uri: replayedUri, text: faker.lorem.sentence() });
 
     const crashRes = await crashAndWait(writer, reader, 25);
 
