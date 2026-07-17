@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { faker } from '@faker-js/faker';
-import { afterAll, describe, it } from 'vitest';
+import { describe, it } from 'vitest';
 import {
   FileChangeType, WatchKind, classifyChange, createExcludeMatcher, empty,
   isWithinRoot, matchEvent, register, resolveRoot,
@@ -23,6 +23,32 @@ const tsWatchers = {
 
 const configWatchers = {
   watchers: [{ globPattern: '**/tsconfig*.json', kind: WatchKind.Change }],
+};
+
+/*
+ * Create a real directory with a symlink pointing to it. resolveRoot on the
+ * symlink follows it to the real path; delete events inside the symlink
+ * namespace must still pass the containment check even though the file doesn't
+ * exist. Disposable so each test's temp dir is removed via `await using`.
+ */
+const createSymlinkWorkspace = async () => {
+  const tmpBase = await mkdtemp(path.join(tmpdir(), 'fw-symlink-'));
+  const realDir = path.join(tmpBase, 'real-workspace');
+  const linkDir = path.join(tmpBase, 'link-workspace');
+  await mkdir(realDir, { recursive: true });
+  await symlink(realDir, linkDir, 'junction');
+  // Create a file so we can also test the existing-file path
+  await writeFile(path.join(realDir, 'existing.ts'), '');
+  return {
+    tmpBase,
+    realDir,
+    linkDir,
+    async [Symbol.asyncDispose]() {
+      try {
+        await rm(tmpBase, { recursive: true, force: true });
+      } catch { /* cleanup */ }
+    },
+  };
 };
 
 describe('file-watcher', () => {
@@ -311,63 +337,36 @@ describe('file-watcher', () => {
     });
   });
 
-  // Sequential: tests share a temp dir created by setup()
-  describe.sequential('isWithinRoot with symlinked workspace root', () => {
-    let tmpBase: string;
-    let realDir: string;
-    let linkDir: string;
-
-    afterAll(async () => {
-      if (tmpBase) {
-        try {
-          await rm(tmpBase, { recursive: true, force: true });
-        } catch { /* cleanup */ }
-      }
-    });
-
-    // Create a real directory with a symlink pointing to it.
-    // resolveRoot on the symlink follows it to the real path.
-    // Delete events inside the symlink namespace must still pass
-    // the containment check even though the file doesn't exist.
-    const setup = async () => {
-      tmpBase = await mkdtemp(path.join(tmpdir(), 'fw-symlink-'));
-      realDir = path.join(tmpBase, 'real-workspace');
-      linkDir = path.join(tmpBase, 'link-workspace');
-      await mkdir(realDir, { recursive: true });
-      await symlink(realDir, linkDir, 'junction');
-      // Create a file so we can also test the existing-file path
-      await writeFile(path.join(realDir, 'existing.ts'), '');
-    };
-
+  describe('isWithinRoot with symlinked workspace root', () => {
     it('resolveRoot follows the symlink to the real path', async ({ expect }) => {
-      await setup();
-      const resolved = await resolveRoot(linkDir);
+      await using workspace = await createSymlinkWorkspace();
+      const resolved = await resolveRoot(workspace.linkDir);
 
-      expect(resolved).toBe(path.resolve(realDir));
+      expect(resolved).toBe(path.resolve(workspace.realDir));
     });
 
     it('accepts existing files inside symlinked root', async ({ expect }) => {
-      await setup();
-      const resolved = await resolveRoot(linkDir);
+      await using workspace = await createSymlinkWorkspace();
+      const resolved = await resolveRoot(workspace.linkDir);
 
       // Existing file accessed via symlink — realpath resolves to real path
-      await expect(isWithinRoot(path.join(linkDir, 'existing.ts'), resolved)).resolves.toBe(true);
+      await expect(isWithinRoot(path.join(workspace.linkDir, 'existing.ts'), resolved)).resolves.toBe(true);
     });
 
     it('accepts non-existent files inside symlinked root (delete events)', async ({ expect }) => {
-      await setup();
-      const resolved = await resolveRoot(linkDir);
+      await using workspace = await createSymlinkWorkspace();
+      const resolved = await resolveRoot(workspace.linkDir);
 
       // Non-existent file — resolve() fallback uses symlink namespace.
       // Must still pass containment check against realpath-resolved root.
-      await expect(isWithinRoot(path.join(linkDir, 'deleted.ts'), resolved)).resolves.toBe(true);
+      await expect(isWithinRoot(path.join(workspace.linkDir, 'deleted.ts'), resolved)).resolves.toBe(true);
     });
 
     it('rejects non-existent files outside symlinked root', async ({ expect }) => {
-      await setup();
-      const resolved = await resolveRoot(linkDir);
+      await using workspace = await createSymlinkWorkspace();
+      const resolved = await resolveRoot(workspace.linkDir);
 
-      await expect(isWithinRoot(path.join(tmpBase, 'outside.ts'), resolved)).resolves.toBe(false);
+      await expect(isWithinRoot(path.join(workspace.tmpBase, 'outside.ts'), resolved)).resolves.toBe(false);
     });
   });
 });
