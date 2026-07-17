@@ -43,9 +43,9 @@ export interface Timers {
 /* eslint-enable @typescript-eslint/method-signature-style */
 
 export const defaultTimers: Timers = {
-  setTimeout: (cb, ms) => globalThis.setTimeout(cb, ms),
+  setTimeout: (cb, ms) => setTimeout(cb, ms),
   // @ts-expect-error — timer ID is opaque; Node accepts any value at runtime
-  clearTimeout: (id) => { globalThis.clearTimeout(id); },
+  clearTimeout: (id) => { clearTimeout(id); },
 };
 
 // --- Utilities ---
