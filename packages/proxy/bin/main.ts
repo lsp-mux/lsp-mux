@@ -22,7 +22,7 @@ const configWatchDebounceMs = 200;
 const watchConfigForLogLevel = (configDir: string, log: Logger): Disposable => {
   let debounce: ReturnType<typeof setTimeout> | undefined;
 
-  const reload = () => {
+  const reload = (): void => {
     clearTimeout(debounce);
     debounce = setTimeout(() => {
       void loadProxyConfig(configDir)
@@ -31,7 +31,7 @@ const watchConfigForLogLevel = (configDir: string, log: Logger): Disposable => {
     }, configWatchDebounceMs);
   };
 
-  const tryWatch = (filePath: string) => {
+  const tryWatch = (filePath: string): ReturnType<typeof watch> | undefined => {
     try {
       return watch(filePath, reload);
     } catch {
