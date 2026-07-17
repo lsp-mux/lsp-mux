@@ -11,7 +11,7 @@ import * as v from 'valibot';
 import type { ResponseMessage } from 'vscode-jsonrpc';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import { DidChangeParamsSchema, DidCloseParamsSchema, DidOpenParamsSchema } from '../../src/document-tracker.ts';
-import { Message as Msg, createNotification, createRequest } from '../../src/types.ts';
+import { Message as Msg, type NotificationMessage, type RequestMessage, createNotification, createRequest } from '../../src/types.ts';
 
 const serverName = process.argv.find(arg => arg.startsWith('--name='))?.slice(7) ?? 'mock';
 const isRegisterWatchers = process.argv.includes('--register-watchers');
@@ -57,6 +57,156 @@ const publishDiagnostics = (uri: string): void => {
   });
 };
 
+const requestHandlers: Record<string, (msg: RequestMessage) => void> = {
+  'initialize': (msg) => {
+    state.initializeParams = msg.params;
+    respond(msg.id, { capabilities: { textDocumentSync: isIncrementalSync ? 2 : 1, hoverProvider: true } });
+  },
+  '$/initParams': (msg) => {
+    respond(msg.id, state.initializeParams as object);
+  },
+  'shutdown': (msg) => {
+    /* eslint-disable-next-line unicorn/no-null --
+       The JSON-RPC shutdown response result is null. */
+    respond(msg.id, null);
+  },
+  '$/documents': (msg) => {
+    respond(msg.id, openDocuments.values().toArray());
+  },
+  '$/watcherEvents': (msg) => {
+    respond(msg.id, watcherEvents);
+  },
+  '$/receivedResponses': (msg) => {
+    respond(msg.id, receivedResponses);
+  },
+  '$/configNotifications': (msg) => {
+    respond(msg.id, configNotifications);
+  },
+  '$/unregisterWatchers': (msg) => {
+    if (isUnregisterOnCommand) {
+      void writer.write(createRequest(state.serverRequestSeq++, 'client/unregisterCapability', {
+        unregisterations: [{
+          id: `${serverName}-watcher-ts`,
+          method: 'workspace/didChangeWatchedFiles',
+        }],
+      }));
+    }
+    respond(msg.id, { ok: true });
+  },
+  'textDocument/diagnostic': (msg) => {
+    if (isPullDiagnostics) {
+      respond(msg.id, {
+        kind: 'full',
+        items: [{
+          range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+          message: `${serverName}: pull diagnostic`,
+          source: serverName,
+          severity: 2,
+        }],
+      });
+    } else {
+      respond(msg.id, { kind: 'full', items: [] });
+    }
+  },
+};
+
+const handleRequest = (msg: RequestMessage): void => {
+  const handler = requestHandlers[msg.method];
+  if (handler) {
+    handler(msg);
+    return;
+  }
+  respond(msg.id, { echo: msg.method, params: msg.params, server: serverName });
+};
+
+const notificationHandlers: Record<string, (msg: NotificationMessage) => void> = {
+  'exit': () => {
+    /* eslint-disable-next-line n/no-process-exit, unicorn/no-process-exit --
+       LSP `exit` means terminate now; the reader keeps the loop alive, so
+       process.exitCode wouldn't terminate the subprocess. */
+    process.exit(0);
+  },
+  'initialized': () => {
+    if (isRegisterConfig) {
+      void writer.write(createRequest(state.serverRequestSeq++, 'client/registerCapability', {
+        registrations: [{
+          id: `${serverName}-config`,
+          method: 'workspace/didChangeConfiguration',
+        }],
+      }));
+    }
+    if (isRequestConfig) {
+      void writer.write(createRequest(state.serverRequestSeq++, 'workspace/configuration', {
+        items: [{ scopeUri: 'file:///test.ts', section: '' }],
+      }));
+    }
+    if (isSendCustomRequest) {
+      void writer.write(createRequest(state.serverRequestSeq++, 'window/showMessageRequest', {
+        type: 3,
+        message: 'Test request from server',
+      }));
+    }
+    if (isRegisterWatchers) {
+      void writer.write(createRequest(state.serverRequestSeq++, 'client/registerCapability', {
+        registrations: [{
+          id: `${serverName}-watcher-ts`,
+          method: 'workspace/didChangeWatchedFiles',
+          registerOptions: {
+            watchers: [{ globPattern: '**/*.ts', kind: 7 }],
+          },
+        }],
+      }));
+    }
+    if (isRegisterMixed) {
+      void writer.write(createRequest(state.serverRequestSeq++, 'client/registerCapability', {
+        registrations: [
+          {
+            id: `${serverName}-watcher-ts`,
+            method: 'workspace/didChangeWatchedFiles',
+            registerOptions: {
+              watchers: [{ globPattern: '**/*.ts', kind: 7 }],
+            },
+          },
+          {
+            id: `${serverName}-save`,
+            method: 'textDocument/didSave',
+            registerOptions: { includeText: true },
+          },
+        ],
+      }));
+    }
+  },
+  'workspace/didChangeConfiguration': (msg) => {
+    if (isTrackConfig) configNotifications.push(msg.params);
+  },
+  'workspace/didChangeWatchedFiles': (msg) => {
+    watcherEvents.push(msg.params);
+  },
+  'textDocument/didOpen': (msg) => {
+    const { textDocument: td } = v.parse(DidOpenParamsSchema, msg.params);
+    openDocuments.set(td.uri, { uri: td.uri, languageId: td.languageId, version: td.version, text: td.text });
+    publishDiagnostics(td.uri);
+  },
+  'textDocument/didChange': (msg) => {
+    const params = v.parse(DidChangeParamsSchema, msg.params);
+    const doc = openDocuments.get(params.textDocument.uri);
+    if (doc) {
+      doc.version = params.textDocument.version;
+      // Apply full-content change (TextDocumentSyncKind.Full)
+      const fullChange = params.contentChanges.find(change => change.range === undefined);
+      if (fullChange) doc.text = fullChange.text;
+    }
+  },
+  'textDocument/didClose': (msg) => {
+    const { textDocument: td } = v.parse(DidCloseParamsSchema, msg.params);
+    openDocuments.delete(td.uri);
+  },
+};
+
+const handleNotification = (msg: NotificationMessage): void => {
+  notificationHandlers[msg.method]?.(msg);
+};
+
 /* eslint-disable-next-line vitest/require-hook --
    mock-server is a spawned LSP subprocess entry point, not a vitest module;
    the top-level listener is its main loop, not test setup. */
@@ -76,161 +226,11 @@ reader.listen((msg) => {
   }
 
   if (Msg.isRequest(msg)) {
-    switch (msg.method) {
-      case 'initialize': {
-        state.initializeParams = msg.params;
-        respond(msg.id, { capabilities: { textDocumentSync: isIncrementalSync ? 2 : 1, hoverProvider: true } });
-        return;
-      }
-      case '$/initParams': {
-        respond(msg.id, state.initializeParams as object);
-        return;
-      }
-      case 'shutdown': {
-        /* eslint-disable-next-line unicorn/no-null --
-           The JSON-RPC shutdown response result is null. */
-        respond(msg.id, null);
-        return;
-      }
-      case '$/documents': {
-        respond(msg.id, openDocuments.values().toArray());
-        return;
-      }
-      case '$/watcherEvents': {
-        respond(msg.id, watcherEvents);
-        return;
-      }
-      case '$/receivedResponses': {
-        respond(msg.id, receivedResponses);
-        return;
-      }
-      case '$/configNotifications': {
-        respond(msg.id, configNotifications);
-        return;
-      }
-      case '$/unregisterWatchers': {
-        if (isUnregisterOnCommand) {
-          void writer.write(createRequest(state.serverRequestSeq++, 'client/unregisterCapability', {
-            unregisterations: [{
-              id: `${serverName}-watcher-ts`,
-              method: 'workspace/didChangeWatchedFiles',
-            }],
-          }));
-        }
-        respond(msg.id, { ok: true });
-        return;
-      }
-      case 'textDocument/diagnostic': {
-        if (isPullDiagnostics) {
-          respond(msg.id, {
-            kind: 'full',
-            items: [{
-              range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
-              message: `${serverName}: pull diagnostic`,
-              source: serverName,
-              severity: 2,
-            }],
-          });
-        } else {
-          respond(msg.id, { kind: 'full', items: [] });
-        }
-        return;
-      }
-      default: {
-        respond(msg.id, { echo: msg.method, params: msg.params, server: serverName });
-        return;
-      }
-    }
+    handleRequest(msg);
+    return;
   }
 
   if (Msg.isNotification(msg)) {
-    /* eslint-disable-next-line n/no-process-exit, unicorn/no-process-exit --
-       LSP `exit` means terminate now; the reader keeps the loop alive, so
-       process.exitCode wouldn't terminate the subprocess. */
-    if (msg.method === 'exit') process.exit(0);
-
-    switch (msg.method) {
-      case 'initialized': {
-        if (isRegisterConfig) {
-          void writer.write(createRequest(state.serverRequestSeq++, 'client/registerCapability', {
-            registrations: [{
-              id: `${serverName}-config`,
-              method: 'workspace/didChangeConfiguration',
-            }],
-          }));
-        }
-        if (isRequestConfig) {
-          void writer.write(createRequest(state.serverRequestSeq++, 'workspace/configuration', {
-            items: [{ scopeUri: 'file:///test.ts', section: '' }],
-          }));
-        }
-        if (isSendCustomRequest) {
-          void writer.write(createRequest(state.serverRequestSeq++, 'window/showMessageRequest', {
-            type: 3,
-            message: 'Test request from server',
-          }));
-        }
-        if (isRegisterWatchers) {
-          void writer.write(createRequest(state.serverRequestSeq++, 'client/registerCapability', {
-            registrations: [{
-              id: `${serverName}-watcher-ts`,
-              method: 'workspace/didChangeWatchedFiles',
-              registerOptions: {
-                watchers: [{ globPattern: '**/*.ts', kind: 7 }],
-              },
-            }],
-          }));
-        }
-        if (isRegisterMixed) {
-          void writer.write(createRequest(state.serverRequestSeq++, 'client/registerCapability', {
-            registrations: [
-              {
-                id: `${serverName}-watcher-ts`,
-                method: 'workspace/didChangeWatchedFiles',
-                registerOptions: {
-                  watchers: [{ globPattern: '**/*.ts', kind: 7 }],
-                },
-              },
-              {
-                id: `${serverName}-save`,
-                method: 'textDocument/didSave',
-                registerOptions: { includeText: true },
-              },
-            ],
-          }));
-        }
-        break;
-      }
-      case 'workspace/didChangeConfiguration': {
-        if (isTrackConfig) configNotifications.push(msg.params);
-        break;
-      }
-      case 'workspace/didChangeWatchedFiles': {
-        watcherEvents.push(msg.params);
-        break;
-      }
-      case 'textDocument/didOpen': {
-        const { textDocument: td } = v.parse(DidOpenParamsSchema, msg.params);
-        openDocuments.set(td.uri, { uri: td.uri, languageId: td.languageId, version: td.version, text: td.text });
-        publishDiagnostics(td.uri);
-        break;
-      }
-      case 'textDocument/didChange': {
-        const params = v.parse(DidChangeParamsSchema, msg.params);
-        const doc = openDocuments.get(params.textDocument.uri);
-        if (doc) {
-          doc.version = params.textDocument.version;
-          // Apply full-content change (TextDocumentSyncKind.Full)
-          const fullChange = params.contentChanges.find(change => change.range === undefined);
-          if (fullChange) doc.text = fullChange.text;
-        }
-        break;
-      }
-      case 'textDocument/didClose': {
-        const { textDocument: td } = v.parse(DidCloseParamsSchema, msg.params);
-        openDocuments.delete(td.uri);
-        break;
-      }
-    }
+    handleNotification(msg);
   }
 });
