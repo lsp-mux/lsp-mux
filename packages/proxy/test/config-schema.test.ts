@@ -128,7 +128,8 @@ describe('loadServerConfig', () => {
 
   it('resolves relative paths and preserves non-path args', async ({ expect }) => {
     const configDir = path.join(import.meta.dirname, 'fixtures');
-    const { command, args: [serverBin = '', flagArg = ''] } = await loadServerConfig('relative-paths', configDir);
+    const { command, args } = await loadServerConfig('relative-paths', configDir);
+    const [serverBin = '', flagArg = ''] = args;
 
     expect(path.isAbsolute(command)).toBe(true);
     expect(path.isAbsolute(serverBin)).toBe(true);
