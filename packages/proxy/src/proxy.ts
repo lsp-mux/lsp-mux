@@ -193,18 +193,24 @@ export class LspProxy {
     const serverEntries = [...serverConfigs].map(([name, config]) => ({ name, config }));
 
     for (const { name, config } of serverEntries) {
-      this.servers.set(name, createManagedServer(name, config, {
-        onServerMessage: (msg) => {
-          this.handleServerMessage(name, msg);
+      this.servers.set(name, createManagedServer({
+        name,
+        config,
+        callbacks: {
+          onServerMessage: (msg) => {
+            this.handleServerMessage(name, msg);
+          },
+          onPendingErrors: (ids, message) => {
+            this.handlePendingErrors(name, ids, message);
+          },
+          onStateChange: (serverState) => {
+            this.handleServerStateChange(name, serverState);
+          },
+          getDocuments: () => this.getDocumentsWithEffectiveVersions(),
         },
-        onPendingErrors: (ids, message) => {
-          this.handlePendingErrors(name, ids, message);
-        },
-        onStateChange: (serverState) => {
-          this.handleServerStateChange(name, serverState);
-        },
-        getDocuments: () => this.getDocumentsWithEffectiveVersions(),
-      }, this.log, options?.restartPolicy));
+        log: this.log,
+        restartPolicy: options?.restartPolicy,
+      }));
     }
 
     this.router = createRouter(serverEntries);
@@ -481,7 +487,9 @@ export class LspProxy {
         const opts = v.safeParse(fw.RegisterOptionsSchema, reg.registerOptions);
         if (opts.success) {
           this.watchRegistrations = fw.register(
-            this.watchRegistrations, serverName, reg.id, opts.output,
+            this.watchRegistrations,
+            { serverName, registrationId: reg.id },
+            opts.output,
             this.workspaceRoot ?? undefined,
           );
           handledCount++;

@@ -10,7 +10,7 @@ describe('LspProxy file resync', () => {
 
     const { path: tmpFile, uri: tmpUri } = workspace.file('resync-test.ts');
 
-    await initializeProxy(writer, reader, workspace.uri);
+    await initializeProxy({ writer, reader }, workspace.uri);
 
     await writeFile(tmpFile, 'const original = 1;');
     await notify(writer, 'textDocument/didOpen', {
@@ -25,7 +25,7 @@ describe('LspProxy file resync', () => {
     await writeFile(tmpFile, 'const modified = 2;');
 
     await vi.waitFor(async () => {
-      const res = await request(writer, reader, workspace.nextSeq(), '$/documents');
+      const res = await request({ writer, reader }, workspace.nextSeq(), '$/documents');
 
       expect(res).toMatchObject({
         result: expect.arrayContaining([
@@ -40,7 +40,7 @@ describe('LspProxy file resync', () => {
 
     const { path: tmpFile, uri: tmpUri } = workspace.file('resync-test.ts');
 
-    await initializeProxy(writer, reader, workspace.uri);
+    await initializeProxy({ writer, reader }, workspace.uri);
 
     // Open at version 1 → server sees v1
     await writeFile(tmpFile, 'v1');
@@ -51,7 +51,7 @@ describe('LspProxy file resync', () => {
     // External tool writes → resync bumps to v2
     await writeFile(tmpFile, 'v1-resynced');
     await vi.waitFor(async () => {
-      const res = await request(writer, reader, workspace.nextSeq(), '$/documents');
+      const res = await request({ writer, reader }, workspace.nextSeq(), '$/documents');
 
       expect(res).toMatchObject({
         result: expect.arrayContaining([
@@ -67,7 +67,7 @@ describe('LspProxy file resync', () => {
     });
 
     await vi.waitFor(async () => {
-      const res = await request(writer, reader, workspace.nextSeq(), '$/documents');
+      const res = await request({ writer, reader }, workspace.nextSeq(), '$/documents');
 
       expect(res).toMatchObject({
         result: expect.arrayContaining([
@@ -82,7 +82,7 @@ describe('LspProxy file resync', () => {
 
     const { path: tmpFile, uri: tmpUri } = workspace.file('resync-test.ts');
 
-    await initializeProxy(writer, reader, workspace.uri);
+    await initializeProxy({ writer, reader }, workspace.uri);
 
     // Open at version 1
     await writeFile(tmpFile, 'original');
@@ -93,7 +93,7 @@ describe('LspProxy file resync', () => {
     // External write → resync bumps offset to 1 (server sees v2)
     await writeFile(tmpFile, 'resynced');
     await vi.waitFor(async () => {
-      const res = await request(writer, reader, workspace.nextSeq(), '$/documents');
+      const res = await request({ writer, reader }, workspace.nextSeq(), '$/documents');
 
       expect(res).toMatchObject({
         result: expect.arrayContaining([
@@ -113,7 +113,7 @@ describe('LspProxy file resync', () => {
       textDocument: { uri: tmpUri, languageId: 'typescript', version: 1, text: 'reopened' },
     });
 
-    const res = await request(writer, reader, workspace.nextSeq(), '$/documents');
+    const res = await request({ writer, reader }, workspace.nextSeq(), '$/documents');
 
     expect(res).toMatchObject({
       result: expect.arrayContaining([
@@ -127,7 +127,7 @@ describe('LspProxy file resync', () => {
 
     const { path: tmpFile, uri: tmpUri } = workspace.file('resync-test.ts');
 
-    await initializeProxy(writer, reader, workspace.uri);
+    await initializeProxy({ writer, reader }, workspace.uri);
 
     // Open at version 1
     await writeFile(tmpFile, 'original');
@@ -138,7 +138,7 @@ describe('LspProxy file resync', () => {
     // External write → resync bumps server version to 2 (offset=1)
     await writeFile(tmpFile, 'resynced');
     await vi.waitFor(async () => {
-      const res = await request(writer, reader, workspace.nextSeq(), '$/documents');
+      const res = await request({ writer, reader }, workspace.nextSeq(), '$/documents');
 
       expect(res).toMatchObject({
         result: expect.arrayContaining([
@@ -157,7 +157,7 @@ describe('LspProxy file resync', () => {
     });
 
     // Query server directly — it should have version 1 (offset was cleared)
-    const res = await request(writer, reader, workspace.nextSeq(), '$/documents');
+    const res = await request({ writer, reader }, workspace.nextSeq(), '$/documents');
 
     expect(res).toMatchObject({
       result: expect.arrayContaining([
@@ -171,7 +171,7 @@ describe('LspProxy file resync', () => {
 
     const { path: tmpFile, uri: tmpUri } = workspace.file('resync-test.ts');
 
-    await initializeProxy(writer, reader, workspace.uri);
+    await initializeProxy({ writer, reader }, workspace.uri);
 
     // Open at version 1 → server sees v1
     await writeFile(tmpFile, 'v1');
@@ -182,7 +182,7 @@ describe('LspProxy file resync', () => {
     // First external write → resync to v2 (offset=1)
     await writeFile(tmpFile, 'disk-v2');
     await vi.waitFor(async () => {
-      const res = await request(writer, reader, workspace.nextSeq(), '$/documents');
+      const res = await request({ writer, reader }, workspace.nextSeq(), '$/documents');
 
       expect(res).toMatchObject({
         result: expect.arrayContaining([
@@ -194,7 +194,7 @@ describe('LspProxy file resync', () => {
     // Second external write → resync to v3 (offset=2)
     await writeFile(tmpFile, 'disk-v3');
     await vi.waitFor(async () => {
-      const res = await request(writer, reader, workspace.nextSeq(), '$/documents');
+      const res = await request({ writer, reader }, workspace.nextSeq(), '$/documents');
 
       expect(res).toMatchObject({
         result: expect.arrayContaining([
@@ -210,7 +210,7 @@ describe('LspProxy file resync', () => {
     });
 
     await vi.waitFor(async () => {
-      const res = await request(writer, reader, workspace.nextSeq(), '$/documents');
+      const res = await request({ writer, reader }, workspace.nextSeq(), '$/documents');
 
       expect(res).toMatchObject({
         result: expect.arrayContaining([
@@ -225,7 +225,7 @@ describe('LspProxy file resync', () => {
 
     const { path: tmpFile, uri: tmpUri } = workspace.file('resync-test.ts');
 
-    await initializeProxy(writer, reader, workspace.uri);
+    await initializeProxy({ writer, reader }, workspace.uri);
 
     // Open a file
     await writeFile(tmpFile, 'version-0');
@@ -239,7 +239,7 @@ describe('LspProxy file resync', () => {
     }
 
     await vi.waitFor(async () => {
-      const res = await request(writer, reader, workspace.nextSeq(), '$/documents');
+      const res = await request({ writer, reader }, workspace.nextSeq(), '$/documents');
 
       expect(res).toMatchObject({
         result: expect.arrayContaining([
@@ -254,7 +254,7 @@ describe('LspProxy file resync', () => {
 
     const { path: tmpFile, uri: tmpUri } = workspace.file('resync-test.ts');
 
-    await initializeProxy(writer, reader, workspace.uri);
+    await initializeProxy({ writer, reader }, workspace.uri);
 
     // Open the target file and a small "fence" file
     await writeFile(tmpFile, 'small');
@@ -274,7 +274,7 @@ describe('LspProxy file resync', () => {
 
     // Wait for the fence file to be resynced — this proves the flush completed
     await vi.waitFor(async () => {
-      const res = await request(writer, reader, workspace.nextSeq(), '$/documents');
+      const res = await request({ writer, reader }, workspace.nextSeq(), '$/documents');
 
       expect(res).toMatchObject({
         result: expect.arrayContaining([
@@ -284,7 +284,7 @@ describe('LspProxy file resync', () => {
     }, { timeout: 5000, interval: 100 });
 
     // The large file should NOT have been resynced
-    const res = await request(writer, reader, workspace.nextSeq(), '$/documents');
+    const res = await request({ writer, reader }, workspace.nextSeq(), '$/documents');
 
     expect(res).toMatchObject({
       result: expect.arrayContaining([

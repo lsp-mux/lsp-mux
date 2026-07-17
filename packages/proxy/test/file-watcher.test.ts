@@ -54,7 +54,7 @@ const createSymlinkWorkspace = async () => {
 describe('file-watcher', () => {
   describe('register / unregister', () => {
     it('registers and matches a glob pattern', ({ expect }) => {
-      const state = register(empty(), serverA, reg1, tsWatchers);
+      const state = register(empty(), { serverName: serverA, registrationId: reg1 }, tsWatchers);
       const matches = matchEvent(state, 'src/foo.ts', FileChangeType.Changed, 'file:///src/foo.ts');
 
       expect(matches.get(serverA)).toStrictEqual([
@@ -63,14 +63,14 @@ describe('file-watcher', () => {
     });
 
     it('does not match unrelated extensions', ({ expect }) => {
-      const state = register(empty(), serverA, reg1, tsWatchers);
+      const state = register(empty(), { serverName: serverA, registrationId: reg1 }, tsWatchers);
       const matches = matchEvent(state, 'src/foo.css', FileChangeType.Changed, 'file:///src/foo.css');
 
       expect(matches.size).toBe(0);
     });
 
     it('unregisters by ID', ({ expect }) => {
-      const s1 = register(empty(), serverA, reg1, tsWatchers);
+      const s1 = register(empty(), { serverName: serverA, registrationId: reg1 }, tsWatchers);
       const s2 = unregister(s1, reg1);
       const matches = matchEvent(s2, 'src/foo.ts', FileChangeType.Changed, 'file:///src/foo.ts');
 
@@ -78,9 +78,9 @@ describe('file-watcher', () => {
     });
 
     it('unregisters all for a server', ({ expect }) => {
-      let state = register(empty(), serverA, reg1, tsWatchers);
-      state = register(state, serverA, reg2, configWatchers);
-      state = register(state, serverB, reg3, tsWatchers);
+      let state = register(empty(), { serverName: serverA, registrationId: reg1 }, tsWatchers);
+      state = register(state, { serverName: serverA, registrationId: reg2 }, configWatchers);
+      state = register(state, { serverName: serverB, registrationId: reg3 }, tsWatchers);
 
       state = unregisterServer(state, serverA);
 
@@ -89,13 +89,13 @@ describe('file-watcher', () => {
     });
 
     it('returns same state when unregistering nonexistent ID', ({ expect }) => {
-      const state = register(empty(), serverA, reg1, tsWatchers);
+      const state = register(empty(), { serverName: serverA, registrationId: reg1 }, tsWatchers);
 
       expect(unregister(state, regUnknown)).toBe(state);
     });
 
     it('returns same state when unregistering nonexistent server', ({ expect }) => {
-      const state = register(empty(), serverA, reg1, tsWatchers);
+      const state = register(empty(), { serverName: serverA, registrationId: reg1 }, tsWatchers);
 
       expect(unregisterServer(state, serverUnknown)).toBe(state);
     });
@@ -103,7 +103,7 @@ describe('file-watcher', () => {
 
   describe('event type filtering', () => {
     it('respects WatchKind bitmask — Change only', ({ expect }) => {
-      const state = register(empty(), serverA, reg1, configWatchers);
+      const state = register(empty(), { serverName: serverA, registrationId: reg1 }, configWatchers);
 
       const changed = matchEvent(state, 'tsconfig.json', FileChangeType.Changed, 'file:///tsconfig.json');
 
@@ -119,7 +119,7 @@ describe('file-watcher', () => {
     });
 
     it('respects WatchKind bitmask — Create only', ({ expect }) => {
-      const state = register(empty(), serverA, reg1, {
+      const state = register(empty(), { serverName: serverA, registrationId: reg1 }, {
         watchers: [{ globPattern: '**/*.ts', kind: WatchKind.Create }],
       });
 
@@ -129,7 +129,7 @@ describe('file-watcher', () => {
     });
 
     it('respects WatchKind bitmask — Delete only', ({ expect }) => {
-      const state = register(empty(), serverA, reg1, {
+      const state = register(empty(), { serverName: serverA, registrationId: reg1 }, {
         watchers: [{ globPattern: '**/*.ts', kind: WatchKind.Delete }],
       });
 
@@ -139,7 +139,7 @@ describe('file-watcher', () => {
     });
 
     it('defaults to WatchKind.All when kind is omitted', ({ expect }) => {
-      const state = register(empty(), serverA, reg1, {
+      const state = register(empty(), { serverName: serverA, registrationId: reg1 }, {
         watchers: [{ globPattern: '**/*.ts' }],
       });
       for (const type of [FileChangeType.Created, FileChangeType.Changed, FileChangeType.Deleted]) {
@@ -148,7 +148,7 @@ describe('file-watcher', () => {
     });
 
     it('matches all event types with WatchKind.All', ({ expect }) => {
-      const state = register(empty(), serverA, reg1, tsWatchers);
+      const state = register(empty(), { serverName: serverA, registrationId: reg1 }, tsWatchers);
 
       for (const type of [FileChangeType.Created, FileChangeType.Changed, FileChangeType.Deleted]) {
         const matches = matchEvent(state, 'foo.ts', type, 'file:///foo.ts');
@@ -158,10 +158,10 @@ describe('file-watcher', () => {
     });
 
     it('matches via second registration when first does not match kind', ({ expect }) => {
-      let state = register(empty(), serverA, reg1, {
+      let state = register(empty(), { serverName: serverA, registrationId: reg1 }, {
         watchers: [{ globPattern: '**/*.ts', kind: WatchKind.Create }],
       });
-      state = register(state, serverA, reg2, {
+      state = register(state, { serverName: serverA, registrationId: reg2 }, {
         watchers: [{ globPattern: '**/*.ts', kind: WatchKind.Change }],
       });
 
@@ -174,8 +174,8 @@ describe('file-watcher', () => {
 
   describe('multi-server matching', () => {
     it('matches same event to multiple servers', ({ expect }) => {
-      let state = register(empty(), serverA, reg1, tsWatchers);
-      state = register(state, serverB, reg2, tsWatchers);
+      let state = register(empty(), { serverName: serverA, registrationId: reg1 }, tsWatchers);
+      state = register(state, { serverName: serverB, registrationId: reg2 }, tsWatchers);
 
       const matches = matchEvent(state, 'src/index.ts', FileChangeType.Changed, 'file:///src/index.ts');
 
@@ -186,8 +186,8 @@ describe('file-watcher', () => {
 
   describe('deduplication', () => {
     it('deduplicates events per-server across multiple registrations', ({ expect }) => {
-      let state = register(empty(), serverA, reg1, tsWatchers);
-      state = register(state, serverA, reg2, {
+      let state = register(empty(), { serverName: serverA, registrationId: reg1 }, tsWatchers);
+      state = register(state, { serverName: serverA, registrationId: reg2 }, {
         watchers: [{ globPattern: '**/*.{ts,js}', kind: WatchKind.All }],
       });
 
@@ -198,8 +198,8 @@ describe('file-watcher', () => {
     });
 
     it('still matches different servers independently', ({ expect }) => {
-      let state = register(empty(), serverA, reg1, tsWatchers);
-      state = register(state, serverB, reg2, tsWatchers);
+      let state = register(empty(), { serverName: serverA, registrationId: reg1 }, tsWatchers);
+      state = register(state, { serverName: serverB, registrationId: reg2 }, tsWatchers);
 
       const matches = matchEvent(state, 'src/foo.ts', FileChangeType.Changed, 'file:///src/foo.ts');
 
@@ -236,7 +236,7 @@ describe('file-watcher', () => {
 
   describe('relative patterns', () => {
     it('handles { baseUri, pattern } glob with bare directory', ({ expect }) => {
-      const state = register(empty(), serverA, reg1, {
+      const state = register(empty(), { serverName: serverA, registrationId: reg1 }, {
         watchers: [{
           globPattern: { baseUri: 'src', pattern: '**/*.ts' },
           kind: WatchKind.All,
@@ -258,7 +258,7 @@ describe('file-watcher', () => {
         ? 'file:///C:/projects/my-app/src'
         : 'file:///projects/my-app/src';
 
-      const state = register(empty(), serverA, reg1, {
+      const state = register(empty(), { serverName: serverA, registrationId: reg1 }, {
         watchers: [{
           globPattern: { baseUri, pattern: '**/*.ts' },
           kind: WatchKind.All,
@@ -280,7 +280,7 @@ describe('file-watcher', () => {
         ? 'file:///C:/projects/app/src'
         : 'file:///projects/app/src';
 
-      const state = register(empty(), serverA, reg1, {
+      const state = register(empty(), { serverName: serverA, registrationId: reg1 }, {
         watchers: [{
           globPattern: { baseUri: { uri: baseUri, name: 'app' }, pattern: '**/*.ts' },
           kind: WatchKind.All,
@@ -297,7 +297,7 @@ describe('file-watcher', () => {
     });
 
     it('strips trailing slash from baseUri', ({ expect }) => {
-      const state = register(empty(), serverA, reg1, {
+      const state = register(empty(), { serverName: serverA, registrationId: reg1 }, {
         watchers: [{
           globPattern: { baseUri: 'src/', pattern: '*.ts' },
           kind: WatchKind.All,

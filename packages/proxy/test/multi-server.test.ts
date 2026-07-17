@@ -49,7 +49,7 @@ describe('Multi-server proxy', () => {
   it('initializes all servers and merges capabilities', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy({ configs: twoServerConfigs() });
 
-    const res = await initializeProxy(writer, reader);
+    const res = await initializeProxy({ writer, reader });
 
     expect(res).toMatchObject({
       result: { capabilities: { hoverProvider: true, textDocumentSync: 1 } },
@@ -64,7 +64,7 @@ describe('Multi-server proxy', () => {
     ]);
 
     const { writer, reader } = createProxy({ configs });
-    await initializeProxy(writer, reader);
+    await initializeProxy({ writer, reader });
 
     // Open a .ts file — only alpha should start
     await notify(writer, 'textDocument/didOpen', {
@@ -72,7 +72,7 @@ describe('Multi-server proxy', () => {
     });
 
     // Hover on .ts goes to alpha (primary for .ts)
-    const hover = await request(writer, reader, 10, 'textDocument/hover', {
+    const hover = await request({ writer, reader }, 10, 'textDocument/hover', {
       textDocument: { uri: testUri },
       position: { line: 0, character: 0 },
     });
@@ -80,7 +80,7 @@ describe('Multi-server proxy', () => {
     expect(hover).toMatchObject({ result: { server: 'alpha' } });
 
     // Shutdown should succeed instantly — beta was never started
-    const shutdownRes = await request(writer, reader, 99, 'shutdown');
+    const shutdownRes = await request({ writer, reader }, 99, 'shutdown');
 
     /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
     expect(shutdownRes).toMatchObject({ result: null });
@@ -88,7 +88,7 @@ describe('Multi-server proxy', () => {
 
   it('merges diagnostics from multiple servers on didOpen', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy({ configs: twoServerConfigs() });
-    await initializeProxy(writer, reader);
+    await initializeProxy({ writer, reader });
 
     const diagPromise = collectMessages(
       reader,
@@ -115,9 +115,9 @@ describe('Multi-server proxy', () => {
 
   it('routes hover request to primary server only', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy({ configs: twoServerConfigs() });
-    await initializeProxy(writer, reader);
+    await initializeProxy({ writer, reader });
 
-    const hover = await request(writer, reader, 10, 'textDocument/hover', {
+    const hover = await request({ writer, reader }, 10, 'textDocument/hover', {
       textDocument: { uri: testUri },
       position: { line: 0, character: 0 },
     });
@@ -127,7 +127,7 @@ describe('Multi-server proxy', () => {
 
   it('fans out didOpen to all matching servers', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy({ configs: twoServerConfigs() });
-    await initializeProxy(writer, reader);
+    await initializeProxy({ writer, reader });
 
     const diagPromise = collectMessages(
       reader,
@@ -154,7 +154,7 @@ describe('Multi-server proxy', () => {
 
   it('clears crashed server diagnostics and re-publishes', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy({ configs: twoServerConfigs() });
-    await initializeProxy(writer, reader);
+    await initializeProxy({ writer, reader });
 
     const bothDiags = collectMessages(
       reader,
@@ -188,9 +188,9 @@ describe('Multi-server proxy', () => {
 
   it('handles shutdown with multiple servers', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy({ configs: twoServerConfigs() });
-    await initializeProxy(writer, reader);
+    await initializeProxy({ writer, reader });
 
-    const res = await request(writer, reader, 200, 'shutdown');
+    const res = await request({ writer, reader }, 200, 'shutdown');
 
     /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
     expect(res).toMatchObject({ result: null });
@@ -198,13 +198,13 @@ describe('Multi-server proxy', () => {
 
   it('continues operating when one server restarts', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy({ configs: twoServerConfigs() });
-    await initializeProxy(writer, reader);
+    await initializeProxy({ writer, reader });
 
-    const crashRes = await request(writer, reader, 300, '$/crash');
+    const crashRes = await request({ writer, reader }, 300, '$/crash');
 
     expect(crashRes).toMatchObject({ error: expect.objectContaining({}) as unknown });
 
-    const hover = await request(writer, reader, 301, 'textDocument/hover', {
+    const hover = await request({ writer, reader }, 301, 'textDocument/hover', {
       textDocument: { uri: testUri },
       position: { line: 0, character: 0 },
     });
@@ -220,7 +220,7 @@ describe('Multi-server proxy', () => {
 
     const { writer, reader } = createProxy({ configs });
 
-    const res = await initializeProxy(writer, reader);
+    const res = await initializeProxy({ writer, reader });
 
     // Even though beta advertises textDocumentSync: 2 (Incremental),
     // the proxy must advertise Full (1) to ensure resync safety.
@@ -237,7 +237,7 @@ describe('Multi-server proxy', () => {
 
     const { writer, reader } = createProxy({ configs });
 
-    await request(writer, reader, 0, 'initialize', {
+    await request({ writer, reader }, 0, 'initialize', {
       processId: process.pid,
       /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
       rootUri: null,
@@ -267,13 +267,13 @@ describe('Multi-server proxy', () => {
     // Ensure the ack has been fully processed by round-tripping through alpha.
     // Since requests are serialized through the proxy, this guarantees all
     // prior messages (including the ack) have been delivered.
-    await request(writer, reader, 499, 'textDocument/hover', {
+    await request({ writer, reader }, 499, 'textDocument/hover', {
       textDocument: { uri: fenceUri },
       position: { line: 0, character: 0 },
     });
 
     // Alpha (primary, queryable) should NOT have received any response messages
-    const alphaResponses = await request(writer, reader, 500, '$/receivedResponses');
+    const alphaResponses = await request({ writer, reader }, 500, '$/receivedResponses');
 
     expect(alphaResponses).toMatchObject({ result: [] });
   });

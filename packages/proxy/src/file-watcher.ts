@@ -119,10 +119,14 @@ const compileGlob = (
   return `${base}/${pattern.pattern}`;
 };
 
+export interface RegistrationTarget {
+  serverName: string;
+  registrationId: string;
+}
+
 export const register = (
   state: WatchRegistrations,
-  serverName: string,
-  registrationId: string,
+  { serverName, registrationId }: RegistrationTarget,
   options: v.InferOutput<typeof RegisterOptionsSchema>,
   workspaceRoot?: string,
 ): WatchRegistrations => {

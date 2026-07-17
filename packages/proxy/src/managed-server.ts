@@ -43,13 +43,21 @@ export interface ManagedServer {
   dispose: () => void;
 }
 
-export const createManagedServer = (
-  name: string,
-  config: ServerConfig,
-  callbacks: ManagedServerCallbacks,
-  log: Logger,
-  restartPolicy?: Partial<RestartPolicy>,
-): ManagedServer => {
+export interface CreateManagedServerOptions {
+  name: string;
+  config: ServerConfig;
+  callbacks: ManagedServerCallbacks;
+  log: Logger;
+  restartPolicy?: Partial<RestartPolicy> | undefined;
+}
+
+export const createManagedServer = ({
+  name,
+  config,
+  callbacks,
+  log,
+  restartPolicy,
+}: CreateManagedServerOptions): ManagedServer => {
   let state: ServerState = 'idle';
   let server: ChildServer | undefined;
   let initParams: RequestMessage['params'];

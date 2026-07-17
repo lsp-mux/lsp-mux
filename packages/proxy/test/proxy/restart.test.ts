@@ -10,19 +10,19 @@ const testUri = fakeUri();
 const replayedUri = fakeUri();
 
 const crashAndWait = (writer: StreamMessageWriter, reader: StreamMessageReader, id: number) =>
-  request(writer, reader, id, '$/crash');
+  request({ writer, reader }, id, '$/crash');
 
 describe('LspProxy restart behavior', () => {
   it('restarts after crash and flushes buffered requests', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
-    await initializeProxy(writer, reader);
+    await initializeProxy({ writer, reader });
 
     const crashRes = await crashAndWait(writer, reader, 19);
 
     expect(crashRes).toMatchObject({ error: expect.objectContaining({}) as unknown });
 
-    const hover = await request(writer, reader, 20, 'textDocument/hover', {
+    const hover = await request({ writer, reader }, 20, 'textDocument/hover', {
       textDocument: { uri: testUri },
       position: { line: 0, character: 0 },
     });
@@ -33,7 +33,7 @@ describe('LspProxy restart behavior', () => {
   it('replays tracked documents to restarted server', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
-    await initializeProxy(writer, reader);
+    await initializeProxy({ writer, reader });
 
     await notify(writer, 'textDocument/didOpen', {
       textDocument: {
@@ -48,7 +48,7 @@ describe('LspProxy restart behavior', () => {
 
     expect(crashRes).toMatchObject({ error: expect.objectContaining({}) as unknown });
 
-    const docsRes = await request(writer, reader, 26, '$/documents');
+    const docsRes = await request({ writer, reader }, 26, '$/documents');
 
     expect(docsRes).toMatchObject({
       result: [{ uri: replayedUri, languageId: 'typescript', version: 1 }],
@@ -58,7 +58,7 @@ describe('LspProxy restart behavior', () => {
   it('errors pending requests on crash', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
-    await initializeProxy(writer, reader);
+    await initializeProxy({ writer, reader });
 
     const res = await crashAndWait(writer, reader, 30);
 
@@ -74,9 +74,9 @@ describe('LspProxy restart behavior', () => {
     };
     const { writer, reader } = createProxy({ config: exitingConfig });
 
-    await initializeProxy(writer, reader);
+    await initializeProxy({ writer, reader });
 
-    const res = await request(writer, reader, 1, 'textDocument/hover', {
+    const res = await request({ writer, reader }, 1, 'textDocument/hover', {
       textDocument: { uri: testUri },
       position: { line: 0, character: 0 },
     });
@@ -87,13 +87,13 @@ describe('LspProxy restart behavior', () => {
   it('stops after max retries exhausted', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy({ restartPolicy: { maxRetries: 0 } });
 
-    await initializeProxy(writer, reader);
+    await initializeProxy({ writer, reader });
 
     const crashRes = await crashAndWait(writer, reader, 40);
 
     expect(crashRes).toMatchObject({ error: expect.objectContaining({}) as unknown });
 
-    const res = await request(writer, reader, 41, 'textDocument/hover', {
+    const res = await request({ writer, reader }, 41, 'textDocument/hover', {
       textDocument: { uri: testUri },
       position: { line: 0, character: 0 },
     });
@@ -103,10 +103,10 @@ describe('LspProxy restart behavior', () => {
 
   it('resolves start() when all servers exhaust retries', async ({ createProxy, expect }) => {
     const { writer, reader, started } = createProxy({ restartPolicy: { maxRetries: 0 } });
-    await initializeProxy(writer, reader);
+    await initializeProxy({ writer, reader });
 
     // Crash with 0 retries → server enters stopped state → proxy should auto-dispose
-    await request(writer, reader, 42, '$/crash');
+    await request({ writer, reader }, 42, '$/crash');
 
     // start() should resolve (not hang as a zombie)
     const timeout = new Promise((_resolve, reject) => {
@@ -123,19 +123,19 @@ describe('LspProxy restart behavior', () => {
       restartPolicy: { baseDelayMs: 500 },
     });
 
-    await initializeProxy(writer, reader);
+    await initializeProxy({ writer, reader });
 
     const crashRes = await crashAndWait(writer, reader, 49);
 
     expect(crashRes).toMatchObject({ error: expect.objectContaining({}) as unknown });
 
-    const res = await request(writer, reader, 50, 'shutdown');
+    const res = await request({ writer, reader }, 50, 'shutdown');
 
     /* eslint-disable-next-line unicorn/no-null --
        The LSP shutdown response result is null on the wire. */
     expect(res).toMatchObject({ result: null });
 
-    const hover = await request(writer, reader, 51, 'textDocument/hover', {});
+    const hover = await request({ writer, reader }, 51, 'textDocument/hover', {});
 
     expect(hover).toMatchObject({ error: { code: -32_002 } });
   });
@@ -143,13 +143,13 @@ describe('LspProxy restart behavior', () => {
   it('cancels buffered request during restart', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
-    await initializeProxy(writer, reader);
+    await initializeProxy({ writer, reader });
 
     const crashRes = await crashAndWait(writer, reader, 59);
 
     expect(crashRes).toMatchObject({ error: expect.objectContaining({}) as unknown });
 
-    const hoverPromise = request(writer, reader, 60, 'textDocument/hover', {
+    const hoverPromise = request({ writer, reader }, 60, 'textDocument/hover', {
       textDocument: { uri: testUri },
       position: { line: 0, character: 0 },
     });

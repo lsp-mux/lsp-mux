@@ -17,7 +17,7 @@ const waitForWatcherActive = (
 ) =>
   vi.waitFor(async () => {
     await writeFile(path.join(dir, 'probe.ts'), 'probe');
-    const probe = await request(writer, reader, nextSeq(), '$/watcherEvents');
+    const probe = await request({ writer, reader }, nextSeq(), '$/watcherEvents');
 
     expect(probe).toMatchObject({
       result: expect.arrayContaining([expect.anything()]) as unknown,
@@ -48,14 +48,14 @@ describe.sequential('LspProxy file watchers', () => {
 
       const { writer, reader } = createProxy({ config: watcherConfig });
 
-      await initializeProxy(writer, reader, workspace.uri);
+      await initializeProxy({ writer, reader }, workspace.uri);
       await waitForWatcherActive(expect, workspace, writer, reader);
 
       // Write a .ts file — should trigger the registered watcher
       await writeFile(path.join(workspace.dir, 'new-file.ts'), 'export const x = 1;');
 
       await vi.waitFor(async () => {
-        const res = await request(writer, reader, workspace.nextSeq(), '$/watcherEvents');
+        const res = await request({ writer, reader }, workspace.nextSeq(), '$/watcherEvents');
 
         expect(res).toMatchObject({
           result: watcherEventContaining(expect, 'new-file.ts'),
@@ -71,7 +71,7 @@ describe.sequential('LspProxy file watchers', () => {
 
       const { writer, reader } = createProxy({ config: mixedConfig });
 
-      await request(writer, reader, 0, 'initialize', {
+      await request({ writer, reader }, 0, 'initialize', {
         processId: process.pid,
         rootUri: workspace.uri,
         capabilities: {},
@@ -105,7 +105,7 @@ describe.sequential('LspProxy file watchers', () => {
       await writeFile(path.join(workspace.dir, 'mixed-test.ts'), 'export const x = 1;');
 
       await vi.waitFor(async () => {
-        const res = await request(writer, reader, workspace.nextSeq(), '$/watcherEvents');
+        const res = await request({ writer, reader }, workspace.nextSeq(), '$/watcherEvents');
 
         expect(res).toMatchObject({
           result: watcherEventContaining(expect, 'mixed-test.ts'),
@@ -123,14 +123,14 @@ describe.sequential('LspProxy file watchers', () => {
 
       const { writer, reader } = createProxy({ config });
 
-      await initializeProxy(writer, reader, workspace.uri);
+      await initializeProxy({ writer, reader }, workspace.uri);
       await waitForWatcherActive(expect, workspace, writer, reader);
 
       // Snapshot baseline events
-      const baseline = await request(writer, reader, workspace.nextSeq(), '$/watcherEvents');
+      const baseline = await request({ writer, reader }, workspace.nextSeq(), '$/watcherEvents');
 
       // Trigger unregister
-      await request(writer, reader, workspace.nextSeq(), '$/unregisterWatchers');
+      await request({ writer, reader }, workspace.nextSeq(), '$/unregisterWatchers');
 
       // Small delay to let the unregister propagate
       await new Promise<void>((resolve) => {
@@ -146,7 +146,7 @@ describe.sequential('LspProxy file watchers', () => {
       });
 
       // Verify no new events were dispatched — result should be unchanged
-      const final = await request(writer, reader, workspace.nextSeq(), '$/watcherEvents');
+      const final = await request({ writer, reader }, workspace.nextSeq(), '$/watcherEvents');
 
       expect(final.result).toStrictEqual(baseline.result);
     });
@@ -161,11 +161,11 @@ describe.sequential('LspProxy file watchers', () => {
 
       const { writer, reader } = createProxy({ config: watcherConfig });
 
-      await initializeProxy(writer, reader, workspace.uri);
+      await initializeProxy({ writer, reader }, workspace.uri);
       await waitForWatcherActive(expect, workspace, writer, reader);
 
       // Crash the server — watcher registrations should be cleared
-      const crashRes = await request(writer, reader, workspace.nextSeq(), '$/crash');
+      const crashRes = await request({ writer, reader }, workspace.nextSeq(), '$/crash');
 
       expect(crashRes).toMatchObject({ error: expect.objectContaining({}) as unknown });
 
@@ -173,7 +173,7 @@ describe.sequential('LspProxy file watchers', () => {
       // and file events should work again
       await vi.waitFor(async () => {
         await writeFile(path.join(workspace.dir, 'after-restart.ts'), 'restarted');
-        const res = await request(writer, reader, workspace.nextSeq(), '$/watcherEvents');
+        const res = await request({ writer, reader }, workspace.nextSeq(), '$/watcherEvents');
 
         expect(res).toMatchObject({
           result: watcherEventContaining(expect, 'after-restart.ts'),
@@ -191,7 +191,7 @@ describe.sequential('LspProxy file watchers', () => {
 
       const { writer, reader } = createProxy({ config: watcherConfig, maxPendingEvents: 2 });
 
-      await initializeProxy(writer, reader, workspace.uri);
+      await initializeProxy({ writer, reader }, workspace.uri);
       await waitForWatcherActive(expect, workspace, writer, reader);
 
       // Write 4 files sequentially — with cap of 2, only the first 2 unique
@@ -204,7 +204,7 @@ describe.sequential('LspProxy file watchers', () => {
 
       // Wait for bp-1 to appear (proves flush completed)
       await vi.waitFor(async () => {
-        const res = await request(writer, reader, workspace.nextSeq(), '$/watcherEvents');
+        const res = await request({ writer, reader }, workspace.nextSeq(), '$/watcherEvents');
 
         expect(res).toMatchObject({
           result: watcherEventContaining(expect, 'bp-1.ts'),
@@ -212,7 +212,7 @@ describe.sequential('LspProxy file watchers', () => {
       }, { timeout: 5000, interval: 100 });
 
       // bp-3 and bp-4 should NOT have been dispatched (dropped by cap)
-      const final = await request(writer, reader, workspace.nextSeq(), '$/watcherEvents');
+      const final = await request({ writer, reader }, workspace.nextSeq(), '$/watcherEvents');
       for (const dropped of ['bp-3.ts', 'bp-4.ts']) {
         expect(final).not.toMatchObject({
           result: watcherEventContaining(expect, dropped),
@@ -230,7 +230,7 @@ describe.sequential('LspProxy file watchers', () => {
 
       const { writer, reader } = createProxy({ config: watcherConfig });
 
-      await request(writer, reader, 0, 'initialize', {
+      await request({ writer, reader }, 0, 'initialize', {
         processId: process.pid,
         rootUri: workspace.uri,
         capabilities: {
@@ -276,7 +276,7 @@ describe.sequential('LspProxy file watchers', () => {
 
       const { writer, reader } = createProxy({ config: watcherConfig });
 
-      await initializeProxy(writer, reader, workspace.uri);
+      await initializeProxy({ writer, reader }, workspace.uri);
       await waitForWatcherActive(expect, workspace, writer, reader);
 
       // Write multiple files simultaneously — they should be batched into one notification
@@ -289,7 +289,7 @@ describe.sequential('LspProxy file watchers', () => {
       // At least two of the batch files should appear in a single changes array
       // (proving they were batched rather than sent as separate notifications)
       await vi.waitFor(async () => {
-        const res = await request(writer, reader, workspace.nextSeq(), '$/watcherEvents');
+        const res = await request({ writer, reader }, workspace.nextSeq(), '$/watcherEvents');
 
         expect(res).toMatchObject({
           result: watcherEventContaining(expect, 'batch-a.ts', 'batch-b.ts'),

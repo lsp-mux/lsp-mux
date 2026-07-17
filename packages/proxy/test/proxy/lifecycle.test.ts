@@ -15,9 +15,9 @@ describe('LspProxy lifecycle', () => {
     it('does not spawn servers during initialize handshake', async ({ createProxy, expect }) => {
       const { writer, reader } = createProxy();
 
-      await initializeProxy(writer, reader);
+      await initializeProxy({ writer, reader });
 
-      const res = await request(writer, reader, 99, 'shutdown');
+      const res = await request({ writer, reader }, 99, 'shutdown');
 
       /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
       expect(res).toMatchObject({ result: null });
@@ -26,7 +26,7 @@ describe('LspProxy lifecycle', () => {
     it('starts server on first matching didOpen', async ({ createProxy, expect }) => {
       const { writer, reader } = createProxy();
 
-      await initializeProxy(writer, reader);
+      await initializeProxy({ writer, reader });
 
       await notify(writer, 'textDocument/didOpen', {
         textDocument: {
@@ -37,7 +37,7 @@ describe('LspProxy lifecycle', () => {
         },
       });
 
-      const hover = await request(writer, reader, 10, 'textDocument/hover', {
+      const hover = await request({ writer, reader }, 10, 'textDocument/hover', {
         textDocument: { uri: lazyUri },
         position: { line: 0, character: 0 },
       });
@@ -49,7 +49,7 @@ describe('LspProxy lifecycle', () => {
   it('returns ServerNotInitialized for requests before initialize', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
-    const res = await request(writer, reader, 1, 'textDocument/hover', {
+    const res = await request({ writer, reader }, 1, 'textDocument/hover', {
       textDocument: { uri: testUri },
       position: { line: 0, character: 0 },
     });
@@ -60,11 +60,11 @@ describe('LspProxy lifecycle', () => {
   it('returns ServerNotInitialized for requests after shutdown', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
-    await initializeProxy(writer, reader);
+    await initializeProxy({ writer, reader });
 
-    await request(writer, reader, 98, 'shutdown');
+    await request({ writer, reader }, 98, 'shutdown');
 
-    const res = await request(writer, reader, 99, 'textDocument/hover', {});
+    const res = await request({ writer, reader }, 99, 'textDocument/hover', {});
 
     expect(res).toMatchObject({ error: { code: -32_002 } });
   });
@@ -72,7 +72,7 @@ describe('LspProxy lifecycle', () => {
   it('completes initialize handshake', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
-    const res = await initializeProxy(writer, reader);
+    const res = await initializeProxy({ writer, reader });
 
     expect(res).toMatchObject({ result: { capabilities: { hoverProvider: true } } });
   });
@@ -80,7 +80,7 @@ describe('LspProxy lifecycle', () => {
   it('forwards requests to child server', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
-    await initializeProxy(writer, reader);
+    await initializeProxy({ writer, reader });
 
     await notify(writer, 'textDocument/didOpen', {
       textDocument: {
@@ -91,7 +91,7 @@ describe('LspProxy lifecycle', () => {
       },
     });
 
-    const hover = await request(writer, reader, 10, 'textDocument/hover', {
+    const hover = await request({ writer, reader }, 10, 'textDocument/hover', {
       textDocument: { uri: testUri },
       position: { line: 0, character: 6 },
     });
@@ -102,9 +102,9 @@ describe('LspProxy lifecycle', () => {
   it('handles shutdown/exit gracefully', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
-    await initializeProxy(writer, reader);
+    await initializeProxy({ writer, reader });
 
-    const shutdownRes = await request(writer, reader, 99, 'shutdown');
+    const shutdownRes = await request({ writer, reader }, 99, 'shutdown');
 
     /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
     expect(shutdownRes).toMatchObject({ result: null });
@@ -113,7 +113,7 @@ describe('LspProxy lifecycle', () => {
   it('preserves existing client capabilities when injecting dynamicRegistration', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
-    await request(writer, reader, 0, 'initialize', {
+    await request({ writer, reader }, 0, 'initialize', {
       processId: process.pid,
       /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
       rootUri: null,
@@ -124,7 +124,7 @@ describe('LspProxy lifecycle', () => {
     });
     await notify(writer, 'initialized', {});
 
-    const res = await request(writer, reader, 5, '$/initParams');
+    const res = await request({ writer, reader }, 5, '$/initParams');
 
     expect(res).toMatchObject({
       result: {
@@ -142,9 +142,9 @@ describe('LspProxy lifecycle', () => {
   it('injects dynamicRegistration for didChangeWatchedFiles and didChangeConfiguration', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
-    await initializeProxy(writer, reader);
+    await initializeProxy({ writer, reader });
 
-    const res = await request(writer, reader, 5, '$/initParams');
+    const res = await request({ writer, reader }, 5, '$/initParams');
 
     expect(res).toMatchObject({
       result: {
@@ -161,7 +161,7 @@ describe('LspProxy lifecycle', () => {
   it('preserves client didChangeWatchedFiles when client supports file watching', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
 
-    await request(writer, reader, 0, 'initialize', {
+    await request({ writer, reader }, 0, 'initialize', {
       processId: process.pid,
       /* eslint-disable-next-line unicorn/no-null -- JSON-RPC/LSP protocol value is null on the wire. */
       rootUri: null,
@@ -173,7 +173,7 @@ describe('LspProxy lifecycle', () => {
     });
     await notify(writer, 'initialized', {});
 
-    const res = await request(writer, reader, 5, '$/initParams');
+    const res = await request({ writer, reader }, 5, '$/initParams');
 
     // Proxy passes through client's didChangeWatchedFiles without overriding
     expect(res).toMatchObject({
@@ -195,7 +195,7 @@ describe('LspProxy lifecycle', () => {
     };
     const { writer, reader } = createProxy({ config });
 
-    await initializeProxy(writer, reader);
+    await initializeProxy({ writer, reader });
 
     // Trigger lazy start — server registers for didChangeConfiguration on initialized
     await notify(writer, 'textDocument/didOpen', {
@@ -203,7 +203,7 @@ describe('LspProxy lifecycle', () => {
     });
 
     // Fence to ensure registration was processed
-    const hover = await request(writer, reader, 10, 'textDocument/hover', {
+    const hover = await request({ writer, reader }, 10, 'textDocument/hover', {
       textDocument: { uri: fakeUri() },
       position: { line: 0, character: 0 },
     });
@@ -211,7 +211,7 @@ describe('LspProxy lifecycle', () => {
     expect(hover).toMatchObject({ result: { echo: 'textDocument/hover' } });
 
     // Server should have received an ack (not an error) for the registration
-    const responses = await request(writer, reader, 11, '$/receivedResponses');
+    const responses = await request({ writer, reader }, 11, '$/receivedResponses');
 
     expect(responses).toMatchObject({
       result: expect.arrayContaining([
@@ -229,7 +229,7 @@ describe('LspProxy lifecycle', () => {
     };
     const { writer, reader } = createProxy({ config });
 
-    await initializeProxy(writer, reader);
+    await initializeProxy({ writer, reader });
 
     // Trigger lazy start
     await notify(writer, 'textDocument/didOpen', {
@@ -237,12 +237,12 @@ describe('LspProxy lifecycle', () => {
     });
 
     // Fence to ensure init sequence completed
-    await request(writer, reader, 10, 'textDocument/hover', {
+    await request({ writer, reader }, 10, 'textDocument/hover', {
       textDocument: { uri: fakeUri() },
       position: { line: 0, character: 0 },
     });
 
-    const res = await request(writer, reader, 11, '$/configNotifications');
+    const res = await request({ writer, reader }, 11, '$/configNotifications');
 
     expect(res).toMatchObject({
       result: [{ settings: { validate: 'on', run: 'onType' } }],
@@ -258,7 +258,7 @@ describe('LspProxy lifecycle', () => {
     };
     const { writer, reader } = createProxy({ config });
 
-    await initializeProxy(writer, reader, workspace.uri);
+    await initializeProxy({ writer, reader }, workspace.uri);
 
     // Trigger lazy start — server sends workspace/configuration on initialized
     await notify(writer, 'textDocument/didOpen', {
@@ -266,13 +266,13 @@ describe('LspProxy lifecycle', () => {
     });
 
     // Fence to ensure config request/response round-trip completed
-    await request(writer, reader, 10, 'textDocument/hover', {
+    await request({ writer, reader }, 10, 'textDocument/hover', {
       textDocument: { uri: fakeUri() },
       position: { line: 0, character: 0 },
     });
 
     // Server should have received settings with workspaceFolder injected
-    const responses = await request(writer, reader, 11, '$/receivedResponses');
+    const responses = await request({ writer, reader }, 11, '$/receivedResponses');
 
     const settingsMatcher = expect.objectContaining({
       validate: 'on',
@@ -295,7 +295,7 @@ describe('LspProxy lifecycle', () => {
     };
     const { writer, reader } = createProxy({ config });
 
-    await initializeProxy(writer, reader);
+    await initializeProxy({ writer, reader });
 
     // Server sends window/showMessageRequest on initialized — wait for it
     await notify(writer, 'textDocument/didOpen', {
@@ -315,13 +315,13 @@ describe('LspProxy lifecycle', () => {
     }
 
     // Fence: round-trip to ensure the response was delivered
-    await request(writer, reader, 500, 'textDocument/hover', {
+    await request({ writer, reader }, 500, 'textDocument/hover', {
       textDocument: { uri: fakeUri() },
       position: { line: 0, character: 0 },
     });
 
     // Server should have received the response
-    const responses = await request(writer, reader, 501, '$/receivedResponses');
+    const responses = await request({ writer, reader }, 501, '$/receivedResponses');
 
     expect(responses).toMatchObject({
       result: expect.arrayContaining([
@@ -337,7 +337,7 @@ describe('LspProxy lifecycle', () => {
     // The mock server advertises textDocumentSync: 1, but even if it advertised
     // 2 (Incremental), the proxy must override to 1 (Full) because resync
     // replaces document content, making incremental client edits unsafe.
-    const res = await initializeProxy(writer, reader);
+    const res = await initializeProxy({ writer, reader });
 
     expect(res).toMatchObject({
       result: { capabilities: { textDocumentSync: 1 } },

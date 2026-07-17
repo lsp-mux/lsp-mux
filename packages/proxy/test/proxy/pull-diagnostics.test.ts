@@ -34,7 +34,7 @@ describe('Pull diagnostics', () => {
     };
     const { writer, reader } = createProxy({ config });
 
-    await initializeProxy(writer, reader);
+    await initializeProxy({ writer, reader });
 
     const uri = fakeUri();
     const diagPromise = collectMessages(
@@ -66,7 +66,7 @@ describe('Pull diagnostics', () => {
     const { writer, reader } = createProxy({ config });
 
     // Initialize with pull diagnostic support — proxy should NOT proactively pull
-    await request(writer, reader, 0, 'initialize', {
+    await request({ writer, reader }, 0, 'initialize', {
       processId: process.pid,
       /* eslint-disable-next-line unicorn/no-null --
          LSP InitializeParams.rootUri is `string | null`. */
@@ -116,7 +116,7 @@ describe('Pull diagnostics', () => {
 
     const { writer, reader } = createProxy({ configs });
 
-    await initializeProxy(writer, reader);
+    await initializeProxy({ writer, reader });
 
     const uri = fakeUri();
 

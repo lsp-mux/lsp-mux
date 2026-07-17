@@ -51,10 +51,15 @@ export const collectMessages = (
     });
   });
 
+/** The proxy's client-side JSON-RPC stream pair. */
+export interface Client {
+  writer: StreamMessageWriter;
+  reader: StreamMessageReader;
+}
+
 /** Send a request and wait for the matching response. */
 export const request = (
-  writer: StreamMessageWriter,
-  reader: StreamMessageReader,
+  { writer, reader }: Client,
   id: number,
   method: string,
   params?: object,
@@ -83,18 +88,17 @@ export const notify = async (writer: StreamMessageWriter, method: string, params
 
 /** Perform the full initialize handshake. */
 export const initializeProxy = async (
-  writer: StreamMessageWriter,
-  reader: StreamMessageReader,
+  client: Client,
   /* eslint-disable-next-line unicorn/no-null --
      LSP InitializeParams.rootUri is `string | null`; null means no root. */
   rootUri: string | null = null,
   capabilities: object = {},
 ): Promise<Message> => {
-  const res = await request(writer, reader, 0, 'initialize', {
+  const res = await request(client, 0, 'initialize', {
     processId: process.pid,
     rootUri,
     capabilities,
   });
-  await notify(writer, 'initialized', {});
+  await notify(client.writer, 'initialized', {});
   return res;
 };
