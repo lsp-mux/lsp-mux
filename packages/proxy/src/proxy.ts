@@ -330,7 +330,7 @@ export class LspProxy {
    *  after a grace delay so they have time to come up.
    */
   private maybePullDiagnostics(msg: NotificationMessage, uri: string | undefined): void {
-    if (!(this.compensations.proactivePullDiagnostics && uri && msg.method !== 'textDocument/didClose')) {
+    if (!this.compensations.proactivePullDiagnostics || uri === undefined || msg.method === 'textDocument/didClose') {
       return;
     }
     const isAllStarting = this.router.serversForUri(uri)

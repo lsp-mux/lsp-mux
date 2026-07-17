@@ -121,7 +121,7 @@ const handleRequest = (msg: RequestMessage): void => {
 
 const notificationHandlers: Record<string, (msg: NotificationMessage) => void> = {
   'exit': () => {
-    /* eslint-disable-next-line n/no-process-exit, unicorn/no-process-exit --
+    /* eslint-disable-next-line unicorn/no-process-exit --
        LSP `exit` means terminate now; the reader keeps the loop alive, so
        process.exitCode wouldn't terminate the subprocess. */
     process.exit(0);
@@ -219,7 +219,7 @@ reader.listen((msg) => {
 
   // Crash on either request or notification form
   if ((Msg.isNotification(msg) || Msg.isRequest(msg)) && msg.method === '$/crash') {
-    /* eslint-disable-next-line n/no-process-exit, unicorn/no-process-exit --
+    /* eslint-disable-next-line unicorn/no-process-exit --
        Tests simulate a server crash; the reader keeps the loop alive, so
        process.exitCode wouldn't terminate the subprocess. */
     process.exit(1);
