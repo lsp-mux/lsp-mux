@@ -430,8 +430,8 @@ describe.sequential('WorkspaceWatcher', () => {
 
       const scheduler = vi.mocked(createFlushScheduler).mock.results[0]?.value as { dispose: ReturnType<typeof vi.fn> };
 
-      expect(scheduler.dispose).toHaveBeenCalled();
-      expect(mockFsWatcher.close).toHaveBeenCalled();
+      expect(scheduler.dispose).toHaveBeenCalledWith();
+      expect(mockFsWatcher.close).toHaveBeenCalledWith();
     });
 
     it('symbol.dispose calls dispose', async ({ expect }) => {
@@ -441,7 +441,7 @@ describe.sequential('WorkspaceWatcher', () => {
 
       watcher[Symbol.dispose]();
 
-      expect(mockFsWatcher.close).toHaveBeenCalled();
+      expect(mockFsWatcher.close).toHaveBeenCalledWith();
     });
 
     it('isDegraded is false initially', async ({ expect }) => {
