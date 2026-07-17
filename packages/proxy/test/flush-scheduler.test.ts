@@ -93,10 +93,7 @@ describe('FlushScheduler', () => {
 
   it('does not run concurrent flushes', async ({ expect }) => {
     const clock = createClock();
-    let resolveFlush!: () => void;
-    const flushPromise = new Promise<void>((resolve) => {
-      resolveFlush = resolve;
-    });
+    const { promise: flushPromise, resolve: resolveFlush }: PromiseWithResolvers<void> = Promise.withResolvers();
     const onFlush = vi.fn<FlushSchedulerOptions['onFlush']>().mockReturnValueOnce(flushPromise).mockResolvedValue(undefined);
     const scheduler = createFlushScheduler({ debounceMs: 50, maxWaitMs: 1000, onFlush, timers: clock });
 
