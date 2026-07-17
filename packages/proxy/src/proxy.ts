@@ -218,10 +218,24 @@ export class LspProxy {
 
   // ── Client → Server ──────────────────────────────────────────────────
 
-  private handleClientMessage(msg: Message): void {
+  private logClientMessage(msg: Message): void {
     if (Msg.isRequest(msg)) this.log.debug(`client → proxy: request ${msg.method} (id: ${String(msg.id)})`);
     else if (Msg.isNotification(msg)) this.log.debug(`client → proxy: notification ${msg.method}`);
     else if (Msg.isResponse(msg)) this.log.debug(`client → proxy: response (id: ${String(msg.id)})`);
+  }
+
+  private handleStoppedMessage(msg: Message): void {
+    if (Msg.isNotification(msg) && msg.method === 'exit') {
+      this.clientReader.dispose();
+      return;
+    }
+    if (Msg.isRequest(msg)) {
+      this.sendErrorToClient(msg.id, lspErrorCodes.ServerNotInitialized, 'Server stopped');
+    }
+  }
+
+  private handleClientMessage(msg: Message): void {
+    this.logClientMessage(msg);
 
     if (Msg.isNotification(msg) && documentSyncMethods.has(msg.method)) {
       this.documents = docs.apply(this.documents, msg.method, msg.params);
@@ -237,13 +251,8 @@ export class LspProxy {
         return;
       }
       case 'stopped': {
-        if (Msg.isNotification(msg) && msg.method === 'exit') {
-          this.clientReader.dispose();
-          return;
-        }
-        if (Msg.isRequest(msg)) {
-          this.sendErrorToClient(msg.id, lspErrorCodes.ServerNotInitialized, 'Server stopped');
-        }
+        this.handleStoppedMessage(msg);
+        return;
       }
     }
   }
@@ -281,117 +290,147 @@ export class LspProxy {
     }
   }
 
-  private handleRunningMessage(msg: Message): void {
-    if (Msg.isRequest(msg) && msg.method === 'shutdown') {
-      void this.shutdownAllServers(msg.id);
-      return;
-    }
-
-    if (Msg.isNotification(msg) && msg.method === 'exit') {
-      for (const server of this.servers.values()) {
-        if (server.state !== 'idle') server.send(msg);
-      }
-      this.dispose();
-      return;
-    }
-
-    if (Msg.isNotification(msg) && msg.method === 'initialized') {
-      for (const server of this.servers.values()) server.sendInitialized();
-      this.log.info('LSP handshake complete');
-      return;
-    }
-
-    if (Msg.isNotification(msg) && documentSyncMethods.has(msg.method)) {
-      const rawUri = extractUri(msg);
-      const uri = rawUri ? normalizeFileUri(rawUri) : undefined;
-      const normalized = uri && uri !== rawUri
-        ? rewriteDocSyncUri(msg, uri)
-        : msg;
-
-      // Reset version offset on open/close — client version is authoritative
-      if ((msg.method === 'textDocument/didOpen' || msg.method === 'textDocument/didClose') && uri) this.versionOffsets.delete(uri);
-
-      const rewritten = this.rewriteDocSyncVersion(normalized, uri);
-      for (const name of this.router.serversForUri(uri)) {
-        this.servers.get(name)?.send(rewritten);
-      }
-
-      // Pull diagnostics from servers that use the pull model (e.g., ESLint).
-      // Only needed when the client lacks native pull diagnostic support —
-      // converts pull results to push notifications the client can consume.
-      if (this.compensations.proactivePullDiagnostics && uri && msg.method !== 'textDocument/didClose') {
-        const isAllStarting = this.router.serversForUri(uri)
-          .every((serverName) => {
-            const state = this.servers.get(serverName)?.state;
-            return state === 'starting' || state === 'idle';
-          });
-        if (isAllStarting) {
-          setTimeout(() => {
-            if (this.isStopped()) return;
-            void this.pullDiagnostics(uri);
-          }, lazyStartPullDiagnosticsDelayMs);
-        } else {
-          void this.pullDiagnostics(uri);
-        }
-      }
-      return;
-    }
-
-    if (Msg.isNotification(msg) && msg.method === '$/cancelRequest') {
-      const result = v.safeParse(CancelParamsSchema, msg.params);
-      if (result.success) {
-        const { id } = result.output;
-        let isCancelled = false;
-        for (const server of this.servers.values()) {
-          if (server.cancelBuffered(id)) isCancelled = true;
-        }
-        if (isCancelled) {
-          this.sendErrorToClient(id, lspErrorCodes.RequestCancelled, 'Request cancelled');
-          this.requestRouting.delete(id);
-          return;
-        }
-      }
-      // Not buffered — forward for in-flight cancellation (skip idle servers)
-      for (const server of this.servers.values()) {
-        if (server.state !== 'idle') server.send(msg);
-      }
-      return;
-    }
-
-    // Route client responses to the server that originated the request
-    if (Msg.isResponse(msg)) {
-      const targetServer = this.serverRequestRouting.get(msg.id);
-      this.serverRequestRouting.delete(msg.id);
-      if (targetServer) {
-        this.servers.get(targetServer)?.send(msg);
-      }
-      return;
-    }
-
-    if (Msg.isRequest(msg) && msg.method === 'textDocument/diagnostic') {
-      void this.handleDiagnosticPull(msg);
-      return;
-    }
-
-    if (Msg.isRequest(msg)) {
-      const uri = extractUri(msg);
-      const primaryName = this.router.primaryForUri(uri);
-      const primary = primaryName ? this.servers.get(primaryName) : undefined;
-      if (primary) {
-        this.requestRouting.set(msg.id, primary.name);
-        if (!primary.send(msg)) {
-          this.sendErrorToClient(msg.id, lspErrorCodes.InternalError, 'Server unavailable');
-          this.requestRouting.delete(msg.id);
-        }
-      } else {
-        this.sendErrorToClient(msg.id, lspErrorCodes.InternalError, 'No servers available');
-      }
-      return;
-    }
-
-    // Fallback: broadcast to non-idle servers only
+  /** Broadcast a message to every server that isn't idle. */
+  private broadcastToActive(msg: Message): void {
     for (const server of this.servers.values()) {
       if (server.state !== 'idle') server.send(msg);
+    }
+  }
+
+  /** Route a client response back to the server that issued the request. */
+  private routeClientResponse(msg: ResponseMessage): void {
+    const targetServer = this.serverRequestRouting.get(msg.id);
+    this.serverRequestRouting.delete(msg.id);
+    if (targetServer) {
+      this.servers.get(targetServer)?.send(msg);
+    }
+  }
+
+  private handleCancelRequest(msg: NotificationMessage): void {
+    const result = v.safeParse(CancelParamsSchema, msg.params);
+    if (result.success) {
+      const { id } = result.output;
+      let isCancelled = false;
+      for (const server of this.servers.values()) {
+        if (server.cancelBuffered(id)) isCancelled = true;
+      }
+      if (isCancelled) {
+        this.sendErrorToClient(id, lspErrorCodes.RequestCancelled, 'Request cancelled');
+        this.requestRouting.delete(id);
+        return;
+      }
+    }
+    // Not buffered — forward for in-flight cancellation (skip idle servers)
+    this.broadcastToActive(msg);
+  }
+
+  /**
+   * Proactively pull diagnostics after a document sync when compensating for a
+   *  client without native pull support. Servers still starting are polled
+   *  after a grace delay so they have time to come up.
+   */
+  private maybePullDiagnostics(msg: NotificationMessage, uri: string | undefined): void {
+    if (!(this.compensations.proactivePullDiagnostics && uri && msg.method !== 'textDocument/didClose')) {
+      return;
+    }
+    const isAllStarting = this.router.serversForUri(uri)
+      .every((serverName) => {
+        const state = this.servers.get(serverName)?.state;
+        return state === 'starting' || state === 'idle';
+      });
+    if (isAllStarting) {
+      setTimeout(() => {
+        if (this.isStopped()) return;
+        void this.pullDiagnostics(uri);
+      }, lazyStartPullDiagnosticsDelayMs);
+    } else {
+      void this.pullDiagnostics(uri);
+    }
+  }
+
+  private handleDocumentSync(msg: NotificationMessage): void {
+    const rawUri = extractUri(msg);
+    const uri = rawUri ? normalizeFileUri(rawUri) : undefined;
+    const normalized = uri && uri !== rawUri
+      ? rewriteDocSyncUri(msg, uri)
+      : msg;
+
+    // Reset version offset on open/close — client version is authoritative
+    if ((msg.method === 'textDocument/didOpen' || msg.method === 'textDocument/didClose') && uri) this.versionOffsets.delete(uri);
+
+    const rewritten = this.rewriteDocSyncVersion(normalized, uri);
+    for (const name of this.router.serversForUri(uri)) {
+      this.servers.get(name)?.send(rewritten);
+    }
+
+    this.maybePullDiagnostics(msg, uri);
+  }
+
+  private handleRunningNotification(msg: NotificationMessage): void {
+    switch (msg.method) {
+      case 'exit': {
+        this.broadcastToActive(msg);
+        this.dispose();
+        return;
+      }
+      case 'initialized': {
+        for (const server of this.servers.values()) server.sendInitialized();
+        this.log.info('LSP handshake complete');
+        return;
+      }
+      case '$/cancelRequest': {
+        this.handleCancelRequest(msg);
+        return;
+      }
+    }
+    if (documentSyncMethods.has(msg.method)) {
+      this.handleDocumentSync(msg);
+      return;
+    }
+    this.broadcastToActive(msg);
+  }
+
+  /** Route a generic client request to the primary server for its document. */
+  private routeRequestToPrimary(msg: RequestMessage): void {
+    const uri = extractUri(msg);
+    const primaryName = this.router.primaryForUri(uri);
+    const primary = primaryName ? this.servers.get(primaryName) : undefined;
+    if (primary) {
+      this.requestRouting.set(msg.id, primary.name);
+      if (!primary.send(msg)) {
+        this.sendErrorToClient(msg.id, lspErrorCodes.InternalError, 'Server unavailable');
+        this.requestRouting.delete(msg.id);
+      }
+    } else {
+      this.sendErrorToClient(msg.id, lspErrorCodes.InternalError, 'No servers available');
+    }
+  }
+
+  private handleRunningRequest(msg: RequestMessage): void {
+    switch (msg.method) {
+      case 'shutdown': {
+        void this.shutdownAllServers(msg.id);
+        return;
+      }
+      case 'textDocument/diagnostic': {
+        void this.handleDiagnosticPull(msg);
+        return;
+      }
+    }
+    this.routeRequestToPrimary(msg);
+  }
+
+  private handleRunningMessage(msg: Message): void {
+    if (Msg.isResponse(msg)) {
+      this.routeClientResponse(msg);
+      return;
+    }
+    if (Msg.isNotification(msg)) {
+      this.handleRunningNotification(msg);
+      return;
+    }
+    if (Msg.isRequest(msg)) {
+      this.handleRunningRequest(msg);
     }
   }
 
@@ -408,68 +447,90 @@ export class LspProxy {
 
   // ── Server → Client ──────────────────────────────────────────────────
 
-  private handleServerMessage(serverName: string, msg: Message): void {
+  private logServerMessage(serverName: string, msg: Message): void {
     if (Msg.isRequest(msg)) this.log.debug(`${serverName} → proxy: request ${msg.method}`);
     else if (Msg.isResponse(msg)) this.log.debug(`${serverName} → proxy: response (id: ${String(msg.id)})`);
     else if (Msg.isNotification(msg)) this.logServerNotification(serverName, msg);
+  }
 
-    if (Msg.isNotification(msg) && msg.method === 'textDocument/publishDiagnostics') {
-      const result = v.safeParse(PublishDiagnosticsSchema, msg.params);
-      if (result.success) {
-        const uri = normalizeFileUri(result.output.uri);
-        this.diagnosticsStore = diag.update(this.diagnosticsStore, serverName, uri, result.output.diagnostics);
-        this.publishMergedDiagnostics(uri);
-        return;
+  /** Store + republish pushed diagnostics. Returns true if the message was consumed. */
+  private handleServerNotification(serverName: string, msg: Message): boolean {
+    if (!(Msg.isNotification(msg) && msg.method === 'textDocument/publishDiagnostics')) return false;
+    const result = v.safeParse(PublishDiagnosticsSchema, msg.params);
+    if (!result.success) return false;
+    const uri = normalizeFileUri(result.output.uri);
+    this.diagnosticsStore = diag.update(this.diagnosticsStore, serverName, uri, result.output.diagnostics);
+    this.publishMergedDiagnostics(uri);
+    return true;
+  }
+
+  /** Dispatch intercepted server-initiated requests. Returns true if consumed. */
+  private handleServerRequest(serverName: string, msg: Message): boolean {
+    if (!Msg.isRequest(msg)) return false;
+    switch (msg.method) {
+      case 'workspace/diagnostic/refresh': {
+        this.handleDiagnosticRefresh(serverName, msg);
+        return true;
+      }
+      case 'workspace/configuration': {
+        return this.handleConfigurationRequest(serverName, msg);
+      }
+      case 'client/registerCapability': {
+        this.handleRegisterCapability(serverName, msg);
+        return true;
+      }
+      case 'client/unregisterCapability': {
+        this.handleUnregisterCapability(serverName, msg);
+        return true;
+      }
+      default: {
+        return false;
       }
     }
+  }
 
-    // workspace/diagnostic/refresh: when compensating, re-pull diagnostics
-    // for tracked documents; otherwise forward to client so it re-pulls.
-    if (Msg.isRequest(msg) && msg.method === 'workspace/diagnostic/refresh') {
-      if (this.compensations.proactivePullDiagnostics) {
-        this.ackToServer(serverName, msg.id);
-        for (const uri of this.documents.keys()) {
-          void this.pullDiagnostics(uri);
-        }
-        return;
+  /**
+   * workspace/diagnostic/refresh: when compensating, re-pull diagnostics for
+   *  tracked documents; otherwise forward to the client so it re-pulls.
+   */
+  private handleDiagnosticRefresh(serverName: string, msg: RequestMessage): void {
+    if (this.compensations.proactivePullDiagnostics) {
+      this.ackToServer(serverName, msg.id);
+      for (const uri of this.documents.keys()) {
+        void this.pullDiagnostics(uri);
       }
-      // Forward to client — track for response routing
-      this.serverRequestRouting.set(msg.id, serverName);
-      this.writeToClient(msg);
       return;
     }
+    // Forward to client — track for response routing
+    this.serverRequestRouting.set(msg.id, serverName);
+    this.writeToClient(msg);
+  }
 
-    // Intercept workspace/configuration — respond with server-specific settings
-    if (Msg.isRequest(msg) && msg.method === 'workspace/configuration') {
-      const settings = this.serverConfigs.get(serverName)?.settings;
-      if (settings) {
-        this.handleWorkspaceConfiguration(serverName, msg, settings);
-        return;
-      }
-    }
+  /** Answer workspace/configuration with server settings. Returns false to forward. */
+  private handleConfigurationRequest(serverName: string, msg: RequestMessage): boolean {
+    const settings = this.serverConfigs.get(serverName)?.settings;
+    if (!settings) return false;
+    this.handleWorkspaceConfiguration(serverName, msg, settings);
+    return true;
+  }
 
-    // Intercept client/registerCapability for file watching
-    if (Msg.isRequest(msg) && msg.method === 'client/registerCapability') {
-      this.handleRegisterCapability(serverName, msg);
-      return;
-    }
-
-    // Intercept client/unregisterCapability for file watching
-    if (Msg.isRequest(msg) && msg.method === 'client/unregisterCapability') {
-      this.handleUnregisterCapability(serverName, msg);
-      return;
-    }
-
+  /** Clean up routing state and forward a server message to the client. */
+  private forwardServerMessage(serverName: string, msg: Message): void {
     if (Msg.isResponse(msg) && msg.id !== null) {
       this.requestRouting.delete(msg.id);
     }
-
     // Track server-to-client requests so the client's response can be routed back
     if (Msg.isRequest(msg)) {
       this.serverRequestRouting.set(msg.id, serverName);
     }
-
     this.writeToClient(msg);
+  }
+
+  private handleServerMessage(serverName: string, msg: Message): void {
+    this.logServerMessage(serverName, msg);
+    if (this.handleServerNotification(serverName, msg)) return;
+    if (this.handleServerRequest(serverName, msg)) return;
+    this.forwardServerMessage(serverName, msg);
   }
 
   private handleRegisterCapability(serverName: string, msg: RequestMessage): void {
