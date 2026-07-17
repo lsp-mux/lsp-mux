@@ -308,6 +308,21 @@ export const createManagedServer = ({
     server = undefined;
   };
 
+  const writeToRunning = (msg: Message): void => {
+    if (Msg.isRequest(msg)) {
+      pendingRequests.add(msg.id);
+      if (msg.method === 'shutdown') isShutdownSent = true;
+    }
+    server?.write(msg);
+  };
+
+  const startLazily = (msg: Message, isDocSync: boolean): void => {
+    state = 'starting';
+    callbacks.onStateChange(state);
+    if (!isDocSync) buffer.offer(msg);
+    void performInitSequence('starting');
+  };
+
   // -- Public interface --
 
   return {
@@ -337,11 +352,7 @@ export const createManagedServer = ({
 
     send(msg) {
       if (state === 'running') {
-        if (Msg.isRequest(msg)) {
-          pendingRequests.add(msg.id);
-          if (msg.method === 'shutdown') isShutdownSent = true;
-        }
-        server?.write(msg);
+        writeToRunning(msg);
         return true;
       }
 
@@ -356,10 +367,7 @@ export const createManagedServer = ({
 
       // Lazy start: first message to an idle server triggers spawn
       if (state === 'idle' && initParams !== undefined && isLazyStartEnabled) {
-        state = 'starting';
-        callbacks.onStateChange(state);
-        if (!isDocSync) buffer.offer(msg);
-        void performInitSequence('starting');
+        startLazily(msg, isDocSync);
         return true;
       }
 
