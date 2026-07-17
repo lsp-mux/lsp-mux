@@ -97,7 +97,10 @@ export const createExcludeMatcher = (
     ? picomatch([...patterns])
     : () => false;
 
-const resolveBaseUri = (baseUri: string | { uri: string; name: string }, workspaceRoot?: string): string => {
+const resolveBaseUri = (
+  baseUri: string | { uri: string; name: string },
+  workspaceRoot?: string,
+): string => {
   const raw = typeof baseUri === 'string' ? baseUri : baseUri.uri;
   if (workspaceRoot && raw.startsWith('file://')) {
     try {

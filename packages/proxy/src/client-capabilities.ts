@@ -3,7 +3,10 @@ import { isPlainObject } from './capabilities.ts';
 export interface CompensationFlags {
   /** True when the client lacks workspace/didChangeWatchedFiles — proxy watches files locally. */
   readonly localFileWatching: boolean;
-  /** True when the client lacks textDocument/diagnostic — proxy proactively pulls and republishes as push. */
+  /**
+   * True when the client lacks textDocument/diagnostic — proxy proactively
+   * pulls and republishes as push.
+   */
   readonly proactivePullDiagnostics: boolean;
 }
 

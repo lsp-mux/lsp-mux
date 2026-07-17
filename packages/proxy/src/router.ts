@@ -25,7 +25,10 @@ export interface Router {
 
 // --- Internal helpers (pure) ---
 
-/** Build extension → languageId map from all servers' languages config. First server wins on conflicts. */
+/**
+ * Build extension → languageId map from all servers' languages config.
+ * First server wins on conflicts.
+ */
 const buildExtToLang = (servers: readonly ServerEntry[]): ReadonlyMap<string, string> => {
   const map = new Map<string, string>();
   for (const { config } of servers) {
@@ -39,7 +42,9 @@ const buildExtToLang = (servers: readonly ServerEntry[]): ReadonlyMap<string, st
 };
 
 /** Build languageId → server names (in config order). */
-const buildLangToServers = (servers: readonly ServerEntry[]): ReadonlyMap<string, readonly string[]> => {
+const buildLangToServers = (
+  servers: readonly ServerEntry[],
+): ReadonlyMap<string, readonly string[]> => {
   const map = new Map<string, string[]>();
   for (const { name, config } of servers) {
     for (const langId of Object.keys(config.languages)) {

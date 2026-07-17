@@ -15,8 +15,20 @@ import { createManagedServer } from './managed-server.ts';
 import type { RestartPolicy } from './restart-scheduler.ts';
 import type { Router } from './router.ts';
 import { createRouter, extractUri } from './router.ts';
-import { Message as Msg, createNotification, documentSyncMethods, lspErrorCodes, lspMessageType } from './types.ts';
-import type { Message, NotificationMessage, RequestMessage, ResponseMessage, ServerConfig } from './types.ts';
+import {
+  Message as Msg,
+  createNotification,
+  documentSyncMethods,
+  lspErrorCodes,
+  lspMessageType,
+} from './types.ts';
+import type {
+  Message,
+  NotificationMessage,
+  RequestMessage,
+  ResponseMessage,
+  ServerConfig,
+} from './types.ts';
 import { normalizeFileUri } from './uri.ts';
 import { WorkspaceWatcher } from './workspace-watcher.ts';
 
@@ -132,7 +144,10 @@ export interface ProxyOptions {
  * Rewrite the textDocument.uri in a document sync notification to a
  *  normalized form. Used when the client sends non-standard file URIs.
  */
-const rewriteDocSyncUri = (msg: NotificationMessage, normalizedUri: string): NotificationMessage => {
+const rewriteDocSyncUri = (
+  msg: NotificationMessage,
+  normalizedUri: string,
+): NotificationMessage => {
   const params = msg.params;
   if (!isPlainObject(params)) return msg;
   const td = params['textDocument'];
@@ -157,7 +172,11 @@ export class LspProxy {
   private readonly log: Logger;
 
   private state: ProxyState = 'idle';
-  private compensations: CompensationFlags = { localFileWatching: true, proactivePullDiagnostics: true };
+  private compensations: CompensationFlags = {
+    localFileWatching: true,
+    proactivePullDiagnostics: true,
+  };
+
   private documents: docs.DocumentMap = docs.empty();
   private diagnosticsStore: diag.DiagnosticsStore = diag.empty();
   private watchRegistrations: fw.WatchRegistrations = fw.empty();
@@ -219,9 +238,13 @@ export class LspProxy {
   // ── Client → Server ──────────────────────────────────────────────────
 
   private logClientMessage(msg: Message): void {
-    if (Msg.isRequest(msg)) this.log.debug(`client → proxy: request ${msg.method} (id: ${String(msg.id)})`);
-    else if (Msg.isNotification(msg)) this.log.debug(`client → proxy: notification ${msg.method}`);
-    else if (Msg.isResponse(msg)) this.log.debug(`client → proxy: response (id: ${String(msg.id)})`);
+    if (Msg.isRequest(msg)) {
+      this.log.debug(`client → proxy: request ${msg.method} (id: ${String(msg.id)})`);
+    } else if (Msg.isNotification(msg)) {
+      this.log.debug(`client → proxy: notification ${msg.method}`);
+    } else if (Msg.isResponse(msg)) {
+      this.log.debug(`client → proxy: response (id: ${String(msg.id)})`);
+    }
   }
 
   private handleStoppedMessage(msg: Message): void {
@@ -270,7 +293,11 @@ export class LspProxy {
 
   private async initializeAllServers(clientRequestId: number | string | null): Promise<void> {
     this.compensations = analyzeClientCapabilities(this.initParams);
-    this.log.info(`Client capability compensation: localFileWatching=${String(this.compensations.localFileWatching)}, proactivePullDiagnostics=${String(this.compensations.proactivePullDiagnostics)}`);
+    const { localFileWatching, proactivePullDiagnostics } = this.compensations;
+    this.log.info(
+      `Client capability compensation: localFileWatching=${String(localFileWatching)}, ` +
+      `proactivePullDiagnostics=${String(proactivePullDiagnostics)}`,
+    );
 
     // Servers check this to decide whether to use dynamic registration.
     const serverInitParams = injectProxyCapabilities(this.initParams, this.compensations);
@@ -330,7 +357,11 @@ export class LspProxy {
    *  after a grace delay so they have time to come up.
    */
   private maybePullDiagnostics(msg: NotificationMessage, uri: string | undefined): void {
-    if (!this.compensations.proactivePullDiagnostics || uri === undefined || msg.method === 'textDocument/didClose') {
+    if (
+      !this.compensations.proactivePullDiagnostics ||
+      uri === undefined ||
+      msg.method === 'textDocument/didClose'
+    ) {
       return;
     }
     const isAllStarting = this.router.serversForUri(uri)
@@ -356,7 +387,9 @@ export class LspProxy {
       : msg;
 
     // Reset version offset on open/close — client version is authoritative
-    if ((msg.method === 'textDocument/didOpen' || msg.method === 'textDocument/didClose') && uri) this.versionOffsets.delete(uri);
+    const isOpenOrClose =
+      msg.method === 'textDocument/didOpen' || msg.method === 'textDocument/didClose';
+    if (isOpenOrClose && uri) this.versionOffsets.delete(uri);
 
     const rewritten = this.rewriteDocSyncVersion(normalized, uri);
     for (const name of this.router.serversForUri(uri)) {
@@ -448,18 +481,29 @@ export class LspProxy {
   // ── Server → Client ──────────────────────────────────────────────────
 
   private logServerMessage(serverName: string, msg: Message): void {
-    if (Msg.isRequest(msg)) this.log.debug(`${serverName} → proxy: request ${msg.method}`);
-    else if (Msg.isResponse(msg)) this.log.debug(`${serverName} → proxy: response (id: ${String(msg.id)})`);
-    else if (Msg.isNotification(msg)) this.logServerNotification(serverName, msg);
+    if (Msg.isRequest(msg)) {
+      this.log.debug(`${serverName} → proxy: request ${msg.method}`);
+    } else if (Msg.isResponse(msg)) {
+      this.log.debug(`${serverName} → proxy: response (id: ${String(msg.id)})`);
+    } else if (Msg.isNotification(msg)) {
+      this.logServerNotification(serverName, msg);
+    }
   }
 
   /** Store + republish pushed diagnostics. Returns true if the message was consumed. */
   private handleServerNotification(serverName: string, msg: Message): boolean {
-    if (!(Msg.isNotification(msg) && msg.method === 'textDocument/publishDiagnostics')) return false;
+    if (!(Msg.isNotification(msg) && msg.method === 'textDocument/publishDiagnostics')) {
+      return false;
+    }
     const result = v.safeParse(PublishDiagnosticsSchema, msg.params);
     if (!result.success) return false;
     const uri = normalizeFileUri(result.output.uri);
-    this.diagnosticsStore = diag.update(this.diagnosticsStore, serverName, uri, result.output.diagnostics);
+    this.diagnosticsStore = diag.update(
+      this.diagnosticsStore,
+      serverName,
+      uri,
+      result.output.diagnostics,
+    );
     this.publishMergedDiagnostics(uri);
     return true;
   }
@@ -544,7 +588,10 @@ export class LspProxy {
     let handledCount = 0;
 
     for (const reg of parsed.output.registrations) {
-      if (reg.method === 'workspace/didChangeWatchedFiles' && this.compensations.localFileWatching) {
+      if (
+        reg.method === 'workspace/didChangeWatchedFiles' &&
+        this.compensations.localFileWatching
+      ) {
         const opts = v.safeParse(fw.RegisterOptionsSchema, reg.registerOptions);
         if (opts.success) {
           this.watchRegistrations = fw.register(
@@ -597,7 +644,10 @@ export class LspProxy {
     let handledCount = 0;
 
     for (const unreg of parsed.output.unregisterations) {
-      if (unreg.method === 'workspace/didChangeWatchedFiles' && this.compensations.localFileWatching) {
+      if (
+        unreg.method === 'workspace/didChangeWatchedFiles' &&
+        this.compensations.localFileWatching
+      ) {
         this.watchRegistrations = fw.unregister(this.watchRegistrations, unreg.id);
         handledCount++;
         this.log.info(`${serverName}: unregistered file watcher ${unreg.id}`);
@@ -624,7 +674,9 @@ export class LspProxy {
   ): void {
     const parsed = v.safeParse(WorkspaceConfigurationSchema, msg.params);
     if (!parsed.success) {
-      this.log.warn(`${serverName}: malformed workspace/configuration request — responding with empty array`);
+      this.log.warn(
+        `${serverName}: malformed workspace/configuration request — responding with empty array`,
+      );
       const response: ResponseMessage = { jsonrpc: '2.0', id: msg.id, result: [] };
       this.servers.get(serverName)?.send(response);
       return;
@@ -644,7 +696,11 @@ export class LspProxy {
     this.servers.get(serverName)?.send(response);
   }
 
-  private handlePendingErrors(_serverName: string, ids: ReadonlySet<number | string | null>, message: string): void {
+  private handlePendingErrors(
+    _serverName: string,
+    ids: ReadonlySet<number | string | null>,
+    message: string,
+  ): void {
     for (const id of ids) {
       this.sendErrorToClient(id, lspErrorCodes.InternalError, message);
       this.requestRouting.delete(id);
@@ -860,7 +916,11 @@ export class LspProxy {
   }
 
   private respondToClient(id: number | string | null, result: ResponseMessage['result']): void {
-    const response: ResponseMessage = { jsonrpc: '2.0', id, ...(result !== undefined && { result }) };
+    const response: ResponseMessage = {
+      jsonrpc: '2.0',
+      id,
+      ...(result !== undefined && { result }),
+    };
     this.writeToClient(response);
   }
 

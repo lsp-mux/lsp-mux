@@ -85,9 +85,11 @@ const pruneOldLogs = async (logDir: string): Promise<void> => {
 
 const defaultLogDir = (): string => {
   if (process.platform === 'win32') {
-    return path.join(process.env['LOCALAPPDATA'] ?? path.join(homedir(), 'AppData', 'Local'), 'lsp-proxy', 'logs');
+    const base = process.env['LOCALAPPDATA'] ?? path.join(homedir(), 'AppData', 'Local');
+    return path.join(base, 'lsp-proxy', 'logs');
   }
-  return path.join(process.env['XDG_DATA_HOME'] ?? path.join(homedir(), '.local', 'share'), 'lsp-proxy', 'logs');
+  const base = process.env['XDG_DATA_HOME'] ?? path.join(homedir(), '.local', 'share');
+  return path.join(base, 'lsp-proxy', 'logs');
 };
 
 const main = async (): Promise<void> => {
@@ -131,6 +133,7 @@ try {
   await main();
 } catch (error: unknown) {
   // Logger may not be initialized — write to stderr as fallback
-  process.stderr.write(`[lsp-proxy] Fatal: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`);
+  const detail = error instanceof Error ? (error.stack ?? error.message) : String(error);
+  process.stderr.write(`[lsp-proxy] Fatal: ${detail}\n`);
   process.exit(1);
 }

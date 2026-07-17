@@ -1,7 +1,9 @@
 import * as v from 'valibot';
 
 const LEVELS = ['DEBUG', 'INFO', 'WARN', 'ERROR'] as const;
-const levelIndex: Record<string, number> = Object.fromEntries(LEVELS.map((level, index) => [level, index]));
+const levelIndex: Record<string, number> = Object.fromEntries(
+  LEVELS.map((level, index) => [level, index]),
+);
 export const LevelSchema = v.picklist(LEVELS);
 export type Level = v.InferOutput<typeof LevelSchema>;
 

@@ -33,7 +33,9 @@ export interface RestartSchedulerOptions {
   timers?: Timers | undefined;
 }
 
-export const createRestartScheduler = ({ policy, timers = defaultTimers }: RestartSchedulerOptions): RestartScheduler => {
+export const createRestartScheduler = (
+  { policy, timers = defaultTimers }: RestartSchedulerOptions,
+): RestartScheduler => {
   let count = 0;
   let timer: unknown;
 

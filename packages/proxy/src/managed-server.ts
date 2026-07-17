@@ -3,8 +3,20 @@ import type { Logger } from './logger.ts';
 import { createMessageBuffer } from './message-buffer.ts';
 import { createRestartScheduler, defaultRestartPolicy } from './restart-scheduler.ts';
 import type { RestartPolicy } from './restart-scheduler.ts';
-import type { Message, RequestMessage, ResponseMessage, ServerConfig, TrackedDocument } from './types.ts';
-import { Message as Msg, createNotification, createRequest, documentSyncMethods, lspErrorCodes } from './types.ts';
+import type {
+  Message,
+  RequestMessage,
+  ResponseMessage,
+  ServerConfig,
+  TrackedDocument,
+} from './types.ts';
+import {
+  Message as Msg,
+  createNotification,
+  createRequest,
+  documentSyncMethods,
+  lspErrorCodes,
+} from './types.ts';
 
 const maxBufferSize = 1000;
 
@@ -31,7 +43,10 @@ export interface ManagedServer {
   initialize: (params: RequestMessage['params']) => Promise<ResponseMessage>;
   /** Mark the proxy-level handshake as complete. Enables lazy start on idle servers. */
   sendInitialized: () => void;
-  /** Route a message to this server. Triggers lazy start if idle; buffers if starting/restarting. */
+  /**
+   * Route a message to this server. Triggers lazy start if idle; buffers if
+   * starting/restarting.
+   */
   send: (msg: Message) => boolean;
   /** Try to cancel a buffered request by ID. Returns true if found and removed. */
   cancelBuffered: (id: number | string) => boolean;
@@ -73,7 +88,9 @@ export const createManagedServer = ({
 
   const pendingRequests = new Set<number | string | null>();
   const buffer = createMessageBuffer(maxBufferSize);
-  const scheduler = createRestartScheduler({ policy: { ...defaultRestartPolicy, ...restartPolicy } });
+  const scheduler = createRestartScheduler({
+    policy: { ...defaultRestartPolicy, ...restartPolicy },
+  });
 
   let proxySeq = 0;
   const proxyCallbacks = new Map<string, (res: ResponseMessage) => void>();
@@ -100,7 +117,10 @@ export const createManagedServer = ({
         resolve({
           jsonrpc: '2.0',
           id,
-          error: { code: lspErrorCodes.InternalError, message: `Request ${method} timed out after ${String(timeoutMs)}ms` },
+          error: {
+            code: lspErrorCodes.InternalError,
+            message: `Request ${method} timed out after ${String(timeoutMs)}ms`,
+          },
         });
       }, timeoutMs);
 
@@ -129,7 +149,11 @@ export const createManagedServer = ({
 
   const handleServerMessage = (msg: Message): void => {
     // Internal proxy response (e.g., initialize during restart)
-    if (Msg.isResponse(msg) && typeof msg.id === 'string' && msg.id.startsWith(`__proxy:${name}:`)) {
+    if (
+      Msg.isResponse(msg) &&
+      typeof msg.id === 'string' &&
+      msg.id.startsWith(`__proxy:${name}:`)
+    ) {
       const cb = proxyCallbacks.get(msg.id);
       if (cb) {
         cb(msg);
@@ -177,7 +201,8 @@ export const createManagedServer = ({
       return;
     }
 
-    // If already starting/restarting (crash during init sequence), let performInitSequence reschedule
+    // If already starting/restarting (crash during init sequence), let
+    // performInitSequence reschedule
     if (state === 'starting' || state === 'restarting') return;
 
     state = 'restarting';
@@ -196,7 +221,10 @@ export const createManagedServer = ({
     }
 
     const label = expectedState === 'starting' ? 'start' : 'restart';
-    log.info(`${name}: scheduling ${label} (attempt ${String(scheduler.attempt)}/${String(scheduler.maxRetries)})`);
+    log.info(
+      `${name}: scheduling ${label} ` +
+      `(attempt ${String(scheduler.attempt)}/${String(scheduler.maxRetries)})`,
+    );
   };
 
   const sendPostInitNotifications = (child: ChildServer): void => {
@@ -229,7 +257,9 @@ export const createManagedServer = ({
       if (Msg.isRequest(msg)) pendingRequests.add(msg.id);
       child.write(msg);
     }
-    if (flushed.length > 0) log.info(`${name}: flushed ${String(flushed.length)} buffered message(s)`);
+    if (flushed.length > 0) {
+      log.info(`${name}: flushed ${String(flushed.length)} buffered message(s)`);
+    }
   };
 
   const performInitSequence = async (expectedState: 'starting' | 'restarting'): Promise<void> => {

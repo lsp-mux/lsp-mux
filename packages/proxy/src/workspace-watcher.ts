@@ -31,7 +31,11 @@ const isEnoent = (err: unknown): boolean =>
 export interface WatcherDelegate {
   isStopped: () => boolean;
   getDocument: (uri: string) => TrackedDocument | undefined;
-  matchEvent: (relativePath: string, changeType: number, uri: string) => ReadonlyMap<string, fw.FileChange[]>;
+  matchEvent: (
+    relativePath: string,
+    changeType: number,
+    uri: string,
+  ) => ReadonlyMap<string, fw.FileChange[]>;
   /** Update tracked content, bump version offset, and fan out didChange to matching servers. */
   resyncDocument: (uri: string, clientVersion: number, text: string) => void;
   sendWatchedFilesEvent: (serverName: string, changes: fw.FileChange[]) => void;
@@ -168,7 +172,10 @@ export class WorkspaceWatcher {
 
     const byteLength = Buffer.byteLength(text);
     if (byteLength > this.maxResyncBytes) {
-      this.log.warn(`Skipping resync for ${uri} (${String(byteLength)} bytes exceeds ${String(this.maxResyncBytes)} limit)`);
+      this.log.warn(
+        `Skipping resync for ${uri} ` +
+        `(${String(byteLength)} bytes exceeds ${String(this.maxResyncBytes)} limit)`,
+      );
       return 'unchanged';
     }
 
@@ -205,7 +212,10 @@ export class WorkspaceWatcher {
     if (process.platform === 'linux') {
       const major = Number(process.versions.node.split('.', 1)[0]);
       if (major < minRecursiveWatchNodeMajor) {
-        this.log.warn(`Recursive file watching may not work on Linux with Node.js ${process.versions.node} (requires ≥20.x)`);
+        this.log.warn(
+          'Recursive file watching may not work on Linux with Node.js ' +
+          `${process.versions.node} (requires ≥20.x)`,
+        );
       }
     }
 
@@ -230,7 +240,10 @@ export class WorkspaceWatcher {
 
         if (pending.size >= this.maxPendingEvents && !pending.has(normalized)) {
           if (!this.pendingOverflowWarned) {
-            this.log.warn(`Pending file events exceeded cap (${String(this.maxPendingEvents)}) — dropping new events until flush`);
+            this.log.warn(
+              `Pending file events exceeded cap (${String(this.maxPendingEvents)}) — ` +
+              'dropping new events until flush',
+            );
             this.pendingOverflowWarned = true;
           }
           return;
