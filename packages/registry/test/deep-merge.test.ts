@@ -57,8 +57,8 @@ describe('deepMerge', () => {
   it('does not mutate base or override', ({ expect }) => {
     const base = { settings: { validate: 'on' } };
     const override = { settings: { run: 'onSave' } };
-    const baseCopy = JSON.parse(JSON.stringify(base)) as typeof base;
-    const overrideCopy = JSON.parse(JSON.stringify(override)) as typeof override;
+    const baseCopy = structuredClone(base);
+    const overrideCopy = structuredClone(override);
 
     deepMerge(base, override);
 
