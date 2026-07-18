@@ -1,8 +1,10 @@
 import { ChildServer } from './child-server.ts';
 import type { Logger } from './logger.ts';
 import { createMessageBuffer } from './message-buffer.ts';
+import { createProxyRequestChannel } from './proxy-request-channel.ts';
 import { createRestartScheduler, defaultRestartPolicy } from './restart-scheduler.ts';
 import type { RestartPolicy } from './restart-scheduler.ts';
+import { replayDocuments, sendPostInitNotifications } from './server-replay.ts';
 import type {
   Message,
   RequestMessage,
@@ -13,7 +15,6 @@ import type {
 import {
   Message as Msg,
   createNotification,
-  createRequest,
   documentSyncMethods,
   lspErrorCodes,
 } from './types.ts';
@@ -92,46 +93,9 @@ export const createManagedServer = ({
     policy: { ...defaultRestartPolicy, ...restartPolicy },
   });
 
-  let proxySeq = 0;
-  const proxyCallbacks = new Map<string, (res: ResponseMessage) => void>();
+  const channel = createProxyRequestChannel(name);
 
   // -- Internal helpers --
-
-  const resolveProxyCallbacks = (message: string): void => {
-    for (const [id, cb] of proxyCallbacks) {
-      cb({ jsonrpc: '2.0', id, error: { code: lspErrorCodes.InternalError, message } });
-    }
-    proxyCallbacks.clear();
-  };
-
-  const sendProxyRequest = (
-    target: ChildServer,
-    method: string,
-    params: RequestMessage['params'],
-    timeoutMs = 30_000,
-  ): Promise<ResponseMessage> => {
-    const id = `__proxy:${name}:${String(proxySeq++)}`;
-    return new Promise<ResponseMessage>((resolve) => {
-      const timer = setTimeout(() => {
-        proxyCallbacks.delete(id);
-        resolve({
-          jsonrpc: '2.0',
-          id,
-          error: {
-            code: lspErrorCodes.InternalError,
-            message: `Request ${method} timed out after ${String(timeoutMs)}ms`,
-          },
-        });
-      }, timeoutMs);
-
-      proxyCallbacks.set(id, (res) => {
-        clearTimeout(timer);
-        resolve(res);
-      });
-
-      target.write(createRequest(id, method, params));
-    });
-  };
 
   const spawnServer = (): ChildServer => {
     const child = new ChildServer(name, config, {
@@ -149,18 +113,7 @@ export const createManagedServer = ({
 
   const handleServerMessage = (msg: Message): void => {
     // Internal proxy response (e.g., initialize during restart)
-    if (
-      Msg.isResponse(msg) &&
-      typeof msg.id === 'string' &&
-      msg.id.startsWith(`__proxy:${name}:`)
-    ) {
-      const cb = proxyCallbacks.get(msg.id);
-      if (cb) {
-        cb(msg);
-        proxyCallbacks.delete(msg.id);
-      }
-      return;
-    }
+    if (channel.handleResponse(msg)) return;
 
     // Client response — untrack pending request
     if (Msg.isResponse(msg) && msg.id !== null) {
@@ -173,7 +126,7 @@ export const createManagedServer = ({
   const handleServerExit = (): void => {
     if (state === 'stopped') return;
 
-    resolveProxyCallbacks('Server exited');
+    channel.rejectAll('Server exited');
 
     // Notify proxy about pending requests that need error responses
     if (pendingRequests.size > 0) {
@@ -227,27 +180,9 @@ export const createManagedServer = ({
     );
   };
 
-  const sendPostInitNotifications = (child: ChildServer): void => {
-    child.write(createNotification('initialized', {}));
-    if (config.settings) {
-      child.write(createNotification('workspace/didChangeConfiguration', {
-        settings: config.settings,
-      }));
-    }
-  };
-
-  const replayDocuments = (child: ChildServer): void => {
+  const replayTrackedDocuments = (child: ChildServer): void => {
     const documents = callbacks.getDocuments();
-    for (const doc of documents) {
-      child.write(createNotification('textDocument/didOpen', {
-        textDocument: {
-          uri: doc.uri,
-          languageId: doc.languageId,
-          version: doc.version,
-          text: doc.content,
-        },
-      }));
-    }
+    replayDocuments(child, documents);
     log.info(`${name}: replayed ${String(documents.length)} document(s)`);
   };
 
@@ -278,7 +213,7 @@ export const createManagedServer = ({
     try {
       const child = spawnServer();
 
-      const initResponse = await sendProxyRequest(child, 'initialize', initParams);
+      const initResponse = await channel.send(child, 'initialize', initParams);
 
       if (isSuperseded(child)) {
         retryIfStillExpected();
@@ -293,9 +228,9 @@ export const createManagedServer = ({
         return;
       }
 
-      sendPostInitNotifications(child);
+      sendPostInitNotifications(child, config);
       isEverInitialized = true;
-      replayDocuments(child);
+      replayTrackedDocuments(child);
       flushBufferedMessages(child);
 
       if (isSuperseded(child)) {
@@ -333,7 +268,7 @@ export const createManagedServer = ({
 
   const cancelRestart = (): void => {
     scheduler.cancel();
-    resolveProxyCallbacks('Restart cancelled');
+    channel.rejectAll('Restart cancelled');
     server?.dispose();
     server = undefined;
   };
@@ -366,7 +301,7 @@ export const createManagedServer = ({
     async initialize(params) {
       initParams = params;
       const child = spawnServer();
-      const response = await sendProxyRequest(child, 'initialize', params);
+      const response = await channel.send(child, 'initialize', params);
       return response;
     },
 
@@ -418,7 +353,7 @@ export const createManagedServer = ({
           error: { code: lspErrorCodes.InternalError, message: 'Server not running' },
         });
       }
-      return sendProxyRequest(server, method, params);
+      return channel.send(server, method, params);
     },
 
     async shutdown() {
@@ -438,7 +373,7 @@ export const createManagedServer = ({
            A synthesized JSON-RPC shutdown response requires null id/result. */
         return { jsonrpc: '2.0' as const, id: null, result: null };
       }
-      const response = await sendProxyRequest(server, 'shutdown', undefined);
+      const response = await channel.send(server, 'shutdown', undefined);
       return response;
     },
 
