@@ -6,6 +6,7 @@ import { isPlainObject, staticCapabilities } from './capabilities.ts';
 import { analyzeClientCapabilities, injectProxyCapabilities } from './client-capabilities.ts';
 import type { CompensationFlags } from './client-capabilities.ts';
 import * as diag from './diagnostics-store.ts';
+import { rewriteDocSyncUri, rewriteDocSyncVersion } from './doc-sync.ts';
 import * as docs from './document-tracker.ts';
 import * as fw from './file-watcher.ts';
 import { createLogger } from './logger.ts';
@@ -55,24 +56,6 @@ export interface ProxyOptions {
   maxResyncBytes?: number;
   maxPendingEvents?: number;
 }
-
-/**
- * Rewrite the textDocument.uri in a document sync notification to a
- *  normalized form. Used when the client sends non-standard file URIs.
- */
-const rewriteDocSyncUri = (
-  msg: NotificationMessage,
-  normalizedUri: string,
-): NotificationMessage => {
-  const params = msg.params;
-  if (!isPlainObject(params)) return msg;
-  const td = params['textDocument'];
-  if (!isPlainObject(td)) return msg;
-  return createNotification(msg.method, {
-    ...params,
-    textDocument: { ...td, uri: normalizedUri },
-  });
-};
 
 /**
  * Multi-server LSP proxy.
@@ -307,7 +290,7 @@ export class LspProxy {
       msg.method === 'textDocument/didOpen' || msg.method === 'textDocument/didClose';
     if (isOpenOrClose && uri) this.versionOffsets.delete(uri);
 
-    const rewritten = this.rewriteDocSyncVersion(normalized, uri);
+    const rewritten = this.applyVersionOffset(normalized, uri);
     for (const name of this.router.serversForUri(uri)) {
       this.servers.get(name)?.send(rewritten);
     }
@@ -700,27 +683,12 @@ export class LspProxy {
     await this.watcher.start();
   }
 
-  // ── URI / Version Rewriting ──────────────────────────────────────────
+  // ── Version Offsets ──────────────────────────────────────────────────
 
-  /**
-   * Rewrite the textDocument.version in a document sync notification if a
-   *  version offset exists for the URI (due to prior resync).
-   */
-  private rewriteDocSyncVersion(msg: NotificationMessage, uri: string | undefined): Message {
-    if (!uri) return msg;
-    const offset = this.versionOffsets.get(uri);
-    if (!offset) return msg;
-
-    const params = msg.params;
-    if (!isPlainObject(params)) return msg;
-    const td = params['textDocument'];
-    if (!isPlainObject(td) || typeof td['version'] !== 'number') return msg;
-
-    // Spread creates new objects — msg.params is not mutated
-    return createNotification(msg.method, {
-      ...params,
-      textDocument: { ...td, version: td['version'] + offset },
-    });
+  /** Apply this document's resync version offset to a sync notification, if any. */
+  private applyVersionOffset(msg: NotificationMessage, uri: string | undefined): Message {
+    const offset = uri ? this.versionOffsets.get(uri) : undefined;
+    return offset ? rewriteDocSyncVersion(msg, offset) : msg;
   }
 
   /** Get documents with effective versions (client version + offset) for replay. */
