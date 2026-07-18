@@ -45,7 +45,9 @@ describe('deepMerge', () => {
   });
 
   it('replaces scalar with object when override is object', ({ expect }) => {
-    expect(deepMerge({ foo: 'flat' }, { foo: { nested: true } })).toStrictEqual({ foo: { nested: true } });
+    const merged = deepMerge({ foo: 'flat' }, { foo: { nested: true } });
+
+    expect(merged).toStrictEqual({ foo: { nested: true } });
   });
 
   it('handles null values in override as replacements', ({ expect }) => {

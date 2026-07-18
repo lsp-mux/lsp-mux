@@ -118,14 +118,23 @@ describe('router', () => {
 describe('extractUri', () => {
   it('extracts from params.textDocument.uri', ({ expect }) => {
     const uri = fakeUri();
-    const msg = { jsonrpc: '2.0' as const, id: faker.number.int(), method: 'textDocument/hover', params: { textDocument: { uri }, position: { line: 0, character: 0 } } };
+    const msg = {
+      jsonrpc: '2.0' as const,
+      id: faker.number.int(),
+      method: 'textDocument/hover',
+      params: { textDocument: { uri }, position: { line: 0, character: 0 } },
+    };
 
     expect(extractUri(msg)).toBe(uri);
   });
 
   it('extracts from params.uri (e.g. publishDiagnostics)', ({ expect }) => {
     const uri = fakeUri();
-    const msg = { jsonrpc: '2.0' as const, method: 'textDocument/publishDiagnostics', params: { uri, diagnostics: [] } };
+    const msg = {
+      jsonrpc: '2.0' as const,
+      method: 'textDocument/publishDiagnostics',
+      params: { uri, diagnostics: [] },
+    };
 
     expect(extractUri(msg)).toBe(uri);
   });
@@ -145,7 +154,12 @@ describe('extractUri', () => {
   it('prefers textDocument.uri over params.uri', ({ expect }) => {
     const tdUri = fakeUri();
     const otherUri = fakeUri();
-    const msg = { jsonrpc: '2.0' as const, id: faker.number.int(), method: faker.string.alpha(8), params: { textDocument: { uri: tdUri }, uri: otherUri } };
+    const msg = {
+      jsonrpc: '2.0' as const,
+      id: faker.number.int(),
+      method: faker.string.alpha(8),
+      params: { textDocument: { uri: tdUri }, uri: otherUri },
+    };
 
     expect(extractUri(msg)).toBe(tdUri);
   });

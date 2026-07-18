@@ -37,7 +37,9 @@ export const collectMessages = (
     const collected: Message[] = [];
     const timer = setTimeout(
       () => {
-        reject(new Error(`Timeout: collected ${String(collected.length)}/${String(count)} messages`));
+        reject(new Error(
+          `Timeout: collected ${String(collected.length)}/${String(count)} messages`,
+        ));
       },
       timeoutMs,
     );

@@ -63,7 +63,10 @@ describe('mergeCapabilities', () => {
   });
 
   it('concatenates array values', ({ expect }) => {
-    const [first, second, third] = [faker.string.alpha(4), faker.string.alpha(4), faker.string.alpha(4)];
+    const [first, second, third] = faker.helpers.multiple(
+      () => faker.string.alpha(4),
+      { count: 3 },
+    );
 
     expect(mergeCapabilities([
       { experimental: [first, second] },

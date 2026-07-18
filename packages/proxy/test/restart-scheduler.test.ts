@@ -56,7 +56,10 @@ describe('RestartScheduler', () => {
 
   it('caps delay at maxDelayMs', ({ expect }) => {
     const clock = createClock();
-    const sched = createRestartScheduler({ policy: { maxRetries: 10, baseDelayMs: 100, maxDelayMs: 300 }, timers: clock });
+    const sched = createRestartScheduler({
+      policy: { maxRetries: 10, baseDelayMs: 100, maxDelayMs: 300 },
+      timers: clock,
+    });
     const calls: number[] = [];
 
     // Attempt 1: base 100ms → jittered [50, 150]

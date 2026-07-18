@@ -10,8 +10,18 @@
 import * as v from 'valibot';
 import type { ResponseMessage } from 'vscode-jsonrpc';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
-import { DidChangeParamsSchema, DidCloseParamsSchema, DidOpenParamsSchema } from '../../src/document-tracker.ts';
-import { Message as Msg, type NotificationMessage, type RequestMessage, createNotification, createRequest } from '../../src/types.ts';
+import {
+  DidChangeParamsSchema,
+  DidCloseParamsSchema,
+  DidOpenParamsSchema,
+} from '../../src/document-tracker.ts';
+import {
+  Message as Msg,
+  type NotificationMessage,
+  type RequestMessage,
+  createNotification,
+  createRequest,
+} from '../../src/types.ts';
 
 const serverName = process.argv.find(arg => arg.startsWith('--name='))?.slice(7) ?? 'mock';
 const isRegisterWatchers = process.argv.includes('--register-watchers');
@@ -27,7 +37,14 @@ const isPullDiagnostics = process.argv.includes('--pull-diagnostics');
 const reader = new StreamMessageReader(process.stdin);
 const writer = new StreamMessageWriter(process.stdout);
 
-const openDocuments = new Map<string, { uri: string; languageId: string; version: number; text: string }>();
+interface OpenDocument {
+  uri: string;
+  languageId: string;
+  version: number;
+  text: string;
+}
+
+const openDocuments = new Map<string, OpenDocument>();
 const watcherEvents: unknown[] = [];
 const configNotifications: unknown[] = [];
 const receivedResponses: unknown[] = [];
@@ -60,7 +77,9 @@ const publishDiagnostics = (uri: string): void => {
 const requestHandlers: Record<string, (msg: RequestMessage) => void> = {
   'initialize': (msg) => {
     state.initializeParams = msg.params;
-    respond(msg.id, { capabilities: { textDocumentSync: isIncrementalSync ? 2 : 1, hoverProvider: true } });
+    respond(msg.id, {
+      capabilities: { textDocumentSync: isIncrementalSync ? 2 : 1, hoverProvider: true },
+    });
   },
   '$/initParams': (msg) => {
     respond(msg.id, state.initializeParams as object);
@@ -184,7 +203,12 @@ const notificationHandlers: Record<string, (msg: NotificationMessage) => void> =
   },
   'textDocument/didOpen': (msg) => {
     const { textDocument: td } = v.parse(DidOpenParamsSchema, msg.params);
-    openDocuments.set(td.uri, { uri: td.uri, languageId: td.languageId, version: td.version, text: td.text });
+    openDocuments.set(td.uri, {
+      uri: td.uri,
+      languageId: td.languageId,
+      version: td.version,
+      text: td.text,
+    });
     publishDiagnostics(td.uri);
   },
   'textDocument/didChange': (msg) => {

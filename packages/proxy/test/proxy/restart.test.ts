@@ -55,7 +55,9 @@ describe('LspProxy restart behavior', () => {
 
     const res = await crashAndWait(writer, reader, 30);
 
-    expect(res).toMatchObject({ error: { message: expect.stringContaining('crashed') as unknown } });
+    expect(res).toMatchObject({
+      error: { message: expect.stringContaining('crashed') as unknown },
+    });
   });
 
   it('stops if server crashes before initial handshake', async ({ createProxy, expect }) => {

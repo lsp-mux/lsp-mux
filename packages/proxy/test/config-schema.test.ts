@@ -28,9 +28,11 @@ describe('ProxyConfigSchema', () => {
       servers: ['vtsls'],
       watcherExclude: ['**/node_modules/**'],
     });
-    const count = result.watcherExclude.filter((pattern: string) => pattern === '**/node_modules/**').length;
+    const matches = result.watcherExclude.filter(
+      (pattern: string) => pattern === '**/node_modules/**',
+    );
 
-    expect(count).toBe(1);
+    expect(matches).toHaveLength(1);
   });
 
   it('rejects empty servers array', ({ expect }) => {

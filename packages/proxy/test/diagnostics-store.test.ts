@@ -33,7 +33,9 @@ describe('diagnostics-store', () => {
       expect(merge(store, uriA)).toStrictEqual([diagA, diagB]);
     });
 
-    it('update with empty array removes server entry; merge returns only other server', ({ expect }) => {
+    it('update with empty array removes server entry; merge returns only other server', ({
+      expect,
+    }) => {
       let store = update(empty(), serverA, uriA, [diagA]);
       store = update(store, serverB, uriA, [diagB]);
       store = update(store, serverA, uriA, []);

@@ -117,8 +117,8 @@ describe('Pull diagnostics', () => {
 
   it('merges pull diagnostics from multiple servers', async ({ createProxy, expect }) => {
     const configs = new Map([
-      ['alpha', { ...namedConfig('alpha'), args: [...namedConfig('alpha').args, '--pull-diagnostics'] }],
-      ['beta', { ...namedConfig('beta'), args: [...namedConfig('beta').args, '--pull-diagnostics'] }],
+      ['alpha', namedConfig('alpha', '--pull-diagnostics')],
+      ['beta', namedConfig('beta', '--pull-diagnostics')],
     ]);
 
     const { writer, reader } = createProxy({ configs });

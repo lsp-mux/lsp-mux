@@ -77,7 +77,9 @@ export interface Workspace {
 }
 
 export const it = test.extend<{
-  createProxy: (opts?: TestProxyOptions) => ReturnType<typeof createTestProxy> & { started: Promise<void> };
+  createProxy: (
+    opts?: TestProxyOptions,
+  ) => ReturnType<typeof createTestProxy> & { started: Promise<void> };
   workspace: Workspace;
 }>({
   createProxy: async ({}, use) => {
@@ -106,7 +108,8 @@ export const it = test.extend<{
     }
   },
   workspace: async ({}, use) => {
-    const dir = path.join(import.meta.dirname, '..', '..', 'dist', 'test-workspaces', randomUUID().slice(0, 8));
+    const workspacesDir = path.join(import.meta.dirname, '..', '..', 'dist', 'test-workspaces');
+    const dir = path.join(workspacesDir, randomUUID().slice(0, 8));
     await mkdir(dir, { recursive: true });
     let seq = 100;
     const uri = normalizeFileUri(pathToFileURL(dir).href);

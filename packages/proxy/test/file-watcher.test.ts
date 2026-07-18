@@ -103,7 +103,11 @@ describe('file-watcher', () => {
 
   describe('event type filtering', () => {
     it('respects WatchKind bitmask — Change only', ({ expect }) => {
-      const state = register(empty(), { serverName: serverA, registrationId: reg1 }, configWatchers);
+      const state = register(
+        empty(),
+        { serverName: serverA, registrationId: reg1 },
+        configWatchers,
+      );
 
       const changed = matchEvent(state, 'tsconfig.json', FileChangeType.Changed, 'file:///tsconfig.json');
 
@@ -253,7 +257,9 @@ describe('file-watcher', () => {
     });
 
     it('resolves file:// URI baseUri to workspace-relative path', ({ expect }) => {
-      const workspaceRoot = process.platform === 'win32' ? String.raw`C:\projects\my-app` : '/projects/my-app';
+      const workspaceRoot = process.platform === 'win32'
+        ? String.raw`C:\projects\my-app`
+        : '/projects/my-app';
       const baseUri = process.platform === 'win32'
         ? 'file:///C:/projects/my-app/src'
         : 'file:///projects/my-app/src';
@@ -275,7 +281,9 @@ describe('file-watcher', () => {
     });
 
     it('handles WorkspaceFolder object as baseUri', ({ expect }) => {
-      const workspaceRoot = process.platform === 'win32' ? String.raw`C:\projects\app` : '/projects/app';
+      const workspaceRoot = process.platform === 'win32'
+        ? String.raw`C:\projects\app`
+        : '/projects/app';
       const baseUri = process.platform === 'win32'
         ? 'file:///C:/projects/app/src'
         : 'file:///projects/app/src';
@@ -350,7 +358,9 @@ describe('file-watcher', () => {
       const resolved = await resolveRoot(workspace.linkDir);
 
       // Existing file accessed via symlink — realpath resolves to real path
-      await expect(isWithinRoot(path.join(workspace.linkDir, 'existing.ts'), resolved)).resolves.toBe(true);
+      await expect(
+        isWithinRoot(path.join(workspace.linkDir, 'existing.ts'), resolved),
+      ).resolves.toBe(true);
     });
 
     it('accepts non-existent files inside symlinked root (delete events)', async ({ expect }) => {
@@ -359,14 +369,18 @@ describe('file-watcher', () => {
 
       // Non-existent file — resolve() fallback uses symlink namespace.
       // Must still pass containment check against realpath-resolved root.
-      await expect(isWithinRoot(path.join(workspace.linkDir, 'deleted.ts'), resolved)).resolves.toBe(true);
+      await expect(
+        isWithinRoot(path.join(workspace.linkDir, 'deleted.ts'), resolved),
+      ).resolves.toBe(true);
     });
 
     it('rejects non-existent files outside symlinked root', async ({ expect }) => {
       await using workspace = await createSymlinkWorkspace();
       const resolved = await resolveRoot(workspace.linkDir);
 
-      await expect(isWithinRoot(path.join(workspace.tmpBase, 'outside.ts'), resolved)).resolves.toBe(false);
+      await expect(
+        isWithinRoot(path.join(workspace.tmpBase, 'outside.ts'), resolved),
+      ).resolves.toBe(false);
     });
   });
 });

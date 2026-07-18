@@ -46,7 +46,11 @@ const watcherEventContaining = (expect: ExpectStatic, ...uris: string[]): unknow
 // Sequential: crash+restart test needs stable timing for watcher re-registration
 describe.sequential('LspProxy file watchers', () => {
   describe('watcher registration', () => {
-    it('intercepts watcher registration and dispatches file events', async ({ createProxy, workspace, expect }) => {
+    it('intercepts watcher registration and dispatches file events', async ({
+      createProxy,
+      workspace,
+      expect,
+    }) => {
       const watcherConfig: ServerConfig = {
         ...mockServerConfig,
         args: [...mockServerConfig.args, '--register-watchers'],
@@ -69,7 +73,11 @@ describe.sequential('LspProxy file watchers', () => {
       }, { timeout: 5000, interval: 100 });
     });
 
-    it('splits mixed registration: intercepts watchers, forwards rest to client', async ({ createProxy, workspace, expect }) => {
+    it('splits mixed registration: intercepts watchers, forwards rest to client', async ({
+      createProxy,
+      workspace,
+      expect,
+    }) => {
       const mixedConfig: ServerConfig = {
         ...mockServerConfig,
         args: [...mockServerConfig.args, '--register-mixed'],
@@ -119,7 +127,11 @@ describe.sequential('LspProxy file watchers', () => {
   });
 
   describe('watcher unregistration', () => {
-    it('stops dispatching file events after unregistering a watcher', async ({ createProxy, workspace, expect }) => {
+    it('stops dispatching file events after unregistering a watcher', async ({
+      createProxy,
+      workspace,
+      expect,
+    }) => {
       const config: ServerConfig = {
         ...mockServerConfig,
         args: [...mockServerConfig.args, '--register-watchers', '--unregister-on-command'],
@@ -157,7 +169,11 @@ describe.sequential('LspProxy file watchers', () => {
   });
 
   describe('watcher cleanup on restart', () => {
-    it('clears watcher registrations on crash and re-registers after restart', async ({ createProxy, workspace, expect }) => {
+    it('clears watcher registrations on crash and re-registers after restart', async ({
+      createProxy,
+      workspace,
+      expect,
+    }) => {
       const watcherConfig: ServerConfig = {
         ...mockServerConfig,
         args: [...mockServerConfig.args, '--register-watchers'],
@@ -187,7 +203,11 @@ describe.sequential('LspProxy file watchers', () => {
   });
 
   describe('event backpressure', () => {
-    it('drops events exceeding maxPendingEvents cap', async ({ createProxy, workspace, expect }) => {
+    it('drops events exceeding maxPendingEvents cap', async ({
+      createProxy,
+      workspace,
+      expect,
+    }) => {
       const watcherConfig: ServerConfig = {
         ...mockServerConfig,
         args: [...mockServerConfig.args, '--register-watchers'],
@@ -226,7 +246,11 @@ describe.sequential('LspProxy file watchers', () => {
   });
 
   describe('client-native file watching', () => {
-    it('forwards watcher registration to client when client supports file watching', async ({ createProxy, workspace, expect }) => {
+    it('forwards watcher registration to client when client supports file watching', async ({
+      createProxy,
+      workspace,
+      expect,
+    }) => {
       const watcherConfig: ServerConfig = {
         ...mockServerConfig,
         args: [...mockServerConfig.args, '--register-watchers'],
@@ -270,7 +294,11 @@ describe.sequential('LspProxy file watchers', () => {
   });
 
   describe('event batching', () => {
-    it('batches multiple file changes into a single notification per server', async ({ createProxy, workspace, expect }) => {
+    it('batches multiple file changes into a single notification per server', async ({
+      createProxy,
+      workspace,
+      expect,
+    }) => {
       const watcherConfig: ServerConfig = {
         ...mockServerConfig,
         args: [...mockServerConfig.args, '--register-watchers'],
