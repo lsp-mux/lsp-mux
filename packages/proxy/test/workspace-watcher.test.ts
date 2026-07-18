@@ -12,7 +12,11 @@ import type { FlushScheduler } from '../src/flush-scheduler.ts';
 import { createLogger } from '../src/logger.ts';
 import type { Logger } from '../src/logger.ts';
 import { normalizeFileUri } from '../src/uri.ts';
-import { type WatcherDelegate, WorkspaceWatcher, type WorkspaceWatcherOptions } from '../src/workspace-watcher.ts';
+import {
+  type WatcherDelegate,
+  WorkspaceWatcher,
+  type WorkspaceWatcherOptions,
+} from '../src/workspace-watcher.ts';
 
 /* eslint-disable-next-line vitest/prefer-import-in-mock --
    Node's overloaded fs signatures aren't reproduced by vi.fn<typeof fn>(),
@@ -48,6 +52,14 @@ const WORKSPACE = path.join(import.meta.dirname, 'fake-workspace');
 
 const toUri = (relativePath: string) =>
   normalizeFileUri(pathToFileURL(path.join(WORKSPACE, relativePath)).href);
+
+/** Build a tracked-document fixture for the given workspace-relative file. */
+const makeDoc = (name: string, content: string, version = 1) => ({
+  uri: toUri(name),
+  languageId: 'typescript',
+  version,
+  content,
+});
 
 const createDelegate = (): MockProxy<WatcherDelegate> => {
   const delegate = mock<WatcherDelegate>();
@@ -179,7 +191,9 @@ describe.sequential('WorkspaceWatcher', () => {
       await onFlush();
 
       expect(delegate.matchEvent).not.toHaveBeenCalled();
-      expect(log.warn).toHaveBeenCalledWith(expect.stringContaining('outside workspace root') as unknown);
+      expect(log.warn).toHaveBeenCalledWith(
+        expect.stringContaining('outside workspace root') as unknown,
+      );
     });
 
     it('stops processing when isStopped returns true', async ({ expect }) => {
@@ -199,7 +213,7 @@ describe.sequential('WorkspaceWatcher', () => {
       const { startWatcher, addEvent, onFlush } = createFixture();
       const oldContent = faker.lorem.sentence();
       const newContent = faker.lorem.sentence();
-      const doc = { uri: toUri('tracked.ts'), languageId: 'typescript', version: 1, content: oldContent };
+      const doc = makeDoc('tracked.ts', oldContent);
       vi.mocked(readFile).mockResolvedValue(newContent);
 
       const delegate = createDelegate();
@@ -227,7 +241,10 @@ describe.sequential('WorkspaceWatcher', () => {
       addEvent('b.ts');
       await onFlush();
 
-      expect(log.error).toHaveBeenCalledWith(expect.stringContaining('a.ts') as unknown, expect.anything());
+      expect(log.error).toHaveBeenCalledWith(
+        expect.stringContaining('a.ts') as unknown,
+        expect.anything(),
+      );
       expect(delegate.sendWatchedFilesEvent).toHaveBeenCalledWith('mock', changes);
     });
 
@@ -275,7 +292,7 @@ describe.sequential('WorkspaceWatcher', () => {
 
     it('returns deleted on stat ENOENT', async ({ expect }) => {
       const { startWatcher, addEvent, onFlush } = createFixture();
-      const doc = { uri: toUri('vanished.ts'), languageId: 'typescript', version: 1, content: faker.lorem.sentence() };
+      const doc = makeDoc('vanished.ts', faker.lorem.sentence());
       // First stat (flush existence check) succeeds, second stat (resync) fails
       vi.mocked(stat)
         .mockResolvedValueOnce({ size: 10 } as Awaited<ReturnType<typeof stat>>)
@@ -296,7 +313,7 @@ describe.sequential('WorkspaceWatcher', () => {
 
     it('returns unchanged on stat non-ENOENT error', async ({ expect }) => {
       const { startWatcher, addEvent, onFlush } = createFixture();
-      const doc = { uri: toUri('perm.ts'), languageId: 'typescript', version: 1, content: faker.lorem.sentence() };
+      const doc = makeDoc('perm.ts', faker.lorem.sentence());
       vi.mocked(stat)
         .mockResolvedValueOnce({ size: 10 } as Awaited<ReturnType<typeof stat>>)
         .mockRejectedValueOnce(nodeError('EACCES'));
@@ -316,7 +333,7 @@ describe.sequential('WorkspaceWatcher', () => {
 
     it('returns deleted on readFile ENOENT', async ({ expect }) => {
       const { startWatcher, addEvent, onFlush } = createFixture();
-      const doc = { uri: toUri('gone.ts'), languageId: 'typescript', version: 1, content: faker.lorem.sentence() };
+      const doc = makeDoc('gone.ts', faker.lorem.sentence());
       vi.mocked(readFile).mockRejectedValue(nodeError('ENOENT'));
       const delegate = createDelegate();
       delegate.getDocument.mockReturnValue(doc);
@@ -333,7 +350,7 @@ describe.sequential('WorkspaceWatcher', () => {
 
     it('skips files exceeding stat 2x pre-filter', async ({ expect }) => {
       const { startWatcher, addEvent, onFlush, log } = createFixture();
-      const doc = { uri: toUri('huge.ts'), languageId: 'typescript', version: 1, content: faker.lorem.sentence() };
+      const doc = makeDoc('huge.ts', faker.lorem.sentence());
       vi.mocked(stat).mockResolvedValue({ size: 300 } as Awaited<ReturnType<typeof stat>>);
       const delegate = createDelegate();
       delegate.getDocument.mockReturnValue(doc);
@@ -349,7 +366,7 @@ describe.sequential('WorkspaceWatcher', () => {
 
     it('skips files exceeding byteLength threshold', async ({ expect }) => {
       const { startWatcher, addEvent, onFlush, log } = createFixture();
-      const doc = { uri: toUri('big.ts'), languageId: 'typescript', version: 1, content: faker.lorem.sentence() };
+      const doc = makeDoc('big.ts', faker.lorem.sentence());
       // stat.size passes 2x filter (150 < 200) but byteLength (150) > maxResyncBytes (100)
       vi.mocked(stat).mockResolvedValue({ size: 150 } as Awaited<ReturnType<typeof stat>>);
       vi.mocked(readFile).mockResolvedValue('x'.repeat(150));
@@ -369,8 +386,8 @@ describe.sequential('WorkspaceWatcher', () => {
       const oldContent = faker.lorem.sentence();
       const clientContent = faker.lorem.sentence();
       const diskContent = faker.lorem.sentence();
-      const v1 = { uri: toUri('race.ts'), languageId: 'typescript', version: 1, content: oldContent };
-      const v2 = { uri: toUri('race.ts'), languageId: 'typescript', version: 2, content: clientContent };
+      const v1 = makeDoc('race.ts', oldContent);
+      const v2 = makeDoc('race.ts', clientContent, 2);
       vi.mocked(readFile).mockResolvedValue(diskContent);
 
       const delegate = createDelegate();
@@ -385,7 +402,9 @@ describe.sequential('WorkspaceWatcher', () => {
       await onFlush();
 
       expect(delegate.resyncDocument).not.toHaveBeenCalled();
-      expect(log.info).toHaveBeenCalledWith(expect.stringContaining('modified by client') as unknown);
+      expect(log.info).toHaveBeenCalledWith(
+        expect.stringContaining('modified by client') as unknown,
+      );
     });
   });
 
@@ -428,7 +447,9 @@ describe.sequential('WorkspaceWatcher', () => {
 
       watcher.dispose();
 
-      const scheduler = vi.mocked(createFlushScheduler).mock.results[0]?.value as { dispose: ReturnType<typeof vi.fn> };
+      const scheduler = vi.mocked(createFlushScheduler).mock.results[0]?.value as {
+        dispose: ReturnType<typeof vi.fn>;
+      };
 
       expect(scheduler.dispose).toHaveBeenCalledWith();
       expect(mockFsWatcher.close).toHaveBeenCalledWith();
