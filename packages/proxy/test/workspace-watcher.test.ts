@@ -1,22 +1,17 @@
 import { watch } from 'node:fs';
-import type { FSWatcher } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
-import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { faker } from '@faker-js/faker';
 import { describe, it, vi } from 'vitest';
-import { type MockProxy, mock } from 'vitest-mock-extended';
 import * as fw from '../src/file-watcher.ts';
 import { createFlushScheduler } from '../src/flush-scheduler.ts';
-import type { FlushScheduler } from '../src/flush-scheduler.ts';
 import { createLogger } from '../src/logger.ts';
-import type { Logger } from '../src/logger.ts';
-import { normalizeFileUri } from '../src/uri.ts';
 import {
-  type WatcherDelegate,
-  WorkspaceWatcher,
-  type WorkspaceWatcherOptions,
-} from '../src/workspace-watcher.ts';
+  createDelegate,
+  createFixture,
+  makeDoc,
+  nodeError,
+  toUri,
+} from './helpers/workspace-watcher-fixture.ts';
 
 /* eslint-disable-next-line vitest/prefer-import-in-mock --
    Node's overloaded fs signatures aren't reproduced by vi.fn<typeof fn>(),
@@ -47,91 +42,6 @@ vi.mock(import('../src/file-watcher.ts'), async (importOriginal) => {
 vi.mock(import('../src/logger.ts'), () => ({
   createLogger: vi.fn<typeof createLogger>(),
 }));
-
-const WORKSPACE = path.join(import.meta.dirname, 'fake-workspace');
-
-const toUri = (relativePath: string) =>
-  normalizeFileUri(pathToFileURL(path.join(WORKSPACE, relativePath)).href);
-
-/** Build a tracked-document fixture for the given workspace-relative file. */
-const makeDoc = (name: string, content: string, version = 1) => ({
-  uri: toUri(name),
-  languageId: 'typescript',
-  version,
-  content,
-});
-
-const createDelegate = (): MockProxy<WatcherDelegate> => {
-  const delegate = mock<WatcherDelegate>();
-  // Sensible defaults; individual tests override via mockReturnValue.
-  delegate.isStopped.mockReturnValue(false);
-  delegate.matchEvent.mockReturnValue(new Map());
-  return delegate;
-};
-
-const nodeError = (code: string): NodeJS.ErrnoException => {
-  const err = new Error(`${code} error`) as NodeJS.ErrnoException;
-  err.code = code;
-  return err;
-};
-
-interface Fixture {
-  log: MockProxy<Logger>;
-  mockFsWatcher: MockProxy<FSWatcher>;
-  startWatcher: (
-    delegate: WatcherDelegate,
-    opts?: Omit<Partial<WorkspaceWatcherOptions>, 'log'>,
-  ) => Promise<WorkspaceWatcher>;
-  addEvent: (filename: string) => void;
-  onFlush: () => Promise<void>;
-}
-
-/*
- * Per-test fixture: wires the module-level fs/watcher/scheduler mocks and
- * exposes the lazily-captured watch callback and flush trigger. Instantiate
- * at the start of each test so no mock state leaks between cases.
- */
-const createFixture = (): Fixture => {
-  const log = mock<Logger>();
-  const mockFsWatcher = mock<FSWatcher>();
-  const captured: {
-    watchCallback?: (event: string, filename: string | null) => void;
-    onFlush?: () => Promise<void>;
-  } = {};
-
-  vi.mocked(createLogger).mockReturnValue(log);
-  vi.mocked(fw.resolveRoot).mockResolvedValue(WORKSPACE);
-  vi.mocked(fw.isWithinRoot).mockResolvedValue(true);
-  vi.mocked(stat).mockResolvedValue({ size: 100 } as Awaited<ReturnType<typeof stat>>);
-  vi.mocked(readFile).mockResolvedValue(faker.lorem.sentence());
-  vi.mocked(watch).mockImplementation((...args: unknown[]) => {
-    captured.watchCallback = args[2] as NonNullable<typeof captured.watchCallback>;
-    return mockFsWatcher;
-  });
-  vi.mocked(createFlushScheduler).mockImplementation((opts) => {
-    captured.onFlush = opts.onFlush;
-    return mock<FlushScheduler>();
-  });
-
-  const startWatcher = async (
-    delegate: WatcherDelegate,
-    opts?: Omit<Partial<WorkspaceWatcherOptions>, 'log'>,
-  ): Promise<WorkspaceWatcher> => {
-    const watcher = new WorkspaceWatcher({ log, workspaceRoot: WORKSPACE, ...opts }, delegate);
-    await watcher.start();
-    return watcher;
-  };
-  const addEvent = (filename: string): void => {
-    if (!captured.watchCallback) throw new Error('watch not started; call startWatcher first');
-    captured.watchCallback('change', filename);
-  };
-  const onFlush = (): Promise<void> => {
-    if (!captured.onFlush) throw new Error('scheduler not started; call startWatcher first');
-    return captured.onFlush();
-  };
-
-  return { log, mockFsWatcher, startWatcher, addEvent, onFlush };
-};
 
 // Sequential: the module-level vi.mock'd fs/watcher are shared; each test
 // re-wires them via createFixture().
@@ -258,152 +168,6 @@ describe.sequential('WorkspaceWatcher', () => {
 
       expect(delegate.matchEvent).toHaveBeenCalledWith(
         'sub/file.ts', expect.any(Number) as unknown, expect.anything(),
-      );
-    });
-  });
-
-  describe('resyncTrackedFile', () => {
-    it('returns unchanged when content matches disk', async ({ expect }) => {
-      const { startWatcher, addEvent, onFlush } = createFixture();
-      const content = faker.lorem.sentence();
-      const doc = { uri: toUri('same.ts'), languageId: 'typescript', version: 1, content };
-      vi.mocked(readFile).mockResolvedValue(content);
-      const delegate = createDelegate();
-      delegate.getDocument.mockReturnValue(doc);
-
-      await startWatcher(delegate);
-      addEvent('same.ts');
-      await onFlush();
-
-      expect(delegate.resyncDocument).not.toHaveBeenCalled();
-    });
-
-    it('returns unchanged when document not tracked', async ({ expect }) => {
-      const { startWatcher, addEvent, onFlush } = createFixture();
-      const delegate = createDelegate();
-      delegate.getDocument.mockReturnValue(undefined);
-
-      await startWatcher(delegate);
-      addEvent('untracked.ts');
-      await onFlush();
-
-      expect(delegate.resyncDocument).not.toHaveBeenCalled();
-    });
-
-    it('returns deleted on stat ENOENT', async ({ expect }) => {
-      const { startWatcher, addEvent, onFlush } = createFixture();
-      const doc = makeDoc('vanished.ts', faker.lorem.sentence());
-      // First stat (flush existence check) succeeds, second stat (resync) fails
-      vi.mocked(stat)
-        .mockResolvedValueOnce({ size: 10 } as Awaited<ReturnType<typeof stat>>)
-        .mockRejectedValueOnce(nodeError('ENOENT'));
-      const delegate = createDelegate();
-      delegate.getDocument.mockReturnValue(doc);
-
-      await startWatcher(delegate);
-      addEvent('vanished.ts');
-      await onFlush();
-
-      expect(delegate.resyncDocument).not.toHaveBeenCalled();
-      // File classified as Deleted after resync returned 'deleted'
-      expect(delegate.matchEvent).toHaveBeenCalledWith(
-        'vanished.ts', fw.FileChangeType.Deleted, expect.anything(),
-      );
-    });
-
-    it('returns unchanged on stat non-ENOENT error', async ({ expect }) => {
-      const { startWatcher, addEvent, onFlush } = createFixture();
-      const doc = makeDoc('perm.ts', faker.lorem.sentence());
-      vi.mocked(stat)
-        .mockResolvedValueOnce({ size: 10 } as Awaited<ReturnType<typeof stat>>)
-        .mockRejectedValueOnce(nodeError('EACCES'));
-      const delegate = createDelegate();
-      delegate.getDocument.mockReturnValue(doc);
-
-      await startWatcher(delegate);
-      addEvent('perm.ts');
-      await onFlush();
-
-      expect(delegate.resyncDocument).not.toHaveBeenCalled();
-      // Still classified as Changed (not Deleted)
-      expect(delegate.matchEvent).toHaveBeenCalledWith(
-        'perm.ts', fw.FileChangeType.Changed, expect.anything(),
-      );
-    });
-
-    it('returns deleted on readFile ENOENT', async ({ expect }) => {
-      const { startWatcher, addEvent, onFlush } = createFixture();
-      const doc = makeDoc('gone.ts', faker.lorem.sentence());
-      vi.mocked(readFile).mockRejectedValue(nodeError('ENOENT'));
-      const delegate = createDelegate();
-      delegate.getDocument.mockReturnValue(doc);
-
-      await startWatcher(delegate);
-      addEvent('gone.ts');
-      await onFlush();
-
-      expect(delegate.resyncDocument).not.toHaveBeenCalled();
-      expect(delegate.matchEvent).toHaveBeenCalledWith(
-        'gone.ts', fw.FileChangeType.Deleted, expect.anything(),
-      );
-    });
-
-    it('skips files exceeding stat 2x pre-filter', async ({ expect }) => {
-      const { startWatcher, addEvent, onFlush, log } = createFixture();
-      const doc = makeDoc('huge.ts', faker.lorem.sentence());
-      vi.mocked(stat).mockResolvedValue({ size: 300 } as Awaited<ReturnType<typeof stat>>);
-      const delegate = createDelegate();
-      delegate.getDocument.mockReturnValue(doc);
-
-      await startWatcher(delegate, { maxResyncBytes: 100 });
-      addEvent('huge.ts');
-      await onFlush();
-
-      expect(delegate.resyncDocument).not.toHaveBeenCalled();
-      expect(readFile).not.toHaveBeenCalled();
-      expect(log.warn).toHaveBeenCalledWith(expect.stringContaining('exceeds limit') as unknown);
-    });
-
-    it('skips files exceeding byteLength threshold', async ({ expect }) => {
-      const { startWatcher, addEvent, onFlush, log } = createFixture();
-      const doc = makeDoc('big.ts', faker.lorem.sentence());
-      // stat.size passes 2x filter (150 < 200) but byteLength (150) > maxResyncBytes (100)
-      vi.mocked(stat).mockResolvedValue({ size: 150 } as Awaited<ReturnType<typeof stat>>);
-      vi.mocked(readFile).mockResolvedValue('x'.repeat(150));
-      const delegate = createDelegate();
-      delegate.getDocument.mockReturnValue(doc);
-
-      await startWatcher(delegate, { maxResyncBytes: 100 });
-      addEvent('big.ts');
-      await onFlush();
-
-      expect(delegate.resyncDocument).not.toHaveBeenCalled();
-      expect(log.warn).toHaveBeenCalledWith(expect.stringContaining('exceeds') as unknown);
-    });
-
-    it('skips when version changed during read (optimistic concurrency)', async ({ expect }) => {
-      const { startWatcher, addEvent, onFlush, log } = createFixture();
-      const oldContent = faker.lorem.sentence();
-      const clientContent = faker.lorem.sentence();
-      const diskContent = faker.lorem.sentence();
-      const v1 = makeDoc('race.ts', oldContent);
-      const v2 = makeDoc('race.ts', clientContent, 2);
-      vi.mocked(readFile).mockResolvedValue(diskContent);
-
-      const delegate = createDelegate();
-      // Call order: flush isTracked → resync initial → resync re-check
-      delegate.getDocument
-        .mockReturnValueOnce(v1) // flush: isTracked check
-        .mockReturnValueOnce(v1) // resync: initial read
-        .mockReturnValueOnce(v2); // resync: concurrency re-check (version changed)
-
-      await startWatcher(delegate);
-      addEvent('race.ts');
-      await onFlush();
-
-      expect(delegate.resyncDocument).not.toHaveBeenCalled();
-      expect(log.info).toHaveBeenCalledWith(
-        expect.stringContaining('modified by client') as unknown,
       );
     });
   });
