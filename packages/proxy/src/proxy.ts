@@ -2,10 +2,11 @@ import { stat } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import * as v from 'valibot';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
-import { isPlainObject, staticCapabilities } from './capabilities.ts';
+import { staticCapabilities } from './capabilities.ts';
 import { analyzeClientCapabilities, injectProxyCapabilities } from './client-capabilities.ts';
 import type { CompensationFlags } from './client-capabilities.ts';
-import * as diag from './diagnostics-store.ts';
+import { createDiagnosticsCoordinator } from './diagnostics-coordinator.ts';
+import type { DiagnosticsCoordinator } from './diagnostics-coordinator.ts';
 import { rewriteDocSyncUri, rewriteDocSyncVersion } from './doc-sync.ts';
 import * as docs from './document-tracker.ts';
 import * as fw from './file-watcher.ts';
@@ -17,7 +18,6 @@ import {
   CancelParamsSchema,
   InitializeParamsSchema,
   LogMessageSchema,
-  PublishDiagnosticsSchema,
   RegisterCapabilitySchema,
   UnregisterCapabilitySchema,
   WorkspaceConfigurationSchema,
@@ -40,10 +40,6 @@ import type {
 } from './types.ts';
 import { normalizeFileUri } from './uri.ts';
 import { WorkspaceWatcher } from './workspace-watcher.ts';
-
-// Grace period before proactively pulling diagnostics from servers that are
-// still starting on the first didOpen, giving them time to come up.
-const lazyStartPullDiagnosticsDelayMs = 3000;
 
 type ProxyState = 'idle' | 'running' | 'stopped';
 
@@ -77,7 +73,6 @@ export class LspProxy {
   };
 
   private documents: docs.DocumentMap = docs.empty();
-  private diagnosticsStore: diag.DiagnosticsStore = diag.empty();
   private watchRegistrations: fw.WatchRegistrations = fw.empty();
   private initParams: RequestMessage['params'];
   private workspaceRoot: string | undefined;
@@ -86,6 +81,7 @@ export class LspProxy {
   private readonly servers: Map<string, ManagedServer>;
   private readonly serverConfigs: ReadonlyMap<string, ServerConfig>;
   private readonly router: Router;
+  private readonly diagnostics: DiagnosticsCoordinator;
   private readonly proxyOptions: ProxyOptions | undefined;
 
   // Track which server owns each pending client request (used for cancel routing)
@@ -132,6 +128,17 @@ export class LspProxy {
     }
 
     this.router = createRouter(serverEntries);
+    this.diagnostics = createDiagnosticsCoordinator({
+      serversForUri: uri => this.router.serversForUri(uri),
+      getServer: name => this.servers.get(name),
+      isStopped: () => this.isStopped(),
+      isProactivePull: () => this.compensations.proactivePullDiagnostics,
+      getTrackedUris: () => this.documents.keys(),
+      writeToClient: (msg) => { this.writeToClient(msg); },
+      respondToClient: (id, result) => { this.respondToClient(id, result); },
+      ackToServer: (name, id) => { this.ackToServer(name, id); },
+      trackServerRequest: (id, name) => { this.serverRequestRouting.set(id, name); },
+    }, this.log);
   }
 
   // ── Client → Server ──────────────────────────────────────────────────
@@ -250,34 +257,6 @@ export class LspProxy {
     this.broadcastToActive(msg);
   }
 
-  /**
-   * Proactively pull diagnostics after a document sync when compensating for a
-   *  client without native pull support. Servers still starting are polled
-   *  after a grace delay so they have time to come up.
-   */
-  private maybePullDiagnostics(msg: NotificationMessage, uri: string | undefined): void {
-    if (
-      !this.compensations.proactivePullDiagnostics ||
-      uri === undefined ||
-      msg.method === 'textDocument/didClose'
-    ) {
-      return;
-    }
-    const isAllStarting = this.router.serversForUri(uri)
-      .every((serverName) => {
-        const state = this.servers.get(serverName)?.state;
-        return state === 'starting' || state === 'idle';
-      });
-    if (isAllStarting) {
-      setTimeout(() => {
-        if (this.isStopped()) return;
-        void this.pullDiagnostics(uri);
-      }, lazyStartPullDiagnosticsDelayMs);
-    } else {
-      void this.pullDiagnostics(uri);
-    }
-  }
-
   private handleDocumentSync(msg: NotificationMessage): void {
     const rawUri = extractUri(msg);
     const uri = rawUri ? normalizeFileUri(rawUri) : undefined;
@@ -295,7 +274,7 @@ export class LspProxy {
       this.servers.get(name)?.send(rewritten);
     }
 
-    this.maybePullDiagnostics(msg, uri);
+    this.diagnostics.maybePullAfterSync(msg, uri);
   }
 
   private handleRunningNotification(msg: NotificationMessage): void {
@@ -345,7 +324,7 @@ export class LspProxy {
         return;
       }
       case 'textDocument/diagnostic': {
-        void this.handleDiagnosticPull(msg);
+        void this.diagnostics.handleClientPull(msg);
         return;
       }
     }
@@ -389,30 +368,12 @@ export class LspProxy {
     }
   }
 
-  /** Store + republish pushed diagnostics. Returns true if the message was consumed. */
-  private handleServerNotification(serverName: string, msg: Message): boolean {
-    if (!(Msg.isNotification(msg) && msg.method === 'textDocument/publishDiagnostics')) {
-      return false;
-    }
-    const result = v.safeParse(PublishDiagnosticsSchema, msg.params);
-    if (!result.success) return false;
-    const uri = normalizeFileUri(result.output.uri);
-    this.diagnosticsStore = diag.update(
-      this.diagnosticsStore,
-      serverName,
-      uri,
-      result.output.diagnostics,
-    );
-    this.publishMergedDiagnostics(uri);
-    return true;
-  }
-
   /** Dispatch intercepted server-initiated requests. Returns true if consumed. */
   private handleServerRequest(serverName: string, msg: Message): boolean {
     if (!Msg.isRequest(msg)) return false;
     switch (msg.method) {
       case 'workspace/diagnostic/refresh': {
-        this.handleDiagnosticRefresh(serverName, msg);
+        this.diagnostics.handleRefresh(serverName, msg);
         return true;
       }
       case 'workspace/configuration': {
@@ -430,23 +391,6 @@ export class LspProxy {
         return false;
       }
     }
-  }
-
-  /**
-   * workspace/diagnostic/refresh: when compensating, re-pull diagnostics for
-   *  tracked documents; otherwise forward to the client so it re-pulls.
-   */
-  private handleDiagnosticRefresh(serverName: string, msg: RequestMessage): void {
-    if (this.compensations.proactivePullDiagnostics) {
-      this.ackToServer(serverName, msg.id);
-      for (const uri of this.documents.keys()) {
-        void this.pullDiagnostics(uri);
-      }
-      return;
-    }
-    // Forward to client — track for response routing
-    this.serverRequestRouting.set(msg.id, serverName);
-    this.writeToClient(msg);
   }
 
   /** Answer workspace/configuration with server settings. Returns false to forward. */
@@ -471,7 +415,7 @@ export class LspProxy {
 
   private handleServerMessage(serverName: string, msg: Message): void {
     this.logServerMessage(serverName, msg);
-    if (this.handleServerNotification(serverName, msg)) return;
+    if (this.diagnostics.handlePublish(serverName, msg)) return;
     if (this.handleServerRequest(serverName, msg)) return;
     this.forwardServerMessage(serverName, msg);
   }
@@ -609,10 +553,7 @@ export class LspProxy {
   private handleServerStateChange(serverName: string, serverState: ServerState): void {
     this.log.debug(`${serverName}: state → ${serverState}`);
     if (serverState === 'restarting' || serverState === 'starting') {
-      const { store, affectedUris } = diag.clearServer(this.diagnosticsStore, serverName);
-      this.diagnosticsStore = store;
-      for (const uri of affectedUris) this.publishMergedDiagnostics(uri);
-
+      this.diagnostics.clearServer(serverName);
       this.watchRegistrations = fw.unregisterServer(this.watchRegistrations, serverName);
     }
 
@@ -699,63 +640,6 @@ export class LspProxy {
     });
   }
 
-  /** Fan out textDocument/diagnostic to all matching servers and merge results. */
-  private async handleDiagnosticPull(msg: RequestMessage): Promise<void> {
-    const uri = extractUri(msg);
-    const serverNames = this.router.serversForUri(uri);
-
-    const requests = serverNames
-      .map(name => this.servers.get(name))
-      .filter(server => server !== undefined)
-      .map(server => server.sendRequest('textDocument/diagnostic', msg.params));
-
-    const responses = await Promise.all(requests);
-
-    const allItems: unknown[] = [];
-    for (const res of responses) {
-      if (!res.result || !isPlainObject(res.result)) continue;
-      const items = res.result['items'];
-      if (Array.isArray(items)) {
-        for (const item of items) allItems.push(item);
-      }
-    }
-
-    this.respondToClient(msg.id, { kind: 'full', items: allItems });
-  }
-
-  /**
-   * Pull diagnostics from all matching servers and store results.
-   *  Only publishes if at least one server returns items — avoids
-   *  spurious re-publications that race with push-based servers.
-   */
-  private async pullDiagnostics(uri: string): Promise<void> {
-    const serverNames = this.router.serversForUri(uri);
-    const params = { textDocument: { uri } };
-
-    const responses = await Promise.all(
-      serverNames
-        .map(name => this.servers.get(name))
-        .filter(server => server !== undefined)
-        .map(async (server) => {
-          const res = await server.sendRequest('textDocument/diagnostic', params);
-          return { name: server.name, res };
-        }),
-    );
-
-    let isUpdated = false;
-    for (const { name, res } of responses) {
-      if (!res.result || !isPlainObject(res.result)) continue;
-      const items = res.result['items'];
-      if (!Array.isArray(items)) continue;
-      this.diagnosticsStore = diag.update(this.diagnosticsStore, name, uri, items);
-      isUpdated = true;
-    }
-
-    if (isUpdated) {
-      this.publishMergedDiagnostics(uri);
-    }
-  }
-
   // ── Logging ──────────────────────────────────────────────────────────
 
   /**
@@ -782,15 +666,6 @@ export class LspProxy {
 
   /** Safe check that avoids TS narrowing issues across async boundaries. */
   private isStopped(): boolean { return this.state === 'stopped'; }
-
-  private publishMergedDiagnostics(uri: string): void {
-    const merged = diag.merge(this.diagnosticsStore, uri);
-    this.log.debug(`Publishing ${String(merged.length)} merged diagnostics for ${uri}`);
-    this.writeToClient(createNotification('textDocument/publishDiagnostics', {
-      uri,
-      diagnostics: merged,
-    }));
-  }
 
   private ackToServer(serverName: string, requestId: number | string | null): void {
     /* eslint-disable-next-line unicorn/no-null --
