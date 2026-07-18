@@ -39,3 +39,43 @@ export const analyzeClientCapabilities = (params: unknown): CompensationFlags =>
     proactivePullDiagnostics: diag['dynamicRegistration'] !== true,
   };
 };
+
+/**
+ * Ensures child servers see capabilities the proxy handles.
+ *
+ * - `didChangeConfiguration` is always injected — the proxy manages per-server
+ *   settings delivery regardless of client support.
+ * - `didChangeWatchedFiles` is only injected when the proxy compensates for a
+ *   client that lacks native file watching (localFileWatching).
+ */
+export const injectProxyCapabilities = (
+  params: unknown,
+  compensations: CompensationFlags,
+): object => {
+  const base = isPlainObject(params) ? params : {};
+  const caps = isPlainObject(base['capabilities']) ? base['capabilities'] : {};
+  const workspace = isPlainObject(caps['workspace']) ? caps['workspace'] : {};
+  const dcc = isPlainObject(workspace['didChangeConfiguration'])
+    ? workspace['didChangeConfiguration']
+    : {};
+
+  const workspaceOverrides: Record<string, unknown> = {
+    ...workspace,
+    didChangeConfiguration: { ...dcc, dynamicRegistration: true },
+  };
+
+  if (compensations.localFileWatching) {
+    const dcwf = isPlainObject(workspace['didChangeWatchedFiles'])
+      ? workspace['didChangeWatchedFiles']
+      : {};
+    workspaceOverrides['didChangeWatchedFiles'] = { ...dcwf, dynamicRegistration: true };
+  }
+
+  return {
+    ...base,
+    capabilities: {
+      ...caps,
+      workspace: workspaceOverrides,
+    },
+  };
+};
