@@ -12,6 +12,15 @@ import { createLogger } from './logger.ts';
 import type { Logger } from './logger.ts';
 import type { ManagedServer, ServerState } from './managed-server.ts';
 import { createManagedServer } from './managed-server.ts';
+import {
+  CancelParamsSchema,
+  InitializeParamsSchema,
+  LogMessageSchema,
+  PublishDiagnosticsSchema,
+  RegisterCapabilitySchema,
+  UnregisterCapabilitySchema,
+  WorkspaceConfigurationSchema,
+} from './protocol-schemas.ts';
 import type { RestartPolicy } from './restart-scheduler.ts';
 import type { Router } from './router.ts';
 import { createRouter, extractUri } from './router.ts';
@@ -20,7 +29,6 @@ import {
   createNotification,
   documentSyncMethods,
   lspErrorCodes,
-  lspMessageType,
 } from './types.ts';
 import type {
   Message,
@@ -35,61 +43,6 @@ import { WorkspaceWatcher } from './workspace-watcher.ts';
 // Grace period before proactively pulling diagnostics from servers that are
 // still starting on the first didOpen, giving them time to come up.
 const lazyStartPullDiagnosticsDelayMs = 3000;
-
-const CancelParamsSchema = v.object({
-  id: v.union([v.number(), v.string()]),
-});
-
-const PublishDiagnosticsSchema = v.object({
-  uri: v.string(),
-  diagnostics: v.array(v.unknown()),
-});
-
-const OptionalNullableStringSchema = v.optional(v.nullable(v.string()));
-
-const InitializeParamsSchema = v.object({
-  rootUri: OptionalNullableStringSchema,
-});
-
-const RegistrationSchema = v.object({
-  id: v.string(),
-  method: v.string(),
-  registerOptions: v.optional(v.unknown()),
-});
-
-const RegisterCapabilitySchema = v.object({
-  registrations: v.array(RegistrationSchema),
-});
-
-const UnregistrationSchema = v.object({
-  id: v.string(),
-  method: v.string(),
-});
-
-const UnregisterCapabilitySchema = v.object({
-  unregisterations: v.array(UnregistrationSchema),
-});
-
-const ConfigurationItemSchema = v.object({
-  scopeUri: OptionalNullableStringSchema,
-  section: OptionalNullableStringSchema,
-});
-
-const WorkspaceConfigurationSchema = v.object({
-  items: v.array(ConfigurationItemSchema),
-});
-
-const LogMessageSchema = v.object({
-  type: v.pipe(
-    v.number(),
-    v.transform((type): 'error' | 'warn' | 'info' | 'debug' => {
-      if (type === lspMessageType.Error) return 'error';
-      if (type === lspMessageType.Warning) return 'warn';
-      return type === lspMessageType.Info ? 'info' : 'debug';
-    }),
-  ),
-  message: v.string(),
-});
 
 /**
  * Ensures child servers see capabilities the proxy handles.
