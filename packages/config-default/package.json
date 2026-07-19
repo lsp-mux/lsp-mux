@@ -11,7 +11,8 @@
     "compile:ts": "cpy .lsp-proxy.json dist/source/",
     "generate-plugin": "generate-claude-plugin",
     "lint:eslint": "gtb task lint:eslint",
-    "pack:npm": "gtb task pack:npm"
+    "pack:npm": "gtb task pack:npm",
+    "typecheck:ts": "gtb task typecheck:ts"
   },
   "dependencies": {
     "@lsp-mux/vscode-eslint-lsp": "catalog:",

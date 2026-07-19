@@ -5,6 +5,15 @@
     "mise.toml"
   ],
   "tasks": {
+    "//#lint:eslint": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!packages/*/**"
+      ],
+      "outputs": [
+        "dist/.eslintcache"
+      ]
+    },
     "build": {
       "dependsOn": [
         "check",
@@ -23,6 +32,7 @@
     "check": {
       "dependsOn": [
         "typecheck",
+        "lint",
         "test:vitest:fast"
       ]
     },
@@ -88,6 +98,31 @@
       ],
       "outputs": [
         "src/entries.generated.ts"
+      ]
+    },
+    "lint": {
+      "dependsOn": [
+        "lint:eslint",
+        "//#lint:eslint"
+      ]
+    },
+    "lint:eslint": {
+      "dependsOn": [
+        "generate",
+        "typecheck:ts"
+      ],
+      "inputs": [
+        "$TURBO_ROOT$/eslint.config.*",
+        "bin/**",
+        "src/**",
+        "test/**",
+        "e2e/**",
+        "scripts/**",
+        "skills/**",
+        "eslint.config.*"
+      ],
+      "outputs": [
+        "dist/.eslintcache"
       ]
     },
     "pack": {
