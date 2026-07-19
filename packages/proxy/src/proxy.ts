@@ -5,38 +5,25 @@ import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js
 import { staticCapabilities } from './capabilities.ts';
 import { analyzeClientCapabilities, injectProxyCapabilities } from './client-capabilities.ts';
 import type { CompensationFlags } from './client-capabilities.ts';
+import { createClientMessageHandler } from './client-messages.ts';
+import type { ClientMessageHandler, ProxyState } from './client-messages.ts';
 import { createDiagnosticsCoordinator } from './diagnostics-coordinator.ts';
 import type { DiagnosticsCoordinator } from './diagnostics-coordinator.ts';
-import { rewriteDocSyncUri, rewriteDocSyncVersion } from './doc-sync.ts';
 import * as docs from './document-tracker.ts';
 import * as fw from './file-watcher.ts';
 import { createLogger } from './logger.ts';
 import type { Logger } from './logger.ts';
 import type { ManagedServer, ServerState } from './managed-server.ts';
 import { createManagedServer } from './managed-server.ts';
-import { CancelParamsSchema, InitializeParamsSchema } from './protocol-schemas.ts';
+import { InitializeParamsSchema } from './protocol-schemas.ts';
 import type { RestartPolicy } from './restart-scheduler.ts';
 import type { Router } from './router.ts';
-import { createRouter, extractUri } from './router.ts';
+import { createRouter } from './router.ts';
 import { createServerMessageHandler } from './server-messages.ts';
 import type { ServerMessageHandler } from './server-messages.ts';
-import {
-  Message as Msg,
-  createNotification,
-  documentSyncMethods,
-  lspErrorCodes,
-} from './types.ts';
-import type {
-  Message,
-  NotificationMessage,
-  RequestMessage,
-  ResponseMessage,
-  ServerConfig,
-} from './types.ts';
-import { normalizeFileUri } from './uri.ts';
+import { createNotification, lspErrorCodes } from './types.ts';
+import type { Message, RequestMessage, ResponseMessage, ServerConfig } from './types.ts';
 import { WorkspaceWatcher } from './workspace-watcher.ts';
-
-type ProxyState = 'idle' | 'running' | 'stopped';
 
 export interface ProxyOptions {
   input?: NodeJS.ReadableStream;
@@ -77,6 +64,7 @@ export class LspProxy {
   private readonly router: Router;
   private readonly diagnostics: DiagnosticsCoordinator;
   private readonly serverMessages: ServerMessageHandler;
+  private readonly clientMessages: ClientMessageHandler;
   private readonly proxyOptions: ProxyOptions | undefined;
 
   // Track which server owns each pending client request (used for cancel routing)
@@ -149,63 +137,32 @@ export class LspProxy {
       serverConfigs,
       log: this.log,
     });
+    this.clientMessages = createClientMessageHandler({
+      delegate: {
+        applyDocumentSync: (method, params) => {
+          this.documents = docs.apply(this.documents, method, params);
+        },
+        dispose: () => { this.dispose(); },
+        disposeReader: () => { this.clientReader.dispose(); },
+        getState: () => this.state,
+        initializeServers: (id, params) => {
+          this.initParams = params;
+          void this.initializeAllServers(id);
+        },
+        sendErrorToClient: (id, code, message) => { this.sendErrorToClient(id, code, message); },
+        shutdownServers: (id) => { void this.shutdownAllServers(id); },
+      },
+      diagnostics: this.diagnostics,
+      log: this.log,
+      requestRouting: this.requestRouting,
+      router: this.router,
+      serverRequestRouting: this.serverRequestRouting,
+      servers: this.servers,
+      versionOffsets: this.versionOffsets,
+    });
   }
 
   // ── Client → Server ──────────────────────────────────────────────────
-
-  private logClientMessage(msg: Message): void {
-    if (Msg.isRequest(msg)) {
-      this.log.debug(`client → proxy: request ${msg.method} (id: ${String(msg.id)})`);
-    } else if (Msg.isNotification(msg)) {
-      this.log.debug(`client → proxy: notification ${msg.method}`);
-    } else if (Msg.isResponse(msg)) {
-      this.log.debug(`client → proxy: response (id: ${String(msg.id)})`);
-    }
-  }
-
-  private handleStoppedMessage(msg: Message): void {
-    if (Msg.isNotification(msg) && msg.method === 'exit') {
-      this.clientReader.dispose();
-      return;
-    }
-    if (Msg.isRequest(msg)) {
-      this.sendErrorToClient(msg.id, lspErrorCodes.ServerNotInitialized, 'Server stopped');
-    }
-  }
-
-  private handleClientMessage(msg: Message): void {
-    this.logClientMessage(msg);
-
-    if (Msg.isNotification(msg) && documentSyncMethods.has(msg.method)) {
-      this.documents = docs.apply(this.documents, msg.method, msg.params);
-    }
-
-    switch (this.state) {
-      case 'idle': {
-        this.handleIdleMessage(msg);
-        return;
-      }
-      case 'running': {
-        this.handleRunningMessage(msg);
-        return;
-      }
-      case 'stopped': {
-        this.handleStoppedMessage(msg);
-        return;
-      }
-    }
-  }
-
-  private handleIdleMessage(msg: Message): void {
-    if (Msg.isRequest(msg) && msg.method === 'initialize') {
-      this.initParams = msg.params;
-      void this.initializeAllServers(msg.id);
-      return;
-    }
-    if (Msg.isRequest(msg)) {
-      this.sendErrorToClient(msg.id, lspErrorCodes.ServerNotInitialized, 'Not initialized');
-    }
-  }
 
   private async initializeAllServers(clientRequestId: number | string | null): Promise<void> {
     this.compensations = analyzeClientCapabilities(this.initParams);
@@ -230,128 +187,6 @@ export class LspProxy {
 
     if (this.compensations.localFileWatching) {
       await this.startWorkspaceWatcher();
-    }
-  }
-
-  /** Broadcast a message to every server that isn't idle. */
-  private broadcastToActive(msg: Message): void {
-    for (const server of this.servers.values()) {
-      if (server.state !== 'idle') server.send(msg);
-    }
-  }
-
-  /** Route a client response back to the server that issued the request. */
-  private routeClientResponse(msg: ResponseMessage): void {
-    const targetServer = this.serverRequestRouting.get(msg.id);
-    this.serverRequestRouting.delete(msg.id);
-    if (targetServer) {
-      this.servers.get(targetServer)?.send(msg);
-    }
-  }
-
-  private handleCancelRequest(msg: NotificationMessage): void {
-    const result = v.safeParse(CancelParamsSchema, msg.params);
-    if (result.success) {
-      const { id } = result.output;
-      let isCancelled = false;
-      for (const server of this.servers.values()) {
-        if (server.cancelBuffered(id)) isCancelled = true;
-      }
-      if (isCancelled) {
-        this.sendErrorToClient(id, lspErrorCodes.RequestCancelled, 'Request cancelled');
-        this.requestRouting.delete(id);
-        return;
-      }
-    }
-    // Not buffered — forward for in-flight cancellation (skip idle servers)
-    this.broadcastToActive(msg);
-  }
-
-  private handleDocumentSync(msg: NotificationMessage): void {
-    const rawUri = extractUri(msg);
-    const uri = rawUri ? normalizeFileUri(rawUri) : undefined;
-    const normalized = uri && uri !== rawUri
-      ? rewriteDocSyncUri(msg, uri)
-      : msg;
-
-    // Reset version offset on open/close — client version is authoritative
-    const isOpenOrClose =
-      msg.method === 'textDocument/didOpen' || msg.method === 'textDocument/didClose';
-    if (isOpenOrClose && uri) this.versionOffsets.delete(uri);
-
-    const rewritten = this.applyVersionOffset(normalized, uri);
-    for (const name of this.router.serversForUri(uri)) {
-      this.servers.get(name)?.send(rewritten);
-    }
-
-    this.diagnostics.maybePullAfterSync(msg, uri);
-  }
-
-  private handleRunningNotification(msg: NotificationMessage): void {
-    switch (msg.method) {
-      case 'exit': {
-        this.broadcastToActive(msg);
-        this.dispose();
-        return;
-      }
-      case 'initialized': {
-        for (const server of this.servers.values()) server.sendInitialized();
-        this.log.info('LSP handshake complete');
-        return;
-      }
-      case '$/cancelRequest': {
-        this.handleCancelRequest(msg);
-        return;
-      }
-    }
-    if (documentSyncMethods.has(msg.method)) {
-      this.handleDocumentSync(msg);
-      return;
-    }
-    this.broadcastToActive(msg);
-  }
-
-  /** Route a generic client request to the primary server for its document. */
-  private routeRequestToPrimary(msg: RequestMessage): void {
-    const uri = extractUri(msg);
-    const primaryName = this.router.primaryForUri(uri);
-    const primary = primaryName ? this.servers.get(primaryName) : undefined;
-    if (primary) {
-      this.requestRouting.set(msg.id, primary.name);
-      if (!primary.send(msg)) {
-        this.sendErrorToClient(msg.id, lspErrorCodes.InternalError, 'Server unavailable');
-        this.requestRouting.delete(msg.id);
-      }
-    } else {
-      this.sendErrorToClient(msg.id, lspErrorCodes.InternalError, 'No servers available');
-    }
-  }
-
-  private handleRunningRequest(msg: RequestMessage): void {
-    switch (msg.method) {
-      case 'shutdown': {
-        void this.shutdownAllServers(msg.id);
-        return;
-      }
-      case 'textDocument/diagnostic': {
-        void this.diagnostics.handleClientPull(msg);
-        return;
-      }
-    }
-    this.routeRequestToPrimary(msg);
-  }
-
-  private handleRunningMessage(msg: Message): void {
-    if (Msg.isResponse(msg)) {
-      this.routeClientResponse(msg);
-      return;
-    }
-    if (Msg.isNotification(msg)) {
-      this.handleRunningNotification(msg);
-      return;
-    }
-    if (Msg.isRequest(msg)) {
-      this.handleRunningRequest(msg);
     }
   }
 
@@ -455,12 +290,6 @@ export class LspProxy {
 
   // ── Version Offsets ──────────────────────────────────────────────────
 
-  /** Apply this document's resync version offset to a sync notification, if any. */
-  private applyVersionOffset(msg: NotificationMessage, uri: string | undefined): Message {
-    const offset = uri ? this.versionOffsets.get(uri) : undefined;
-    return offset ? rewriteDocSyncVersion(msg, offset) : msg;
-  }
-
   /** Get documents with effective versions (client version + offset) for replay. */
   private getDocumentsWithEffectiveVersions(): readonly import('./types.ts').TrackedDocument[] {
     return docs.toArray(this.documents).map((doc) => {
@@ -511,7 +340,7 @@ export class LspProxy {
   start(): Promise<void> {
     this.log.info('Proxy starting');
     this.clientReader.listen((msg) => {
-      this.handleClientMessage(msg);
+      this.clientMessages.handleMessage(msg);
     });
     this.clientReader.onError((err) => {
       this.log.error('Client reader error:', err);
