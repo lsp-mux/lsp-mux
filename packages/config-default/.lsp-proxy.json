@@ -1,3 +1,7 @@
 {
-  "servers": ["vtsls", "eslint", "oxlint"]
+  "servers": [
+    "vtsls",
+    "eslint",
+    "oxlint"
+  ]
 }

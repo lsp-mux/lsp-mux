@@ -25,14 +25,14 @@ pnpm add -g lsp-proxy-config-default
 The `postinstall` script automatically generates the plugin files. Then
 register the plugin in Claude Code:
 
-```
+```text
 /plugin marketplace add /absolute/path/to/global/lsp-proxy-config-default
 /plugin install lsp-proxy@lsp-proxy
 ```
 
 Disable any conflicting LSP plugins:
 
-```
+```text
 /plugin disable vtsls@claude-code-lsps
 ```
 
@@ -56,7 +56,7 @@ move the directory.
 
 ## Files
 
-```
+```text
 .lsp-proxy.json          # which servers to load
 .lsp-proxy.local.json    # local overrides (git-ignored)
 servers/                  # per-server config overrides (empty by default)
@@ -90,7 +90,10 @@ For servers not in the registry, create `servers/<name>.json`:
 ```json
 {
   "command": "node",
-  "args": ["./node_modules/vscode-langservers-extracted/bin/vscode-css-language-server", "--stdio"],
+  "args": [
+    "./node_modules/vscode-langservers-extracted/bin/vscode-css-language-server",
+    "--stdio"
+  ],
   "languages": { "css": [".css"], "scss": [".scss"] },
   "transport": "stdio"
 }

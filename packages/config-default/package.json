@@ -10,6 +10,7 @@
   "scripts": {
     "compile:ts": "cpy .lsp-proxy.json dist/source/",
     "generate-plugin": "generate-claude-plugin",
+    "lint:eslint": "gtb task lint:eslint",
     "pack:npm": "gtb task pack:npm"
   },
   "dependencies": {
@@ -17,6 +18,9 @@
     "@vtsls/language-server": "catalog:",
     "lsp-proxy-claude-code": "workspace:*",
     "oxlint": "catalog:"
+  },
+  "engines": {
+    "node": ">=24.0.0"
   },
   "publishConfig": {
     "directory": "dist/source",
