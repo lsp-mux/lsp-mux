@@ -1,5 +1,5 @@
 import { stat } from 'node:fs/promises';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import * as v from 'valibot';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import { staticCapabilities } from './capabilities.ts';
@@ -14,17 +14,12 @@ import { createLogger } from './logger.ts';
 import type { Logger } from './logger.ts';
 import type { ManagedServer, ServerState } from './managed-server.ts';
 import { createManagedServer } from './managed-server.ts';
-import {
-  CancelParamsSchema,
-  InitializeParamsSchema,
-  LogMessageSchema,
-  RegisterCapabilitySchema,
-  UnregisterCapabilitySchema,
-  WorkspaceConfigurationSchema,
-} from './protocol-schemas.ts';
+import { CancelParamsSchema, InitializeParamsSchema } from './protocol-schemas.ts';
 import type { RestartPolicy } from './restart-scheduler.ts';
 import type { Router } from './router.ts';
 import { createRouter, extractUri } from './router.ts';
+import { createServerMessageHandler } from './server-messages.ts';
+import type { ServerMessageHandler } from './server-messages.ts';
 import {
   Message as Msg,
   createNotification,
@@ -79,9 +74,9 @@ export class LspProxy {
   private watcher: WorkspaceWatcher | undefined;
 
   private readonly servers: Map<string, ManagedServer>;
-  private readonly serverConfigs: ReadonlyMap<string, ServerConfig>;
   private readonly router: Router;
   private readonly diagnostics: DiagnosticsCoordinator;
+  private readonly serverMessages: ServerMessageHandler;
   private readonly proxyOptions: ProxyOptions | undefined;
 
   // Track which server owns each pending client request (used for cancel routing)
@@ -101,7 +96,6 @@ export class LspProxy {
     this.clientWriter = new StreamMessageWriter(options?.output ?? process.stdout);
     this.log = options?.logger ?? createLogger();
     this.proxyOptions = options;
-    this.serverConfigs = serverConfigs;
 
     this.servers = new Map<string, ManagedServer>();
     const serverEntries = [...serverConfigs].map(([name, config]) => ({ name, config }));
@@ -112,7 +106,7 @@ export class LspProxy {
         config,
         callbacks: {
           onServerMessage: (msg) => {
-            this.handleServerMessage(name, msg);
+            this.serverMessages.handleMessage(name, msg);
           },
           onPendingErrors: (ids, message) => {
             this.handlePendingErrors(name, ids, message);
@@ -139,6 +133,22 @@ export class LspProxy {
       ackToServer: (name, id) => { this.ackToServer(name, id); },
       trackServerRequest: (id, name) => { this.serverRequestRouting.set(id, name); },
     }, this.log);
+    this.serverMessages = createServerMessageHandler({
+      delegate: {
+        ackToServer: (name, id) => { this.ackToServer(name, id); },
+        getWatchRegistrations: () => this.watchRegistrations,
+        getWorkspaceRoot: () => this.workspaceRoot,
+        isLocalFileWatching: () => this.compensations.localFileWatching,
+        sendToServer: (name, msg) => { this.servers.get(name)?.send(msg); },
+        setWatchRegistrations: (registrations) => { this.watchRegistrations = registrations; },
+        trackServerRequest: (id, name) => { this.serverRequestRouting.set(id, name); },
+        untrackClientRequest: (id) => { this.requestRouting.delete(id); },
+        writeToClient: (msg) => { this.writeToClient(msg); },
+      },
+      diagnostics: this.diagnostics,
+      serverConfigs,
+      log: this.log,
+    });
   }
 
   // ── Client → Server ──────────────────────────────────────────────────
@@ -358,187 +368,6 @@ export class LspProxy {
 
   // ── Server → Client ──────────────────────────────────────────────────
 
-  private logServerMessage(serverName: string, msg: Message): void {
-    if (Msg.isRequest(msg)) {
-      this.log.debug(`${serverName} → proxy: request ${msg.method}`);
-    } else if (Msg.isResponse(msg)) {
-      this.log.debug(`${serverName} → proxy: response (id: ${String(msg.id)})`);
-    } else if (Msg.isNotification(msg)) {
-      this.logServerNotification(serverName, msg);
-    }
-  }
-
-  /** Dispatch intercepted server-initiated requests. Returns true if consumed. */
-  private handleServerRequest(serverName: string, msg: Message): boolean {
-    if (!Msg.isRequest(msg)) return false;
-    switch (msg.method) {
-      case 'workspace/diagnostic/refresh': {
-        this.diagnostics.handleRefresh(serverName, msg);
-        return true;
-      }
-      case 'workspace/configuration': {
-        return this.handleConfigurationRequest(serverName, msg);
-      }
-      case 'client/registerCapability': {
-        this.handleRegisterCapability(serverName, msg);
-        return true;
-      }
-      case 'client/unregisterCapability': {
-        this.handleUnregisterCapability(serverName, msg);
-        return true;
-      }
-      default: {
-        return false;
-      }
-    }
-  }
-
-  /** Answer workspace/configuration with server settings. Returns false to forward. */
-  private handleConfigurationRequest(serverName: string, msg: RequestMessage): boolean {
-    const settings = this.serverConfigs.get(serverName)?.settings;
-    if (!settings) return false;
-    this.handleWorkspaceConfiguration(serverName, msg, settings);
-    return true;
-  }
-
-  /** Clean up routing state and forward a server message to the client. */
-  private forwardServerMessage(serverName: string, msg: Message): void {
-    if (Msg.isResponse(msg) && msg.id !== null) {
-      this.requestRouting.delete(msg.id);
-    }
-    // Track server-to-client requests so the client's response can be routed back
-    if (Msg.isRequest(msg)) {
-      this.serverRequestRouting.set(msg.id, serverName);
-    }
-    this.writeToClient(msg);
-  }
-
-  private handleServerMessage(serverName: string, msg: Message): void {
-    this.logServerMessage(serverName, msg);
-    if (this.diagnostics.handlePublish(serverName, msg)) return;
-    if (this.handleServerRequest(serverName, msg)) return;
-    this.forwardServerMessage(serverName, msg);
-  }
-
-  private handleRegisterCapability(serverName: string, msg: RequestMessage): void {
-    const parsed = v.safeParse(RegisterCapabilitySchema, msg.params);
-    if (!parsed.success) {
-      this.writeToClient(msg);
-      return;
-    }
-
-    const otherRegs: typeof parsed.output.registrations = [];
-    let handledCount = 0;
-
-    for (const reg of parsed.output.registrations) {
-      if (
-        reg.method === 'workspace/didChangeWatchedFiles' &&
-        this.compensations.localFileWatching
-      ) {
-        const opts = v.safeParse(fw.RegisterOptionsSchema, reg.registerOptions);
-        if (opts.success) {
-          this.watchRegistrations = fw.register(
-            this.watchRegistrations,
-            { serverName, registrationId: reg.id },
-            opts.output,
-            this.workspaceRoot ?? undefined,
-          );
-          handledCount++;
-          this.log.info(`${serverName}: registered file watcher ${reg.id}`);
-          continue;
-        }
-        // Malformed watcher registration — log and count as handled (don't forward)
-        this.log.warn(`${serverName}: malformed watcher registration ${reg.id} — skipping`);
-        handledCount++;
-        continue;
-      }
-      // The proxy manages config delivery — ack didChangeConfiguration registrations
-      // directly so they don't reach the client (which may not support them).
-      if (reg.method === 'workspace/didChangeConfiguration') {
-        handledCount++;
-        continue;
-      }
-      otherRegs.push(reg);
-    }
-
-    if (otherRegs.length > 0) {
-      // Forward non-watcher registrations to client, track for response routing
-      const filtered: RequestMessage = { ...msg, params: { registrations: otherRegs } };
-      this.serverRequestRouting.set(msg.id, serverName);
-      this.writeToClient(filtered);
-    } else if (handledCount > 0) {
-      // All registrations were file watchers — ack to server directly
-      this.ackToServer(serverName, msg.id);
-    } else {
-      // Nothing matched — forward original
-      this.writeToClient(msg);
-    }
-  }
-
-  private handleUnregisterCapability(serverName: string, msg: RequestMessage): void {
-    const parsed = v.safeParse(UnregisterCapabilitySchema, msg.params);
-    if (!parsed.success) {
-      this.writeToClient(msg);
-      return;
-    }
-
-    // LSP spec misspells "unregisterations" (sic)
-    const otherUnregs: typeof parsed.output.unregisterations = [];
-    let handledCount = 0;
-
-    for (const unreg of parsed.output.unregisterations) {
-      if (
-        unreg.method === 'workspace/didChangeWatchedFiles' &&
-        this.compensations.localFileWatching
-      ) {
-        this.watchRegistrations = fw.unregister(this.watchRegistrations, unreg.id);
-        handledCount++;
-        this.log.info(`${serverName}: unregistered file watcher ${unreg.id}`);
-      } else {
-        otherUnregs.push(unreg);
-      }
-    }
-
-    if (otherUnregs.length > 0) {
-      const filtered: RequestMessage = { ...msg, params: { unregisterations: otherUnregs } };
-      this.serverRequestRouting.set(msg.id, serverName);
-      this.writeToClient(filtered);
-    } else if (handledCount > 0) {
-      this.ackToServer(serverName, msg.id);
-    } else {
-      this.writeToClient(msg);
-    }
-  }
-
-  private handleWorkspaceConfiguration(
-    serverName: string,
-    msg: RequestMessage,
-    settings: Record<string, unknown>,
-  ): void {
-    const parsed = v.safeParse(WorkspaceConfigurationSchema, msg.params);
-    if (!parsed.success) {
-      this.log.warn(
-        `${serverName}: malformed workspace/configuration request — responding with empty array`,
-      );
-      const response: ResponseMessage = { jsonrpc: '2.0', id: msg.id, result: [] };
-      this.servers.get(serverName)?.send(response);
-      return;
-    }
-
-    const workspaceFolder = this.workspaceRoot
-      ? { uri: pathToFileURL(this.workspaceRoot).href, name: '' }
-      : undefined;
-
-    const result = parsed.output.items.map((item) => {
-      const section = item.section;
-      if (section && Object.hasOwn(settings, section)) return settings[section];
-      return { ...settings, workspaceFolder };
-    });
-
-    const response: ResponseMessage = { jsonrpc: '2.0', id: msg.id, result };
-    this.servers.get(serverName)?.send(response);
-  }
-
   private handlePendingErrors(
     _serverName: string,
     ids: ReadonlySet<number | string | null>,
@@ -638,28 +467,6 @@ export class LspProxy {
       const offset = this.versionOffsets.get(doc.uri) ?? 0;
       return offset > 0 ? { ...doc, version: doc.version + offset } : doc;
     });
-  }
-
-  // ── Logging ──────────────────────────────────────────────────────────
-
-  /**
-   * Forward server window/logMessage at appropriate level; log others at DEBUG
-   *  unless the server config declares a custom log level for the notification.
-   */
-  private logServerNotification(serverName: string, msg: NotificationMessage): void {
-    if (msg.method === 'window/logMessage') {
-      const parsed = v.safeParse(LogMessageSchema, msg.params);
-      if (parsed.success) {
-        this.log[parsed.output.type](`${serverName}:`, parsed.output.message);
-      }
-      return;
-    }
-    const notifConfig = this.serverConfigs.get(serverName)?.notifications?.[msg.method];
-    if (notifConfig) {
-      this.log[notifConfig.logLevel](`${serverName}:`, msg.method, JSON.stringify(msg.params));
-      return;
-    }
-    this.log.debug(`${serverName} → proxy: notification ${msg.method}`);
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────
