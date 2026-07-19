@@ -4,4 +4,18 @@ amends "package://github.com/jdx/hk/releases/download/v1.49.0/hk@1.49.0#/Config.
 // release package.
 import "package://github.com/gtbuchanan/tooling/releases/download/hk-config@0.2.0/hk-config@0.2.0#/Defaults.pkl"
 
-hooks = Defaults.hooksFor(Defaults.recommended)
+// eslint args shared by the step's check/fix; only `--fix` differs. ESLint 10
+// resolves the nearest eslint.config.ts per file, so one root invocation
+// applies each package's own config.
+local eslintArgs = "--max-warnings=0 --no-warn-ignored {{files}}"
+
+local allSteps = new Mapping<String, Step> {
+    ...Defaults.recommended
+
+    ["eslint"] {
+        check = "pnpm exec eslint \(eslintArgs)"
+        fix = "pnpm exec eslint --fix \(eslintArgs)"
+    }
+}
+
+hooks = Defaults.hooksFor(allSteps)
