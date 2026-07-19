@@ -2,7 +2,7 @@
 import { writeFile } from 'node:fs/promises';
 import { describe, vi } from 'vitest';
 import { initializeProxy, notify, openDocument, request } from '../helpers/test-client.ts';
-import { it } from './harness.ts';
+import { it, watcherWaitOptions } from './harness.ts';
 
 describe('LspProxy file resync', () => {
   it('resyncs document when file changes on disk', async ({ createProxy, workspace, expect }) => {
@@ -25,7 +25,7 @@ describe('LspProxy file resync', () => {
           expect.objectContaining({ uri: tmpUri, text: 'const modified = 2;' }),
         ]) as unknown,
       });
-    }, { timeout: 5000, interval: 100 });
+    }, watcherWaitOptions);
   });
 
   it('maintains monotonically increasing versions after resync', async ({
@@ -53,7 +53,7 @@ describe('LspProxy file resync', () => {
           expect.objectContaining({ uri: tmpUri, text: 'v1-resynced', version: 2 }),
         ]) as unknown,
       });
-    }, { timeout: 5000, interval: 100 });
+    }, watcherWaitOptions);
 
     // Client sends didChange v2 → offset makes server see v3
     await notify(writer, 'textDocument/didChange', {
@@ -69,7 +69,7 @@ describe('LspProxy file resync', () => {
           expect.objectContaining({ uri: tmpUri, text: 'v2-from-client', version: 3 }),
         ]) as unknown,
       });
-    }, { timeout: 5000, interval: 100 });
+    }, watcherWaitOptions);
   });
 
   it('resets version offset on close and reopen', async ({ createProxy, workspace, expect }) => {
@@ -93,7 +93,7 @@ describe('LspProxy file resync', () => {
           expect.objectContaining({ uri: tmpUri, version: 2 }),
         ]) as unknown,
       });
-    }, { timeout: 5000, interval: 100 });
+    }, watcherWaitOptions);
 
     // Close the document — should reset offset
     await notify(writer, 'textDocument/didClose', {
@@ -138,7 +138,7 @@ describe('LspProxy file resync', () => {
           expect.objectContaining({ uri: tmpUri, version: 2 }),
         ]) as unknown,
       });
-    }, { timeout: 5000, interval: 100 });
+    }, watcherWaitOptions);
 
     // Close the document — offset should reset
     await notify(writer, 'textDocument/didClose', { textDocument: { uri: tmpUri } });
@@ -182,7 +182,7 @@ describe('LspProxy file resync', () => {
           expect.objectContaining({ uri: tmpUri, text: 'disk-v2', version: 2 }),
         ]) as unknown,
       });
-    }, { timeout: 5000, interval: 100 });
+    }, watcherWaitOptions);
 
     // Second external write → resync to v3 (offset=2)
     await writeFile(tmpFile, 'disk-v3');
@@ -194,7 +194,7 @@ describe('LspProxy file resync', () => {
           expect.objectContaining({ uri: tmpUri, text: 'disk-v3', version: 3 }),
         ]) as unknown,
       });
-    }, { timeout: 5000, interval: 100 });
+    }, watcherWaitOptions);
 
     // Client sends didChange v2 → offset(2) makes server see v4
     await notify(writer, 'textDocument/didChange', {
@@ -210,7 +210,7 @@ describe('LspProxy file resync', () => {
           expect.objectContaining({ uri: tmpUri, text: 'client-v4', version: 4 }),
         ]) as unknown,
       });
-    }, { timeout: 5000, interval: 100 });
+    }, watcherWaitOptions);
   });
 
   it('converges to final content after rapid successive writes', async ({
@@ -241,7 +241,7 @@ describe('LspProxy file resync', () => {
           expect.objectContaining({ uri: tmpUri, text: 'version-5' }),
         ]) as unknown,
       });
-    }, { timeout: 5000, interval: 100 });
+    }, watcherWaitOptions);
   });
 
   it('skips resync for files exceeding maxResyncBytes', async ({
@@ -276,7 +276,7 @@ describe('LspProxy file resync', () => {
           expect.objectContaining({ uri: fenceUri, text: 'modified' }),
         ]) as unknown,
       });
-    }, { timeout: 5000, interval: 100 });
+    }, watcherWaitOptions);
 
     // The large file should NOT have been resynced
     const res = await request({ writer, reader }, workspace.nextSeq(), '$/documents');

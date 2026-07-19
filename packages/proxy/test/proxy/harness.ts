@@ -25,6 +25,14 @@ export const namedConfig = (name: string, ...extraArgs: string[]): ServerConfig 
   args: [...mockServerConfig.args, `--name=${name}`, ...extraArgs],
 });
 
+/*
+ * Options for vi.waitFor polls on fs.watch-driven behavior. Event delivery
+ * can lag several seconds when the fast and slow test buckets run
+ * concurrently, so the timeout is generous; the slow-tag test timeout is
+ * far larger still.
+ */
+export const watcherWaitOptions = { timeout: 15_000, interval: 100 };
+
 interface TestProxyOptions {
   config?: ServerConfig;
   configs?: ReadonlyMap<string, ServerConfig>;

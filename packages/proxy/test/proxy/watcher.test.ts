@@ -12,7 +12,13 @@ import {
   request,
   waitForMessage,
 } from '../helpers/test-client.ts';
-import { type ServerConfig, type Workspace, it, mockServerConfig } from './harness.ts';
+import {
+  type ServerConfig,
+  type Workspace,
+  it,
+  mockServerConfig,
+  watcherWaitOptions,
+} from './harness.ts';
 
 /** Poll until the proxy's file watcher is active and dispatching events. */
 const waitForWatcherActive = (
@@ -28,7 +34,7 @@ const waitForWatcherActive = (
     expect(probe).toMatchObject({
       result: expect.arrayContaining([expect.anything()]) as unknown,
     });
-  }, { timeout: 5000, interval: 100 });
+  }, watcherWaitOptions);
 
 /** Asymmetric matcher for a single watcher change event referencing `uri`. */
 const changeContaining = (expect: ExpectStatic, uri: string): unknown =>
@@ -70,7 +76,7 @@ describe.sequential('LspProxy file watchers', () => {
         expect(res).toMatchObject({
           result: watcherEventContaining(expect, 'new-file.ts'),
         });
-      }, { timeout: 5000, interval: 100 });
+      }, watcherWaitOptions);
     });
 
     it('splits mixed registration: intercepts watchers, forwards rest to client', async ({
@@ -122,7 +128,7 @@ describe.sequential('LspProxy file watchers', () => {
         expect(res).toMatchObject({
           result: watcherEventContaining(expect, 'mixed-test.ts'),
         });
-      }, { timeout: 5000, interval: 100 });
+      }, watcherWaitOptions);
     });
   });
 
@@ -198,7 +204,7 @@ describe.sequential('LspProxy file watchers', () => {
         expect(res).toMatchObject({
           result: watcherEventContaining(expect, 'after-restart.ts'),
         });
-      }, { timeout: 5000, interval: 100 });
+      }, watcherWaitOptions);
     });
   });
 
@@ -233,7 +239,7 @@ describe.sequential('LspProxy file watchers', () => {
         expect(res).toMatchObject({
           result: watcherEventContaining(expect, 'bp-1.ts'),
         });
-      }, { timeout: 5000, interval: 100 });
+      }, watcherWaitOptions);
 
       // bp-3 and bp-4 should NOT have been dispatched (dropped by cap)
       const final = await request({ writer, reader }, workspace.nextSeq(), '$/watcherEvents');
@@ -324,7 +330,7 @@ describe.sequential('LspProxy file watchers', () => {
         expect(res).toMatchObject({
           result: watcherEventContaining(expect, 'batch-a.ts', 'batch-b.ts'),
         });
-      }, { timeout: 5000, interval: 100 });
+      }, watcherWaitOptions);
     });
   });
 });
