@@ -7,12 +7,20 @@ jobs:
     name: CI
     secrets: inherit
     uses: gtbuchanan/tooling/.github/workflows/ci.yml@main
+    with:
+      # No e2e tests yet; the proxy integration suite is the slow bucket.
+      run-e2e: false
+      run-slow-tests: true
   dependencies:
     name: Dependencies
     uses: gtbuchanan/tooling/.github/workflows/dependency-review.yml@main
   pre-commit:
     name: Pre-Commit
     uses: gtbuchanan/tooling/.github/workflows/pre-commit.yml@main
+    with:
+      # The hk eslint step shells out to `pnpm exec eslint`, so hk needs
+      # the project's deps installed.
+      use-pnpm: true
 name: PR
 on:
   pull_request:

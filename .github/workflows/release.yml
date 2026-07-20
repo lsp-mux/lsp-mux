@@ -12,6 +12,10 @@ jobs:
     name: CI
     secrets: inherit
     uses: gtbuchanan/tooling/.github/workflows/ci.yml@main
+    with:
+      # No e2e tests yet; the proxy integration suite is the slow bucket.
+      run-e2e: false
+      run-slow-tests: true
 name: Release
 on:
   push:
