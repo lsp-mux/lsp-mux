@@ -23,8 +23,12 @@ describe('normalizeFileUri', () => {
   });
 
   it('returns malformed URIs unchanged', ({ expect }) => {
-    expect(normalizeFileUri('file:not-a-uri'))
-      .toBe('file:not-a-uri');
+    // Unterminated IPv6 host — new URL() rejects it on every platform, so
+    // parsing fails and the input is returned as-is. (`file:not-a-uri` is a
+    // valid URL that only fails path extraction on Windows, so it can't test
+    // the catch branch cross-platform.)
+    expect(normalizeFileUri('file://['))
+      .toBe('file://[');
   });
 
   it('preserves percent-encoded paths', ({ expect }) => {
