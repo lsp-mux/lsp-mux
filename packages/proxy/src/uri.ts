@@ -21,12 +21,15 @@ export const normalizeFileUri = (uri: string): string => {
   if (cached !== undefined) return cached;
   try {
     const fsPath = fileURLToPath(uri);
-    // Canonicalize Windows drive letter to lowercase so C: and c: map
-    // to the same URI — they're the same path on Windows.
-    const canonical = /^[A-Z]:/v.test(fsPath)
-      ? fsPath.replace(/^[A-Z]/v, letter => letter.toLowerCase())
-      : fsPath;
-    const normalized = pathToFileURL(canonical).href;
+    // Canonicalize a Windows drive letter to lowercase so C: and c: map to
+    // the same URI — they're the same path on Windows. Apply it to the
+    // resulting href, not the fsPath: fileURLToPath only yields a bare `C:`
+    // prefix on Windows (on POSIX it keeps a leading slash), so href-level
+    // normalization produces an identical result on every platform.
+    const normalized = pathToFileURL(fsPath).href.replace(
+      /^file:\/\/\/[A-Za-z]:/v,
+      match => match.toLowerCase(),
+    );
     cache.set(uri, normalized);
     return normalized;
   } catch {
