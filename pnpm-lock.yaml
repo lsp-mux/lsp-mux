@@ -25,8 +25,8 @@ catalogs:
       specifier: 0.1.1
       version: 0.1.1
     '@lsp-mux/vscode-eslint-lsp':
-      specifier: 3.0.24
-      version: 3.0.24
+      specifier: 3.0.34
+      version: 3.0.34
     '@sinonjs/fake-timers':
       specifier: 15.1.1
       version: 15.1.1
@@ -161,7 +161,7 @@ importers:
     dependencies:
       '@lsp-mux/vscode-eslint-lsp':
         specifier: 'catalog:'
-        version: 3.0.24
+        version: 3.0.34
       '@vtsls/language-server':
         specifier: 'catalog:'
         version: 0.3.0
@@ -638,8 +638,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@lsp-mux/vscode-eslint-lsp@3.0.24':
-    resolution: {integrity: sha512-XNGuXej9pZC+MXN6zYHQR+6VSH0KhjH5k29F4slRtfDfTkioVbJUK1XbzBTNs/TuMboPq0LsjZe+ZnO8c8YvZw==}
+  '@lsp-mux/vscode-eslint-lsp@3.0.34':
+    resolution: {integrity: sha512-HCXDzPzcqOoU2hpUw1hnkM4FN3zPP/sD5DV/upFnc6eLvwcJPvZYEkk47zoKTz0J5eNzRiyuNfWUTVtc5iX8mA==}
     engines: {node: '>=22.6.0'}
 
   '@manypkg/find-root@1.1.0':
@@ -3615,7 +3615,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@lsp-mux/vscode-eslint-lsp@3.0.24': {}
+  '@lsp-mux/vscode-eslint-lsp@3.0.34': {}
 
   '@manypkg/find-root@1.1.0':
     dependencies:
