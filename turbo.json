@@ -86,20 +86,7 @@
         "dist/coverage/vitest/merged/**"
       ]
     },
-    "generate": {
-      "dependsOn": [
-        "generate:entries"
-      ]
-    },
-    "generate:entries": {
-      "inputs": [
-        "entries/**",
-        "scripts/generate-entries.ts"
-      ],
-      "outputs": [
-        "src/entries.generated.ts"
-      ]
-    },
+    "generate": {},
     "lint": {
       "dependsOn": [
         "lint:eslint",
