@@ -6,11 +6,15 @@ jobs:
     permissions:
       contents: write # changesets release tags/PR
       id-token: write # npm trusted publishing (OIDC)
-    secrets: inherit
+    # Explicit pass, not `inherit`: inherit only forwards secrets to reusable
+    # workflows in the same org/enterprise, and tooling is a different owner.
+    secrets:
+      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
     uses: gtbuchanan/tooling/.github/workflows/cd.yml@main
   ci:
     name: CI
-    secrets: inherit
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     uses: gtbuchanan/tooling/.github/workflows/ci.yml@main
     with:
       # No e2e tests yet; the proxy integration suite is the slow bucket.

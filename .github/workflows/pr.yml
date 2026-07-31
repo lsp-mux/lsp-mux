@@ -5,7 +5,10 @@ jobs:
     uses: gtbuchanan/tooling/.github/workflows/changeset-check.yml@main
   ci:
     name: CI
-    secrets: inherit
+    # Explicit pass, not `inherit`: inherit only forwards secrets to reusable
+    # workflows in the same org/enterprise, and tooling is a different owner.
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     uses: gtbuchanan/tooling/.github/workflows/ci.yml@main
     with:
       # No e2e tests yet; the proxy integration suite is the slow bucket.
