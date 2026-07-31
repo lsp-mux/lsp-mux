@@ -45,7 +45,7 @@ vi.mock(import('../src/logger.ts'), () => ({
 
 // Sequential: the module-level vi.mock'd fs/watcher are shared; each test
 // re-wires them via createFixture().
-describe.sequential('WorkspaceWatcher', () => {
+describe('WorkspaceWatcher', { concurrent: false }, () => {
   describe('flushFileEvents', () => {
     it('dispatches matched events via delegate', async ({ expect }) => {
       const { startWatcher, addEvent, onFlush } = createFixture();

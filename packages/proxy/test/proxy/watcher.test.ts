@@ -50,7 +50,7 @@ const watcherEventContaining = (expect: ExpectStatic, ...uris: string[]): unknow
 };
 
 // Sequential: crash+restart test needs stable timing for watcher re-registration
-describe.sequential('LspProxy file watchers', () => {
+describe('LspProxy file watchers', { concurrent: false }, () => {
   describe('watcher registration', () => {
     it('intercepts watcher registration and dispatches file events', async ({
       createProxy,

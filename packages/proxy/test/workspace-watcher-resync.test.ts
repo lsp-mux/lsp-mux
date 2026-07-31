@@ -45,7 +45,7 @@ vi.mock(import('../src/logger.ts'), () => ({
 
 // Sequential: the module-level vi.mock'd fs/watcher are shared; each test
 // re-wires them via createFixture().
-describe.sequential('WorkspaceWatcher resyncTrackedFile', () => {
+describe('WorkspaceWatcher resyncTrackedFile', { concurrent: false }, () => {
   it('returns unchanged when content matches disk', async ({ expect }) => {
     const { startWatcher, addEvent, onFlush } = createFixture();
     const content = faker.lorem.sentence();
