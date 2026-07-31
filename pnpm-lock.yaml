@@ -22,8 +22,8 @@ catalogs:
       specifier: 0.1.1
       version: 0.1.1
     '@gtbuchanan/vitest-config':
-      specifier: 0.1.1
-      version: 0.1.1
+      specifier: 0.1.2
+      version: 0.1.2
     '@lsp-mux/vscode-eslint-lsp':
       specifier: 3.0.34
       version: 3.0.34
@@ -106,7 +106,7 @@ importers:
         version: 0.1.1
       '@gtbuchanan/vitest-config':
         specifier: 'catalog:'
-        version: 0.1.1(vitest@4.1.2)
+        version: 0.1.2(vitest@4.1.2)
       '@sinonjs/fake-timers':
         specifier: 'catalog:'
         version: 15.1.1
@@ -589,8 +589,8 @@ packages:
     resolution: {integrity: sha512-lWJ2YWpIonVa5Aomon07ikMwsOewHFhH7d+9GZIUNRWJn8qF7wcrBDCAgSWcidp/aJjI7phd0Ar6MFT4pHj1kw==}
     engines: {node: '>=24.0.0'}
 
-  '@gtbuchanan/vitest-config@0.1.1':
-    resolution: {integrity: sha512-MOEac5qDY3nPoLUMm0CFmqVra6fZMYXDHc/h1FcxMhpe5WVhIBbYdaFrKM4UZNtBG4RG89L4mfOdIFXd7pC/3g==}
+  '@gtbuchanan/vitest-config@0.1.2':
+    resolution: {integrity: sha512-2kZeOt8wXkPhkZGc3/O1sysWuxSt0nHUpK2Fx280sG0xnWEXl7jxe54aBfcm9XDrWMpZJZlzrtn1OM1KNJnUMQ==}
     engines: {node: '>=24.0.0'}
     peerDependencies:
       vitest: ^4.0.0
@@ -3575,7 +3575,7 @@ snapshots:
 
   '@gtbuchanan/tsconfig@0.1.1': {}
 
-  '@gtbuchanan/vitest-config@0.1.1(vitest@4.1.2)':
+  '@gtbuchanan/vitest-config@0.1.2(vitest@4.1.2)':
     dependencies:
       console-fail-test: 0.6.1
       find-up-simple: 1.0.1
