@@ -35,6 +35,8 @@ engineStrict: true
 minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - '@gtbuchanan/*'
+  # Renovate security update: valibot@1.4.2
+  - valibot@1.4.2
 
 packages:
   - 'packages/*'
