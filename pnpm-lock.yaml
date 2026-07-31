@@ -34,8 +34,8 @@ catalogs:
       specifier: 22.16.0
       version: 22.16.0
     '@types/picomatch':
-      specifier: 4.0.2
-      version: 4.0.2
+      specifier: 4.0.3
+      version: 4.0.3
     '@types/sinonjs__fake-timers':
       specifier: 15.0.1
       version: 15.0.1
@@ -115,7 +115,7 @@ importers:
         version: 22.16.0
       '@types/picomatch':
         specifier: 'catalog:'
-        version: 4.0.2
+        version: 4.0.3
       '@types/sinonjs__fake-timers':
         specifier: 'catalog:'
         version: 15.0.1
@@ -1176,8 +1176,8 @@ packages:
   '@types/node@22.16.0':
     resolution: {integrity: sha512-B2egV9wALML1JCpv3VQoQ+yesQKAmNMBIAY7OteVrikcOcAkWm+dGL6qpeCktPjAv6N1JLnhbNiqS35UpFyBsQ==}
 
-  '@types/picomatch@4.0.2':
-    resolution: {integrity: sha512-qHHxQ+P9PysNEGbALT8f8YOSHW0KJu6l2xU8DYY0fu/EmGxXdVnuTLvFUvBgPJMSqXq29SYHveejeAha+4AYgA==}
+  '@types/picomatch@4.0.3':
+    resolution: {integrity: sha512-iG0T6+nYJ9FAPmx9SsUlnwcq1ZVRuCXcVEvWnntoPlrOpwtSTKNDC9uVAxTsC3PUvJ+99n4RpAcNgBbHX3JSnQ==}
 
   '@types/sinonjs__fake-timers@15.0.1':
     resolution: {integrity: sha512-Ko2tjWJq8oozHzHV+reuvS5KYIRAokHnGbDwGh/J64LntgpbuylF74ipEL24HCyRjf9FOlBiBHWBR1RlVKsI1w==}
@@ -3953,7 +3953,7 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
-  '@types/picomatch@4.0.2': {}
+  '@types/picomatch@4.0.3': {}
 
   '@types/sinonjs__fake-timers@15.0.1': {}
 
