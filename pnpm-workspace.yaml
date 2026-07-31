@@ -12,7 +12,7 @@ catalog:
   '@lsp-mux/vscode-eslint-lsp': 3.0.24
   '@sinonjs/fake-timers': 15.1.1
   '@types/node': 22.16.0
-  '@types/picomatch': 4.0.2
+  '@types/picomatch': 4.0.3
   '@types/sinonjs__fake-timers': 15.0.1
   '@vitest/coverage-v8': 4.1.2
   '@vtsls/language-server': 0.3.0
