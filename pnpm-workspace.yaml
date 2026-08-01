@@ -10,7 +10,7 @@ catalog:
   '@gtbuchanan/tsconfig': 0.1.1
   '@gtbuchanan/vitest-config': 0.1.2
   '@lsp-mux/vscode-eslint-lsp': 3.0.34
-  '@sinonjs/fake-timers': 15.1.1
+  '@sinonjs/fake-timers': 15.4.0
   '@types/node': 22.16.0
   '@types/picomatch': 4.0.3
   '@types/sinonjs__fake-timers': 15.0.1
