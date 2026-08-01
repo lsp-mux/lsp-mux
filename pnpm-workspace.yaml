@@ -32,6 +32,8 @@ catalog:
 
 engineStrict: true
 
+hoist: false
+
 minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - '@gtbuchanan/*'

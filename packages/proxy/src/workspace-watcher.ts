@@ -139,7 +139,7 @@ export class WorkspaceWatcher {
     }
     let changeType = fw.classifyChange(isFileExists);
 
-    if (changeType !== fw.FileChangeType.Deleted && isTracked) {
+    if (isTracked && changeType !== fw.FileChangeType.Deleted) {
       const result = await this.resyncTrackedFile(fileUri);
       if (result === 'deleted') changeType = fw.FileChangeType.Deleted;
     }

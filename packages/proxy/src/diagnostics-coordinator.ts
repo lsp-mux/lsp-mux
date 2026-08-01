@@ -158,9 +158,9 @@ export const createDiagnosticsCoordinator = (
 
     maybePullAfterSync(msg, uri) {
       if (
-        !delegate.isProactivePull() ||
         uri === undefined ||
-        msg.method === 'textDocument/didClose'
+        msg.method === 'textDocument/didClose' ||
+        !delegate.isProactivePull()
       ) {
         return;
       }
