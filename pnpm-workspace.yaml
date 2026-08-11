@@ -8,7 +8,7 @@ catalog:
   '@gtbuchanan/cli': 0.3.0
   '@gtbuchanan/eslint-config': 0.3.0
   '@gtbuchanan/tsconfig': 0.1.1
-  '@gtbuchanan/vitest-config': 0.1.2
+  '@gtbuchanan/vitest-config': 0.1.3
   '@lsp-mux/vscode-eslint-lsp': 3.0.34
   '@sinonjs/fake-timers': 15.4.0
   '@types/node': 22.16.0
