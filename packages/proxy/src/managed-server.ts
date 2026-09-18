@@ -357,12 +357,19 @@ export const createManagedServer = ({
      * internal request to an idle or (re)starting server starts it and waits
      * in the buffer instead of failing outright.
      */
-    sendRequest(method, params) {
-      return channel.sendVia(
+    async sendRequest(method, params) {
+      const res = await channel.sendVia(
         msg => managed.send(msg) ? 'delivered' : 'undeliverable',
         method,
         params,
       );
+      /*
+       * A buffered request settled by rejectAll or by its timeout is still
+       * in the buffer, and a later restart would deliver it after its caller
+       * gave up. Drop it: a no-op for one that was written straight through.
+       */
+      if (res.error && typeof res.id === 'string') buffer.cancel(res.id);
+      return res;
     },
 
     async shutdown() {
