@@ -33,6 +33,7 @@ const isTrackConfig = process.argv.includes('--track-config');
 const isRequestConfig = process.argv.includes('--request-config');
 const isRegisterConfig = process.argv.includes('--register-config');
 const isPullDiagnostics = process.argv.includes('--pull-diagnostics');
+const isInitializeError = process.argv.includes('--initialize-error');
 
 const reader = new StreamMessageReader(process.stdin);
 const writer = new StreamMessageWriter(process.stdout);
@@ -77,6 +78,15 @@ const publishDiagnostics = (uri: string): void => {
 const requestHandlers: Record<string, (msg: RequestMessage) => void> = {
   'initialize': (msg) => {
     state.initializeParams = msg.params;
+    if (isInitializeError) {
+      const failure: ResponseMessage = {
+        jsonrpc: '2.0',
+        id: msg.id,
+        error: { code: -32_603, message: `${serverName}: initialize failed` },
+      };
+      void writer.write(failure);
+      return;
+    }
     respond(msg.id, {
       capabilities: { textDocumentSync: isIncrementalSync ? 2 : 1, hoverProvider: true },
     });

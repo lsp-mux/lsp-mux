@@ -1,7 +1,7 @@
 import { ChildServer } from './child-server.ts';
 import type { Logger } from './logger.ts';
 import { createMessageBuffer } from './message-buffer.ts';
-import { createProxyRequestChannel } from './proxy-request-channel.ts';
+import { createProxyRequestChannel, isInternalRequestId } from './proxy-request-channel.ts';
 import { createRestartScheduler, defaultRestartPolicy } from './restart-scheduler.ts';
 import type { RestartPolicy } from './restart-scheduler.ts';
 import { replayDocuments, sendPostInitNotifications } from './server-replay.ts';
@@ -16,7 +16,6 @@ import {
   Message as Msg,
   createNotification,
   documentSyncMethods,
-  lspErrorCodes,
 } from './types.ts';
 
 const maxBufferSize = 1000;
@@ -189,7 +188,7 @@ export const createManagedServer = ({
   const flushBufferedMessages = (child: ChildServer): void => {
     const flushed = buffer.flush();
     for (const msg of flushed) {
-      if (Msg.isRequest(msg)) pendingRequests.add(msg.id);
+      if (Msg.isRequest(msg) && !isInternalRequestId(msg.id)) pendingRequests.add(msg.id);
       child.write(msg);
     }
     if (flushed.length > 0) {
@@ -256,10 +255,19 @@ export const createManagedServer = ({
 
   /** Drain buffered requests and notify proxy so it can send error responses. */
   const errorBufferedRequests = (message: string): void => {
+    /*
+     * Not every stop arrives through handleServerExit: a server that answers
+     * the handshake with an error is disposed without an exit event, so this
+     * is the only place its in-flight internal requests are failed. Repeating
+     * it after an exit costs nothing, the callbacks being cleared already.
+     */
+    channel.rejectAll(message);
+
     const flushed = buffer.flush();
     const ids = new Set<number | string | null>();
     for (const msg of flushed) {
-      if (Msg.isRequest(msg)) ids.add(msg.id);
+      // Internal requests were already settled by channel.rejectAll.
+      if (Msg.isRequest(msg) && !isInternalRequestId(msg.id)) ids.add(msg.id);
     }
     if (ids.size > 0) {
       callbacks.onPendingErrors(ids, message);
@@ -275,7 +283,8 @@ export const createManagedServer = ({
 
   const writeToRunning = (msg: Message): void => {
     if (Msg.isRequest(msg)) {
-      pendingRequests.add(msg.id);
+      // Internal IDs are the channel's to settle — never the client's to hear about.
+      if (!isInternalRequestId(msg.id)) pendingRequests.add(msg.id);
       if (msg.method === 'shutdown') isShutdownSent = true;
     }
     server?.write(msg);
@@ -290,7 +299,7 @@ export const createManagedServer = ({
 
   // -- Public interface --
 
-  return {
+  const managed: ManagedServer = {
     get name() { return name; },
     get state() { return state; },
 
@@ -343,17 +352,24 @@ export const createManagedServer = ({
       return buffer.cancel(id);
     },
 
-    sendRequest(method, params) {
-      if (state !== 'running' || !server) {
-        return Promise.resolve({
-          jsonrpc: '2.0' as const,
-          /* eslint-disable-next-line unicorn/no-null --
-             JSON-RPC requires an explicit null id when no request id applies. */
-          id: null,
-          error: { code: lspErrorCodes.InternalError, message: 'Server not running' },
-        });
-      }
-      return channel.send(server, method, params);
+    /*
+     * Routed through send() rather than written straight to the child, so an
+     * internal request to an idle or (re)starting server starts it and waits
+     * in the buffer instead of failing outright.
+     */
+    async sendRequest(method, params) {
+      const res = await channel.sendVia(
+        msg => managed.send(msg) ? 'delivered' : 'undeliverable',
+        method,
+        params,
+      );
+      /*
+       * A buffered request settled by rejectAll or by its timeout is still
+       * in the buffer, and a later restart would deliver it after its caller
+       * gave up. Drop it: a no-op for one that was written straight through.
+       */
+      if (res.error && typeof res.id === 'string') buffer.cancel(res.id);
+      return res;
     },
 
     async shutdown() {
@@ -383,4 +399,6 @@ export const createManagedServer = ({
       cancelRestart();
     },
   };
+
+  return managed;
 };
