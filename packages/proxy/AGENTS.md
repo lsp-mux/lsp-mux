@@ -22,7 +22,12 @@ docs see [README.md](./README.md).
   are tracked so client responses are delivered back to the originating
   server (not just register/unregister)
 - **Request ID namespacing** — proxy rewrites IDs to avoid collisions
-  between servers, maps responses back to the original client ID
+  between servers, maps responses back to the original client ID.
+  Requests the proxy raises itself carry a `__proxy:` prefix and are
+  settled by the request channel, never reported to the client.
+- **Notification bridging** — a `bridges` entry answers one server's
+  protocol notifications from another instead of passing them to a client
+  that cannot serve them. See Volar 3 Forwarding below.
 - **Lifecycle management** — exponential backoff restart with max retries;
   transparent to the client
 - **Document state tracking** — proxy tracks `didOpen`/`didChange`/`didClose`
@@ -54,30 +59,46 @@ docs see [README.md](./README.md).
   via `logLevel` in `.lsp-proxy.json` (file watched). Server
   `window/logMessage` forwarded at appropriate severity.
 
-## Volar 3 Forwarding (Planned)
+## Volar 3 Forwarding
 
-Volar 3 removed `hybridMode` — it always requires a companion TypeScript
-server. The `bridges` config will handle this declaratively:
-
-1. Volar sends `tsserver/request` notification: `[requestId, command, args]`
-1. Proxy matches the bridge rule, forwards to vtsls
-1. Proxy sends `tsserver/response` notification back: `[requestId, body]`
-
-No proxy code changes needed — just config.
-
-Future config fields (not yet implemented):
+Volar 3 removed `hybridMode`: the Vue language server no longer reaches a
+TypeScript server itself, and asks its editor to instead. The proxy manages
+such a server already, so it answers in the editor's place. A `bridges` entry
+names the two ends:
 
 ```jsonc
 {
-  "bridges": [
-    {
-      "from": "vue-volar",
-      "notification": "tsserver/request",
-      "to": "vtsls",
-      "method": "typescript.tsserverRequest",
-      "respond": "tsserver/response",
-    },
-  ],
+  "bridges": [{ "protocol": "tsserver", "from": "vue", "to": "vtsls" }],
+}
+```
+
+1. Vue sends the `tsserver/request` notification `[id, command, args]`, where
+   `command` is one of the `_vue:` commands that `@vue/typescript-plugin`
+   installs into tsserver
+1. The proxy asks vtsls to run it, as `workspace/executeCommand` of
+   `typescript.tsserverRequest` with `[command, args, config]` — the third
+   argument carrying `isAsync` and `lowPriority`, so the request neither
+   blocks nor outranks the user's own edits
+1. The proxy answers Vue with `tsserver/response` `[id, body]`, unwrapping
+   `body` from the command result
+
+The wire details above sit in `bridge.ts` rather than in config, because they
+belong to the protocol: Vue picks the correlation id, and the whole exchange is
+meaningless to a client that never asked for it, so the notification stops at
+the proxy.
+
+Two consequences worth keeping in view:
+
+- Vue holds a handler open for every id it sends, so a failed command still
+  answers, with a null body. Dropping the response strands the request.
+- tsserver only recognises the `_vue:` commands when `@vue/typescript-plugin`
+  is loaded into it, via vtsls's `vtsls.tsserver.globalPlugins` setting.
+
+Still to come: the `@vue/language-server` registry entry and `.vue` routing,
+and response merging for M4:
+
+```jsonc
+{
   "merge": {
     "diagnostics": "union",
     "completion": "interleave",

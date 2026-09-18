@@ -5,6 +5,7 @@
  */
 import { pathToFileURL } from 'node:url';
 import * as v from 'valibot';
+import type { BridgeRouter } from './bridge.ts';
 import type { DiagnosticsCoordinator } from './diagnostics-coordinator.ts';
 import * as fw from './file-watcher.ts';
 import type { Logger } from './logger.ts';
@@ -45,6 +46,7 @@ export interface ServerMessageHandler {
 }
 
 export interface CreateServerMessageHandlerOptions {
+  bridges: BridgeRouter;
   delegate: ServerMessageDelegate;
   diagnostics: DiagnosticsCoordinator;
   serverConfigs: ReadonlyMap<string, ServerConfig>;
@@ -52,6 +54,7 @@ export interface CreateServerMessageHandlerOptions {
 }
 
 export const createServerMessageHandler = ({
+  bridges,
   delegate,
   diagnostics,
   serverConfigs,
@@ -249,6 +252,7 @@ export const createServerMessageHandler = ({
     handleMessage(serverName, msg) {
       logServerMessage(serverName, msg);
       if (diagnostics.handlePublish(serverName, msg)) return;
+      if (Msg.isNotification(msg) && bridges.handleNotification(serverName, msg)) return;
       if (Msg.isRequest(msg)) {
         const handler = interceptedRequestHandlers[msg.method];
         if (handler) {

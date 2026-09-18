@@ -82,6 +82,51 @@ describe('ProxyConfigSchema', () => {
 
     expect(result.logDir).toBeUndefined();
   });
+
+  it('defaults bridges to empty when omitted', ({ expect }) => {
+    const result = v.parse(ProxyConfigSchema, { servers: ['vtsls'] });
+
+    expect(result.bridges).toStrictEqual([]);
+  });
+
+  it('accepts a tsserver bridge between configured servers', ({ expect }) => {
+    const result = v.parse(ProxyConfigSchema, {
+      servers: ['vue', 'vtsls'],
+      bridges: [{ protocol: 'tsserver', from: 'vue', to: 'vtsls' }],
+    });
+
+    expect(result.bridges).toStrictEqual([
+      { protocol: 'tsserver', from: 'vue', to: 'vtsls' },
+    ]);
+  });
+
+  it('rejects an unknown bridge protocol', ({ expect }) => {
+    expect(() => v.parse(ProxyConfigSchema, {
+      servers: ['vue', 'vtsls'],
+      bridges: [{ protocol: 'named-pipe', from: 'vue', to: 'vtsls' }],
+    })).toThrow('Expected "tsserver"');
+  });
+
+  it('rejects a bridge whose source is not a configured server', ({ expect }) => {
+    expect(() => v.parse(ProxyConfigSchema, {
+      servers: ['vtsls'],
+      bridges: [{ protocol: 'tsserver', from: 'vue', to: 'vtsls' }],
+    })).toThrow('bridge endpoints must be configured servers');
+  });
+
+  it('rejects a bridge whose target is not a configured server', ({ expect }) => {
+    expect(() => v.parse(ProxyConfigSchema, {
+      servers: ['vue'],
+      bridges: [{ protocol: 'tsserver', from: 'vue', to: 'vtsls' }],
+    })).toThrow('bridge endpoints must be configured servers');
+  });
+
+  it('rejects a bridge pointing a server at itself', ({ expect }) => {
+    expect(() => v.parse(ProxyConfigSchema, {
+      servers: ['vtsls'],
+      bridges: [{ protocol: 'tsserver', from: 'vtsls', to: 'vtsls' }],
+    })).toThrow('bridge endpoints must differ');
+  });
 });
 
 describe('ServerConfigSchema', () => {

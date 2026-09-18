@@ -2,11 +2,13 @@ import { stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import * as v from 'valibot';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
+import { createBridgeRouter } from './bridge.ts';
 import { staticCapabilities } from './capabilities.ts';
 import { analyzeClientCapabilities, injectProxyCapabilities } from './client-capabilities.ts';
 import type { CompensationFlags } from './client-capabilities.ts';
 import { createClientMessageHandler } from './client-messages.ts';
 import type { ClientMessageHandler, ProxyState } from './client-messages.ts';
+import type { BridgeConfig } from './config-schema.ts';
 import { createDiagnosticsCoordinator } from './diagnostics-coordinator.ts';
 import type { DiagnosticsCoordinator } from './diagnostics-coordinator.ts';
 import * as docs from './document-tracker.ts';
@@ -26,6 +28,7 @@ import type { Message, RequestMessage, ResponseMessage, ServerConfig } from './t
 import { WorkspaceWatcher } from './workspace-watcher.ts';
 
 export interface ProxyOptions {
+  bridges?: readonly BridgeConfig[];
   input?: NodeJS.ReadableStream;
   logger?: Logger | undefined;
   output?: NodeJS.WritableStream;
@@ -122,6 +125,7 @@ export class LspProxy {
       trackServerRequest: (id, name) => { this.serverRequestRouting.set(id, name); },
     }, this.log);
     this.serverMessages = createServerMessageHandler({
+      bridges: createBridgeRouter(options?.bridges, this.servers, this.log),
       delegate: {
         ackToServer: (name, id) => { this.ackToServer(name, id); },
         getWatchRegistrations: () => this.watchRegistrations,

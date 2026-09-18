@@ -51,6 +51,11 @@ directory is `$XDG_DATA_HOME/lsp-proxy/logs` on Linux/macOS and
   // Optional: glob patterns to exclude from file watching
   // Merged with built-in defaults (node_modules, .git, dist, etc.)
   "watcherExclude": ["**/build/**"],
+
+  // Optional: answer one server's protocol requests from another.
+  // "tsserver" serves a Vue language server from a TypeScript one.
+  // Both endpoints must be listed in "servers".
+  "bridges": [{ "protocol": "tsserver", "from": "vue", "to": "vtsls" }],
 }
 ```
 

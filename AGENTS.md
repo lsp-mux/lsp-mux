@@ -71,8 +71,11 @@ Route single-response methods (hover, definition) to primary server only.
 
 ### M3: Notification bridging + Volar 3
 
-Implement the bridge config. Add vue-language-server v3 and wire
-`tsserver/request` → vtsls. This replaces the Volar 2 plugin.
+The bridge is in: a `bridges` entry forwards `tsserver/request` to vtsls
+and answers `tsserver/response`, verified against mock servers. Remaining:
+the `@vue/language-server` registry entry, `.vue` routing, and loading
+`@vue/typescript-plugin` into vtsls, which together replace the Volar 2
+plugin. See [packages/proxy/AGENTS.md](./packages/proxy/AGENTS.md).
 
 ### M4: Full response merging
 
