@@ -1,7 +1,9 @@
 /** @module-tag slow */
 import { faker } from '@faker-js/faker';
-import { describe } from 'vitest';
-import type { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
+import { describe, vi } from 'vitest';
+import type { Message, StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
+import { isInternalRequestId } from '../../src/proxy-request-channel.ts';
+import { Message as Msg, createRequest } from '../../src/types.ts';
 import { fakeUri } from '../helpers/fake.ts';
 import { initializeProxy, notify, openDocument, request } from '../helpers/test-client.ts';
 import { type ServerConfig, it } from './harness.ts';
@@ -77,6 +79,54 @@ describe('LspProxy restart behavior', () => {
     });
 
     expect(res).toMatchObject({ error: expect.objectContaining({}) as unknown });
+  });
+
+  it('keeps internal request IDs out of the errors it sends the client', async ({
+    createProxy,
+    expect,
+  }) => {
+    const exitingConfig: ServerConfig = {
+      command: process.execPath,
+      args: ['-e', 'process.exit(1)'],
+      languages: { typescript: ['.ts'] },
+      transport: 'stdio',
+    };
+    const { writer, reader } = createProxy({ config: exitingConfig });
+
+    /*
+     * Native pull support keeps the proxy from pulling on its own, so the
+     * client's request is what starts the server. The server dies before
+     * answering the handshake, stranding the proxy's own pull in the buffer:
+     * an id the client never sent, and must never be answered about.
+     */
+    await request({ writer, reader }, 0, 'initialize', {
+      processId: process.pid,
+      /* eslint-disable-next-line unicorn/no-null --
+         LSP InitializeParams.rootUri is `string | null`. */
+      rootUri: null,
+      capabilities: { textDocument: { diagnostic: { dynamicRegistration: true } } },
+    });
+    await notify(writer, 'initialized', {});
+
+    const seen: Message[] = [];
+    const listener = reader.listen((msg) => {
+      seen.push(msg);
+    });
+
+    await writer.write(createRequest(1, 'textDocument/diagnostic', {
+      textDocument: { uri: testUri },
+    }));
+    await vi.waitFor(
+      () => {
+        expect(seen.some(msg => Msg.isResponse(msg) && msg.id === 1)).toBe(true);
+      },
+      { timeout: 10_000, interval: 50 },
+    );
+    listener.dispose();
+
+    const internal = seen.filter(msg => Msg.isResponse(msg) && isInternalRequestId(msg.id));
+
+    expect(internal).toStrictEqual([]);
   });
 
   it('stops after max retries exhausted', async ({ createProxy, expect }) => {
