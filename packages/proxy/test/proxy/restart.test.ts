@@ -6,7 +6,7 @@ import { isInternalRequestId } from '../../src/proxy-request-channel.ts';
 import { Message as Msg, createRequest } from '../../src/types.ts';
 import { fakeUri } from '../helpers/fake.ts';
 import { initializeProxy, notify, openDocument, request } from '../helpers/test-client.ts';
-import { type ServerConfig, it } from './harness.ts';
+import { type ServerConfig, it, mockServerConfig } from './harness.ts';
 
 const testUri = fakeUri();
 const replayedUri = fakeUri();
@@ -127,6 +127,41 @@ describe('LspProxy restart behavior', () => {
     const internal = seen.filter(msg => Msg.isResponse(msg) && isInternalRequestId(msg.id));
 
     expect(internal).toStrictEqual([]);
+  });
+
+  it('settles a proxy-internal request when the server never initializes', async ({
+    createProxy,
+    expect,
+  }) => {
+    const failingConfig: ServerConfig = {
+      ...mockServerConfig,
+      args: [...mockServerConfig.args, '--initialize-error'],
+    };
+    const { writer, reader } = createProxy({
+      config: failingConfig,
+      restartPolicy: { maxRetries: 1, baseDelayMs: 10, maxDelayMs: 20 },
+    });
+
+    await request({ writer, reader }, 0, 'initialize', {
+      processId: process.pid,
+      /* eslint-disable-next-line unicorn/no-null --
+         LSP InitializeParams.rootUri is `string | null`. */
+      rootUri: null,
+      capabilities: { textDocument: { diagnostic: { dynamicRegistration: true } } },
+    });
+    await notify(writer, 'initialized', {});
+
+    /*
+     * The pull starts the server, which answers the handshake with an error
+     * rather than crashing, so the child is disposed without an exit event.
+     * Nothing else settles the proxy's own request: left to the channel
+     * timeout, the client waits thirty seconds for this answer.
+     */
+    const res = await request({ writer, reader }, 1, 'textDocument/diagnostic', {
+      textDocument: { uri: testUri },
+    });
+
+    expect(res.result).toStrictEqual({ kind: 'full', items: [] });
   });
 
   it('stops after max retries exhausted', async ({ createProxy, expect }) => {

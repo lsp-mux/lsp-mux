@@ -255,6 +255,14 @@ export const createManagedServer = ({
 
   /** Drain buffered requests and notify proxy so it can send error responses. */
   const errorBufferedRequests = (message: string): void => {
+    /*
+     * Not every stop arrives through handleServerExit: a server that answers
+     * the handshake with an error is disposed without an exit event, so this
+     * is the only place its in-flight internal requests are failed. Repeating
+     * it after an exit costs nothing, the callbacks being cleared already.
+     */
+    channel.rejectAll(message);
+
     const flushed = buffer.flush();
     const ids = new Set<number | string | null>();
     for (const msg of flushed) {
