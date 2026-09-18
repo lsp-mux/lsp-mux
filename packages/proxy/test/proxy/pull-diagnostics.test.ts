@@ -115,6 +115,41 @@ describe('Pull diagnostics', () => {
     ).rejects.toThrow(/[Tt]imeout/v);
   });
 
+  it('starts an idle server to answer a client pull', async ({ createProxy, expect }) => {
+    const config: ServerConfig = {
+      ...mockServerConfig,
+      args: [...mockServerConfig.args, '--pull-diagnostics'],
+    };
+    const { writer, reader } = createProxy({ config });
+
+    /*
+     * Native pull support suppresses the proactive pull, and no document is
+     * opened, so the client's own request is the only thing that can start
+     * the server.
+     */
+    await request({ writer, reader }, 0, 'initialize', {
+      processId: process.pid,
+      /* eslint-disable-next-line unicorn/no-null --
+         LSP InitializeParams.rootUri is `string | null`. */
+      rootUri: null,
+      capabilities: {
+        textDocument: {
+          diagnostic: { dynamicRegistration: true },
+        },
+      },
+    });
+    await notify(writer, 'initialized', {});
+
+    const res = await request({ writer, reader }, 1, 'textDocument/diagnostic', {
+      textDocument: { uri: fakeUri() },
+    });
+
+    expect(res.result).toStrictEqual({
+      kind: 'full',
+      items: [expect.objectContaining({ source: 'mock' })],
+    });
+  });
+
   it('merges pull diagnostics from multiple servers', async ({ createProxy, expect }) => {
     const configs = new Map([
       ['alpha', namedConfig('alpha', '--pull-diagnostics')],
