@@ -61,15 +61,55 @@ const ServersSchema = v.pipe(
 
 const LogDirSchema = v.optional(v.string());
 
+/*
+ * A bridge forwards a notification one server sends to its editor into a
+ * request on another server, and the answer back. The wire details belong to
+ * the protocol rather than to the operator, so `protocol` selects them and
+ * only the endpoints are configurable.
+ */
+const BridgeSchema = v.object({
+  protocol: v.picklist(['tsserver']),
+  from: ServerNameSchema,
+  to: ServerNameSchema,
+});
+
+export type BridgeConfig = v.InferOutput<typeof BridgeSchema>;
+
+const BridgesSchema = v.array(BridgeSchema);
+
 export const ProxyConfigSchema = v.pipe(
   v.object({
     servers: ServersSchema,
+    bridges: v.optional(BridgesSchema),
     watcherExclude: v.optional(StringArraySchema),
     logLevel: v.optional(LevelSchema),
     logDir: LogDirSchema,
   }),
+  v.check(
+    cfg => (cfg.bridges ?? []).every(
+      bridge => cfg.servers.includes(bridge.from) && cfg.servers.includes(bridge.to),
+    ),
+    'bridge endpoints must be configured servers',
+  ),
+  v.check(
+    cfg => (cfg.bridges ?? []).every(bridge => bridge.from !== bridge.to),
+    'bridge endpoints must differ',
+  ),
+  /*
+   * The router answers a server's notifications from one target, so a second
+   * bridge out of the same server would silently replace the first rather
+   * than run beside it.
+   */
+  v.check(
+    (cfg) => {
+      const sources = (cfg.bridges ?? []).map(bridge => bridge.from);
+      return new Set(sources).size === sources.length;
+    },
+    'bridge sources must be unique',
+  ),
   v.transform(cfg => ({
     ...cfg,
+    bridges: cfg.bridges ?? [],
     watcherExclude: [...new Set([...defaultWatcherExclude, ...(cfg.watcherExclude ?? [])])],
   })),
 );

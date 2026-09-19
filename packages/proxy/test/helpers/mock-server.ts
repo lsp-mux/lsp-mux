@@ -34,6 +34,8 @@ const isRequestConfig = process.argv.includes('--request-config');
 const isRegisterConfig = process.argv.includes('--register-config');
 const isPullDiagnostics = process.argv.includes('--pull-diagnostics');
 const isInitializeError = process.argv.includes('--initialize-error');
+const isTsserverClient = process.argv.includes('--tsserver-client');
+const isExecuteCommandError = process.argv.includes('--execute-command-error');
 
 const reader = new StreamMessageReader(process.stdin);
 const writer = new StreamMessageWriter(process.stdout);
@@ -46,13 +48,24 @@ interface OpenDocument {
 }
 
 const openDocuments = new Map<string, OpenDocument>();
+/* Client request awaiting the tsserver/response for the bridged request it triggered. */
+const pendingTsserver = new Map<number, number | string | null>();
 const watcherEvents: unknown[] = [];
 const configNotifications: unknown[] = [];
 const receivedResponses: unknown[] = [];
-const state: { initializeParams: unknown; serverRequestSeq: number } = {
+const state: {
+  initializeParams: unknown;
+  serverRequestSeq: number;
+  tsserverSeq: number;
+} = {
   initializeParams: undefined,
   serverRequestSeq: 1000,
+  tsserverSeq: 1,
 };
+
+const SendTsserverRequestSchema = v.object({ command: v.string(), args: v.unknown() });
+
+const TsserverResponseSchema = v.tuple([v.number(), v.unknown()]);
 
 const respond = (id: number | string | null, result: ResponseMessage['result']): void => {
   const response: ResponseMessage = { jsonrpc: '2.0', id, ...(result !== undefined && { result }) };
@@ -121,6 +134,29 @@ const requestHandlers: Record<string, (msg: RequestMessage) => void> = {
       }));
     }
     respond(msg.id, { ok: true });
+  },
+  /*
+   * Stands in for Volar: sends tsserver/request and holds the client's
+   * request open until the bridged tsserver/response comes back.
+   */
+  '$/sendTsserverRequest': (msg) => {
+    const { command, args } = v.parse(SendTsserverRequestSchema, msg.params);
+    const id = state.tsserverSeq++;
+    pendingTsserver.set(id, msg.id);
+    sendNotification('tsserver/request', [id, command, args]);
+  },
+  /* Stands in for vtsls, whose typescript.tsserverRequest answers with a body. */
+  'workspace/executeCommand': (msg) => {
+    if (isExecuteCommandError) {
+      const failure: ResponseMessage = {
+        jsonrpc: '2.0',
+        id: msg.id,
+        error: { code: -32_603, message: `${serverName}: command failed` },
+      };
+      void writer.write(failure);
+      return;
+    }
+    respond(msg.id, { body: { executed: msg.params } });
   },
   'textDocument/diagnostic': (msg) => {
     if (isPullDiagnostics) {
@@ -204,6 +240,14 @@ const notificationHandlers: Record<string, (msg: NotificationMessage) => void> =
         ],
       }));
     }
+  },
+  'tsserver/response': (msg) => {
+    if (!isTsserverClient) return;
+    const [id, body] = v.parse(TsserverResponseSchema, msg.params);
+    const requestId = pendingTsserver.get(id);
+    if (requestId === undefined) return;
+    pendingTsserver.delete(id);
+    respond(requestId, { id, body });
   },
   'workspace/didChangeConfiguration': (msg) => {
     if (isTrackConfig) configNotifications.push(msg.params);

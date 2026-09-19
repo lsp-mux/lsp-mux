@@ -5,6 +5,7 @@ import { PassThrough, Writable } from 'node:stream';
 import { pathToFileURL } from 'node:url';
 import { test } from 'vitest';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
+import type { BridgeConfig } from '../../src/config-schema.ts';
 import { createLogger } from '../../src/logger.ts';
 import type { Logger } from '../../src/logger.ts';
 import { LspProxy } from '../../src/proxy.ts';
@@ -34,6 +35,7 @@ export const namedConfig = (name: string, ...extraArgs: string[]): ServerConfig 
 export const watcherWaitOptions = { timeout: 15_000, interval: 100 };
 
 interface TestProxyOptions {
+  bridges?: readonly BridgeConfig[];
   config?: ServerConfig;
   configs?: ReadonlyMap<string, ServerConfig>;
   logger?: Logger;

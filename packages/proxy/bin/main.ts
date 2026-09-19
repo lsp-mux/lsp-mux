@@ -121,6 +121,7 @@ const main = async (): Promise<void> => {
   using _configWatcher = watchConfigForLogLevel(configDir ?? ownPackageDir, log);
 
   const proxy = new LspProxy(serverConfigs, {
+    bridges: proxyConfig.bridges,
     logger: log,
     watcherExclude: proxyConfig.watcherExclude,
   });
