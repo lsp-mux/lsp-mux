@@ -95,6 +95,18 @@ export const ProxyConfigSchema = v.pipe(
     cfg => (cfg.bridges ?? []).every(bridge => bridge.from !== bridge.to),
     'bridge endpoints must differ',
   ),
+  /*
+   * The router answers a server's notifications from one target, so a second
+   * bridge out of the same server would silently replace the first rather
+   * than run beside it.
+   */
+  v.check(
+    (cfg) => {
+      const sources = (cfg.bridges ?? []).map(bridge => bridge.from);
+      return new Set(sources).size === sources.length;
+    },
+    'bridge sources must be unique',
+  ),
   v.transform(cfg => ({
     ...cfg,
     bridges: cfg.bridges ?? [],

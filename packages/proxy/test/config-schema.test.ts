@@ -121,6 +121,16 @@ describe('ProxyConfigSchema', () => {
     })).toThrow('bridge endpoints must be configured servers');
   });
 
+  it('rejects two bridges from the same source server', ({ expect }) => {
+    expect(() => v.parse(ProxyConfigSchema, {
+      servers: ['vue', 'vtsls', 'other'],
+      bridges: [
+        { protocol: 'tsserver', from: 'vue', to: 'vtsls' },
+        { protocol: 'tsserver', from: 'vue', to: 'other' },
+      ],
+    })).toThrow('bridge sources must be unique');
+  });
+
   it('rejects a bridge pointing a server at itself', ({ expect }) => {
     expect(() => v.parse(ProxyConfigSchema, {
       servers: ['vtsls'],
