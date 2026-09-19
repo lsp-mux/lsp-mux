@@ -1,4 +1,9 @@
 import path from 'node:path';
+import {
+  listRegistryEntries,
+  lookupRegistryEntry,
+  serverConfigFromEntry,
+} from 'lsp-proxy-registry';
 import * as v from 'valibot';
 import { describe, it } from 'vitest';
 import { ProxyConfigSchema, ServerConfigSchema } from '../src/config-schema.ts';
@@ -170,6 +175,32 @@ describe('ServerConfigSchema', () => {
     const result = v.parse(ServerConfigSchema, { ...validConfig, settings: { foo: 'bar' } });
 
     expect(result.settings).toStrictEqual({ foo: 'bar' });
+  });
+});
+
+describe('registry entries', () => {
+  /*
+   * The registry ships these as plain JSON, and nothing validates them until
+   * a user names one and the proxy tries to launch it. Parse every entry
+   * here so a malformed one fails the build rather than somebody's editor.
+   */
+  it('every entry parses as a server config', ({ expect }) => {
+    const names = listRegistryEntries();
+    const invalid = names.filter(name => !v.safeParse(
+      ServerConfigSchema,
+      serverConfigFromEntry(lookupRegistryEntry(name) ?? {}),
+    ).success);
+
+    expect(names.length).toBeGreaterThan(0);
+    expect(invalid).toStrictEqual([]);
+  });
+
+  it('routes .vue files to the vue server', ({ expect }) => {
+    const entry = lookupRegistryEntry('vue');
+    const config = v.parse(ServerConfigSchema, serverConfigFromEntry(entry ?? {}));
+
+    expect(config.languages).toStrictEqual({ vue: ['.vue'] });
+    expect(entry).toHaveProperty('npm', '@vue/language-server');
   });
 });
 

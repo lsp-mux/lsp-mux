@@ -1,0 +1,14 @@
+{
+  "args": [
+    "./node_modules/@vue/language-server/bin/vue-language-server.js",
+    "--stdio"
+  ],
+  "command": "node",
+  "languages": {
+    "vue": [
+      ".vue"
+    ]
+  },
+  "npm": "@vue/language-server",
+  "transport": "stdio"
+}
