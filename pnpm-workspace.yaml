@@ -14,7 +14,7 @@ catalog:
   '@types/node': 22.16.0
   '@types/picomatch': 4.0.3
   '@types/sinonjs__fake-timers': 15.0.1
-  '@vitest/coverage-v8': 4.1.10
+  '@vitest/coverage-v8': 4.1.11
   '@vtsls/language-server': 0.3.0
   console-fail-test: 0.6.1
   cpy-cli: 7.0.0
