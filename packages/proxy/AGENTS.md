@@ -17,7 +17,10 @@ docs see [README.md](./README.md).
 - **Settings delivery** — per-server `settings` in server configs are
   pushed via `workspace/didChangeConfiguration` after init and returned
   in response to `workspace/configuration` pulls, with `workspaceFolder`
-  injected from the proxy's workspace root
+  injected from the proxy's workspace root. Strings inside them that
+  begin with `./` resolve against the config directory, as `command` and
+  `args` do: the proxy cannot know which of a server's settings name
+  files, so the prefix decides rather than the key.
 - **Server-to-client request routing** — all server-initiated requests
   are tracked so client responses are delivered back to the originating
   server (not just register/unregister)

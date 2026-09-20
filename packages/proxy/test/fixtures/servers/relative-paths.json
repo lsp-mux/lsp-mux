@@ -7,5 +7,16 @@
   "languages": { "typescript": [
       ".ts"
     ] },
+  "settings": {
+    "tsserver": {
+      "globalPlugins": [
+        {
+          "location": "./node_modules/some-plugin",
+          "name": "some-plugin"
+        }
+      ]
+    },
+    "validate": "on"
+  },
   "transport": "stdio"
 }

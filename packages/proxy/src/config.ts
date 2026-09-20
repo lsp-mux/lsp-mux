@@ -9,6 +9,9 @@ import * as v from 'valibot';
 import { ProxyConfigSchema, ServerConfigSchema } from './config-schema.ts';
 import type { ProxyConfig, ServerConfig } from './config-schema.ts';
 
+/** Re-parses settings after path resolution, which widens their type to unknown. */
+const SettingsRecordSchema = v.record(v.string(), v.unknown());
+
 const configFile = '.lsp-proxy.json';
 const localConfigFile = '.lsp-proxy.local.json';
 
@@ -45,10 +48,31 @@ const isRelativePath = (filePath: string): boolean =>
 const resolveRelative = (filePath: string, baseDir: string): string =>
   isRelativePath(filePath) ? path.resolve(baseDir, filePath) : filePath;
 
+/*
+ * Settings reach a server verbatim, and some of them are paths: vtsls locates
+ * a tsserver plugin by one. A config that has to spell those absolutely is not
+ * portable, so they resolve the same way command and args do — which is also
+ * why the rule is the prefix rather than the key, since the proxy has no idea
+ * which of a server's settings name files.
+ */
+const resolveSettingPaths = (value: unknown, configDir: string): unknown => {
+  if (typeof value === 'string') return resolveRelative(value, configDir);
+  if (Array.isArray(value)) return value.map(item => resolveSettingPaths(item, configDir));
+  if (value !== null && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, resolveSettingPaths(item, configDir)]),
+    );
+  }
+  return value;
+};
+
 const resolveServerPaths = (config: ServerConfig, configDir: string): ServerConfig => ({
   ...config,
   command: resolveRelative(config.command, configDir),
   args: config.args.map(arg => resolveRelative(arg, configDir)),
+  ...(config.settings && {
+    settings: v.parse(SettingsRecordSchema, resolveSettingPaths(config.settings, configDir)),
+  }),
 });
 
 export const loadProxyConfig = async (

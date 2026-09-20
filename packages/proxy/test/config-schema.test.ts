@@ -204,6 +204,13 @@ describe('registry entries', () => {
   });
 });
 
+const PluginEntrySchema = v.object({ location: v.string(), name: v.string() });
+
+const PluginSettingsSchema = v.object({
+  tsserver: v.object({ globalPlugins: v.array(PluginEntrySchema) }),
+  validate: v.string(),
+});
+
 describe('loadServerConfig', () => {
   it('rejects server names with path traversal', async ({ expect }) => {
     await expect(loadServerConfig('../../../etc/passwd')).rejects.toThrow('Invalid server name');
@@ -212,6 +219,20 @@ describe('loadServerConfig', () => {
   it('rejects server names with directory separators', async ({ expect }) => {
     await expect(loadServerConfig('foo/bar')).rejects.toThrow('Invalid server name');
     await expect(loadServerConfig(String.raw`foo\bar`)).rejects.toThrow('Invalid server name');
+  });
+
+  it('resolves a relative path nested in settings', async ({ expect }) => {
+    const configDir = path.join(import.meta.dirname, 'fixtures');
+    const { settings } = await loadServerConfig('relative-paths', configDir);
+    const parsed = v.parse(PluginSettingsSchema, settings);
+    const [plugin] = parsed.tsserver.globalPlugins;
+
+    /* A server that takes a path through its settings — vtsls locating a
+       tsserver plugin, say — can only be given one the config dir resolves. */
+    expect(path.isAbsolute(plugin?.location ?? '')).toBe(true);
+    expect(plugin?.location).toBe(path.join(configDir, 'node_modules', 'some-plugin'));
+    expect(plugin?.name).toBe('some-plugin');
+    expect(parsed.validate).toBe('on');
   });
 
   it('resolves relative paths and preserves non-path args', async ({ expect }) => {

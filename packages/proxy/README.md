@@ -95,7 +95,9 @@ Each server config is resolved from the
 }
 ```
 
-Relative paths in `command` and `args` are resolved against the config
-directory at load time.
+Relative paths in `command`, `args`, and anywhere inside `settings` are
+resolved against the config directory at load time. A path a server reads
+from its settings — vtsls locating a tsserver plugin, say — can be written
+relative, so a config package stays portable.
 
 Requires Node.js >= 24.0.0.
