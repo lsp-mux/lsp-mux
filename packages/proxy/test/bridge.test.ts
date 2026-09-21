@@ -9,7 +9,7 @@ import { createNotification } from '../src/types.ts';
 import type { Message, NotificationMessage } from '../src/types.ts';
 
 const tsserverRequest = (id: number, command: string, args: unknown): NotificationMessage =>
-  createNotification('tsserver/request', [id, command, args]);
+  createNotification('tsserver/request', [[id, command, args]]);
 
 const answering = (result: object): MockProxy<ManagedServer> => {
   const server = mock<ManagedServer>();
@@ -84,7 +84,7 @@ describe('createBridgeRouter', () => {
     /* The sender holds a handler open for every id, so a result it cannot
        read still has to come back as an answer rather than silence. */
     expect(sentNotification(source)).toStrictEqual(
-      createNotification('tsserver/response', [id, undefined]),
+      createNotification('tsserver/response', [[id, undefined]]),
     );
   });
 });

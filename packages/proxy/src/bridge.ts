@@ -28,7 +28,19 @@ const tsserverProtocol = {
   response: 'tsserver/response',
 } as const;
 
-const TsserverRequestSchema = v.tuple([v.unknown(), v.string(), v.unknown()]);
+/*
+ * vscode-languageserver packs a notification's single argument into the params
+ * array, so Volar's sendNotification('tsserver/request', [id, command, args])
+ * reaches the wire as [[id, command, args]]. Its own client unpacks that before
+ * the handler sees it; a peer speaking raw LSP has to unpack it itself, and
+ * pack the answer the same way or Volar's handler destructures a number.
+ */
+const TsserverRequestTupleSchema = v.tuple([v.unknown(), v.string(), v.unknown()]);
+
+const TsserverRequestSchema = v.pipe(
+  v.tuple([TsserverRequestTupleSchema]),
+  v.transform(([request]) => request),
+);
 
 const ExecuteCommandResultSchema = v.object({ body: v.optional(v.unknown()) });
 
@@ -88,7 +100,7 @@ export const createBridgeRouter = (
      * An empty body still gets answered: the source server holds a handler
      * open for every id it sends, and a dropped response strands it.
      */
-    servers.get(from)?.send(createNotification(tsserverProtocol.response, [id, body]));
+    servers.get(from)?.send(createNotification(tsserverProtocol.response, [[id, body]]));
   };
 
   return {

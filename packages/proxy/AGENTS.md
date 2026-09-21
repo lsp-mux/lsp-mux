@@ -77,7 +77,10 @@ names the two ends:
 
 1. Vue sends the `tsserver/request` notification `[id, command, args]`, where
    `command` is one of the `_vue:` commands that `@vue/typescript-plugin`
-   installs into tsserver
+   installs into tsserver. On the wire that tuple is wrapped in the params
+   array, because vscode-languageserver packs a notification's single
+   argument that way and its own client unpacks it again; a peer speaking
+   raw LSP unwraps it on the way in and wraps the answer on the way out
 1. The proxy asks vtsls to run it, as `workspace/executeCommand` of
    `typescript.tsserverRequest` with `[command, args, config]` — the third
    argument carrying `isAsync` and `lowPriority`, so the request neither
@@ -97,8 +100,9 @@ Two consequences worth keeping in view:
 - tsserver only recognises the `_vue:` commands when `@vue/typescript-plugin`
   is loaded into it, via vtsls's `vtsls.tsserver.globalPlugins` setting.
 
-Still to come: the `@vue/language-server` registry entry and `.vue` routing,
-and response merging for M4:
+The registry's `vue` entry and `packages/config-vue` carry the rest: `.vue`
+routed to both servers, and `@vue/typescript-plugin` loaded into vtsls.
+Still to come is response merging for M4:
 
 ```jsonc
 {

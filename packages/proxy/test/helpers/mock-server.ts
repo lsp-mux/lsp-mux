@@ -65,7 +65,13 @@ const state: {
 
 const SendTsserverRequestSchema = v.object({ command: v.string(), args: v.unknown() });
 
-const TsserverResponseSchema = v.tuple([v.number(), v.unknown()]);
+/* The real wire shape: the tuple arrives wrapped in the params array. */
+const TsserverResponseTupleSchema = v.tuple([v.number(), v.unknown()]);
+
+const TsserverResponseSchema = v.pipe(
+  v.tuple([TsserverResponseTupleSchema]),
+  v.transform(([response]) => response),
+);
 
 const respond = (id: number | string | null, result: ResponseMessage['result']): void => {
   const response: ResponseMessage = { jsonrpc: '2.0', id, ...(result !== undefined && { result }) };
@@ -143,7 +149,7 @@ const requestHandlers: Record<string, (msg: RequestMessage) => void> = {
     const { command, args } = v.parse(SendTsserverRequestSchema, msg.params);
     const id = state.tsserverSeq++;
     pendingTsserver.set(id, msg.id);
-    sendNotification('tsserver/request', [id, command, args]);
+    sendNotification('tsserver/request', [[id, command, args]]);
   },
   /* Stands in for vtsls, whose typescript.tsserverRequest answers with a body. */
   'workspace/executeCommand': (msg) => {
