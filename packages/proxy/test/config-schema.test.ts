@@ -207,7 +207,10 @@ describe('registry entries', () => {
 const PluginEntrySchema = v.object({ location: v.string(), name: v.string() });
 
 const PluginSettingsSchema = v.object({
+  maxMemory: v.number(),
+  nodePath: v.null(),
   tsserver: v.object({ globalPlugins: v.array(PluginEntrySchema) }),
+  useESLintClass: v.boolean(),
   validate: v.string(),
 });
 
@@ -233,6 +236,21 @@ describe('loadServerConfig', () => {
     expect(plugin?.location).toBe(path.join(configDir, 'node_modules', 'some-plugin'));
     expect(plugin?.name).toBe('some-plugin');
     expect(parsed.validate).toBe('on');
+  });
+
+  it('leaves settings that are not relative paths alone', async ({ expect }) => {
+    const configDir = path.join(import.meta.dirname, 'fixtures');
+    const { settings } = await loadServerConfig('relative-paths', configDir);
+    const parsed = v.parse(PluginSettingsSchema, settings);
+
+    /*
+     * The walk reaches every value, so anything it does not recognise as a
+     * relative path has to come back out identical — a number, a boolean and
+     * a null among them, all of which real server settings carry.
+     */
+    expect(parsed.maxMemory).toBe(3072);
+    expect(parsed.useESLintClass).toBe(true);
+    expect(parsed.nodePath).toBeNull();
   });
 
   it('resolves relative paths and preserves non-path args', async ({ expect }) => {
