@@ -24,6 +24,14 @@
     "valibot": "catalog:",
     "vscode-jsonrpc": "catalog:"
   },
+  "devDependencies": {
+    "@faker-js/faker": "catalog:",
+    "@gtbuchanan/eslint-config": "catalog:",
+    "@gtbuchanan/vitest-config": "catalog:",
+    "@sinonjs/fake-timers": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
+  },
   "engines": {
     "node": ">=24.0.0"
   },

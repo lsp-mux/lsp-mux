@@ -20,6 +20,9 @@
     "lsp-proxy-claude-code": "workspace:*",
     "oxlint": "catalog:"
   },
+  "devDependencies": {
+    "@gtbuchanan/eslint-config": "catalog:"
+  },
   "engines": {
     "node": ">=24.0.0"
   },

@@ -15,6 +15,9 @@
   "dependencies": {
     "lsp-proxy": "workspace:*"
   },
+  "devDependencies": {
+    "@gtbuchanan/eslint-config": "catalog:"
+  },
   "engines": {
     "node": ">=24.0.0"
   },

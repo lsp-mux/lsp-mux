@@ -13,6 +13,10 @@
     "pack:npm": "gtb task pack:npm",
     "typecheck:ts": "gtb task typecheck:ts"
   },
+  "devDependencies": {
+    "@gtbuchanan/eslint-config": "catalog:",
+    "vitest": "catalog:"
+  },
   "engines": {
     "node": ">=24.0.0"
   },
