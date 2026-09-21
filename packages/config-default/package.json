@@ -1,27 +1,38 @@
 {
   "name": "lsp-proxy-config-default",
   "version": "0.1.0",
-  "description": "Default server configs (vtsls, eslint) for lsp-proxy",
+  "description": "Default server configs (vue, vtsls, eslint, oxlint) for lsp-proxy",
   "type": "module",
   "files": [
     ".lsp-proxy.json",
-    "README.md"
+    "README.md",
+    "servers"
   ],
   "scripts": {
-    "compile:ts": "cpy .lsp-proxy.json dist/source/",
+    "compile:ts": "cpy .lsp-proxy.json \"servers/**\" dist/source/ --parents",
+    "coverage:codecov:upload": "gtb task coverage:codecov:upload",
+    "coverage:vitest:merge": "gtb task coverage:vitest:merge",
     "generate-plugin": "generate-claude-plugin",
     "lint:eslint": "gtb task lint:eslint",
     "pack:npm": "gtb task pack:npm",
+    "test:vitest:fast": "gtb task test:vitest:fast",
+    "test:vitest:slow": "gtb task test:vitest:slow",
     "typecheck:ts": "gtb task typecheck:ts"
   },
   "dependencies": {
     "@lsp-mux/vscode-eslint-lsp": "catalog:",
     "@vtsls/language-server": "catalog:",
+    "@vue/language-server": "catalog:",
+    "@vue/typescript-plugin": "catalog:",
     "lsp-proxy-claude-code": "workspace:*",
     "oxlint": "catalog:"
   },
   "devDependencies": {
-    "@gtbuchanan/eslint-config": "catalog:"
+    "@gtbuchanan/eslint-config": "catalog:",
+    "@gtbuchanan/vitest-config": "catalog:",
+    "lsp-proxy": "workspace:*",
+    "valibot": "catalog:",
+    "vitest": "catalog:"
   },
   "engines": {
     "node": ">=24.0.0"

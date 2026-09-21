@@ -16,6 +16,8 @@ catalog:
   '@types/sinonjs__fake-timers': 15.0.1
   '@vitest/coverage-v8': 5.0.1
   '@vtsls/language-server': 0.3.0
+  '@vue/language-server': 3.3.11
+  '@vue/typescript-plugin': 3.3.11
   console-fail-test: 0.6.1
   cpy-cli: 7.0.0
   date-fns: 4.4.0

@@ -35,10 +35,12 @@ pnpm workspace monorepo:
 - **`packages/claude-code`** — Claude Code editor integration. Provides
   `generate-claude-plugin` bin that produces `.lsp.json` and
   `.claude-plugin/` artifacts from a config directory.
-- **`packages/config-default`** — default server configs (vtsls + eslint
-  for TS/JS). Installable standalone from npm — `postinstall` generates
-  plugin files automatically. Users can create their own config package
-  with different servers.
+- **`packages/config-default`** — default server configs (Volar, vtsls,
+  ESLint, oxlint), covering TS/JS and Vue single-file components.
+  Installable standalone from npm — `postinstall` generates plugin files
+  automatically. Users can create their own config package with
+  different servers; only one can be registered at a time, since each
+  generates a plugin named `lsp-proxy`.
 
 ## Architecture
 
@@ -48,7 +50,7 @@ Claude Code (stdio)
     v
 lsp-proxy (generic multiplexer)
     |--- vtsls
-    |--- vue-language-server v3  (planned — requires bridging)
+    |--- vue-language-server v3
     |       |-- tsserver/request --> vtsls  (bridge)
     |       |<- tsserver/response <-- vtsls
     |--- eslint
@@ -69,13 +71,15 @@ Add a second server (eslint) for `.ts`/`.js` files. Merge diagnostics
 from both via union. Fan out `didOpen`/`didChange`/`didClose` to both.
 Route single-response methods (hover, definition) to primary server only.
 
-### M3: Notification bridging + Volar 3
+### M3: Notification bridging + Volar 3 (done)
 
-The bridge is in: a `bridges` entry forwards `tsserver/request` to vtsls
-and answers `tsserver/response`, verified against mock servers. Remaining:
-the `@vue/language-server` registry entry, `.vue` routing, and loading
-`@vue/typescript-plugin` into vtsls, which together replace the Volar 2
-plugin. See [packages/proxy/AGENTS.md](./packages/proxy/AGENTS.md).
+A `bridges` entry forwards `tsserver/request` to vtsls and answers
+`tsserver/response`. `packages/config-default` puts that together with
+the registry's `vue` entry, `.vue` routing to both servers, and
+`@vue/typescript-plugin` loaded into vtsls's tsserver — replacing the
+Volar 2 plugin. Verified against the real servers: Volar's
+`_vue:projectInfo` reaches tsserver through the bridge and is answered.
+See [packages/proxy/AGENTS.md](./packages/proxy/AGENTS.md).
 
 ### M4: Full response merging
 

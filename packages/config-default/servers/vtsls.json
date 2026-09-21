@@ -1,0 +1,23 @@
+{
+  "languages": {
+    "vue": [
+      ".vue"
+    ]
+  },
+  "settings": {
+    "vtsls": {
+      "tsserver": {
+        "globalPlugins": [
+          {
+            "enableForWorkspaceTypeScriptVersions": true,
+            "languages": [
+              "vue"
+            ],
+            "location": "./node_modules/@vue/typescript-plugin",
+            "name": "@vue/typescript-plugin"
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,5 +1,13 @@
 {
+  "bridges": [
+    {
+      "from": "vue",
+      "protocol": "tsserver",
+      "to": "vtsls"
+    }
+  ],
   "servers": [
+    "vue",
     "vtsls",
     "eslint",
     "oxlint"

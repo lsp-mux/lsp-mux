@@ -100,7 +100,7 @@ Two consequences worth keeping in view:
 - tsserver only recognises the `_vue:` commands when `@vue/typescript-plugin`
   is loaded into it, via vtsls's `vtsls.tsserver.globalPlugins` setting.
 
-The registry's `vue` entry and `packages/config-vue` carry the rest: `.vue`
+The registry's `vue` entry and `packages/config-default` carry the rest: `.vue`
 routed to both servers, and `@vue/typescript-plugin` loaded into vtsls.
 Still to come is response merging for M4:
 

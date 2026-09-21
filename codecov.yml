@@ -8,7 +8,15 @@ component_management:
       paths:
         - packages/proxy/bin/**
         - packages/proxy/src/**
+    - component_id: config-default
+      name: config-default
+      paths:
+        - packages/config-default/src/**
 flags:
+  config-default:
+    carryforward: true
+    paths:
+      - packages/config-default/
   proxy:
     carryforward: true
     paths:

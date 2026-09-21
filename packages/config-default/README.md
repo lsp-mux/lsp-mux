@@ -1,18 +1,56 @@
 # lsp-proxy-config-default
 
-Default [lsp-proxy](../proxy) config package for
-[Claude Code](https://docs.anthropic.com/en/docs/claude-code). Bundles
-vtsls and ESLint for TypeScript/JavaScript development — works out of
-the box with no additional configuration.
+Default [lsp-proxy](../proxy) config package. Bundles Volar, vtsls,
+ESLint and oxlint, so TypeScript, JavaScript and Vue single-file
+components all get language intelligence from one proxy.
+
+The server wiring is plain LSP and holds for any client the proxy
+fronts. What is specific to
+[Claude Code](https://docs.anthropic.com/en/docs/claude-code) is the
+install step below, which generates that editor's plugin files.
 
 ## What's included
 
-- **vtsls** — TypeScript / JavaScript language intelligence
-  (`.ts`, `.tsx`, `.js`, `.jsx`, `.mts`, `.mjs`, `.cts`, `.cjs`)
-- **eslint** — ESLint diagnostics for the same file types
+- **vue** — [Volar](https://github.com/vuejs/language-tools) for `.vue`
+- **vtsls** — TypeScript / JavaScript (`.ts`, `.tsx`, `.js`, `.jsx`,
+  `.mts`, `.mjs`, `.cts`, `.cjs`), and the TypeScript project behind the
+  `.vue` files
+- **eslint** — ESLint diagnostics for TypeScript and JavaScript
+- **oxlint** — oxlint diagnostics for the same file types, running
+  alongside ESLint rather than instead of it
 
-Server configs come from the [registry](../registry). Override any
-setting by adding a `servers/vtsls.json` or `servers/eslint.json` file.
+Server configs come from the [registry](../registry), deep-merged with
+any `servers/<name>.json` in this directory. Relative paths in
+`command`, `args` and anywhere inside `settings` resolve against this
+directory, so overrides stay portable.
+
+## How the Vue wiring works
+
+Volar 3 does not talk to a TypeScript server itself. It asks its editor
+to run commands against one, and this config points that at vtsls:
+
+- `.lsp-proxy.json` declares a `tsserver` bridge from `vue` to `vtsls`,
+  so the proxy answers Volar's `tsserver/request` notifications.
+- `servers/vtsls.json` loads `@vue/typescript-plugin` into vtsls's
+  tsserver, which is what defines the `_vue:` commands Volar asks for,
+  and adds `.vue` to the files vtsls sees.
+
+Three things about that setup are easy to get wrong:
+
+1. **Server order decides routing.** Both `vue` and `vtsls` claim `.vue`,
+   and a request goes to the first one listed, so `vue` comes first.
+1. **Plugin settings must be nested objects.** vtsls resolves
+   `vtsls.tsserver.globalPlugins` by walking the tree, so a flat
+   `"vtsls.tsserver.globalPlugins"` key is read as nothing at all — and
+   silently, since a plugin that fails to load reports nothing.
+1. **The plugin version must match the server.** `@vue/typescript-plugin`
+   and `@vue/language-server` are released together and this package pins
+   both. A mismatched pair fails as commands that do not exist.
+
+Neither linter sees `.vue` files: both are configured for TypeScript and
+JavaScript only. oxlint can lint single-file components with its
+`--vue-plugin` flag, and ESLint needs `vue-eslint-parser`; neither is
+wired up here yet.
 
 ## Standalone installation
 
@@ -30,84 +68,20 @@ register the plugin in Claude Code:
 /plugin install lsp-proxy@lsp-proxy
 ```
 
-Disable any conflicting LSP plugins:
+## Diagnosing the bridge
 
-```text
-/plugin disable vtsls@claude-code-lsps
-```
-
-## Development usage
-
-When working from the monorepo, plugin files are generated as part of the
-build:
-
-```sh
-pnpm build
-```
-
-To regenerate manually:
-
-```sh
-pnpm -C packages/config-default generate-plugin
-```
-
-Generated files contain absolute paths. Re-run `generate-plugin` if you
-move the directory.
-
-## Files
-
-```text
-.lsp-proxy.json          # which servers to load
-.lsp-proxy.local.json    # local overrides (git-ignored)
-servers/                  # per-server config overrides (empty by default)
-```
-
-## Creating your own config package
-
-```sh
-mkdir my-lsp-config && cd my-lsp-config
-pnpm init
-pnpm add lsp-proxy lsp-proxy-claude-code
-```
-
-Install the LSP servers you need:
-
-```sh
-pnpm add @vtsls/language-server     # TypeScript
-pnpm add vscode-langservers-extracted  # HTML/CSS
-```
-
-Create `.lsp-proxy.json`:
+Set `logLevel` to `DEBUG` in `.lsp-proxy.local.json` to see the proxy
+forward each request, as `vue → vtsls: <command>`. To see the payloads
+as well, add a `servers/vue.json` with:
 
 ```json
 {
-  "servers": ["vtsls", "css"]
-}
-```
-
-For servers not in the registry, create `servers/<name>.json`:
-
-```json
-{
-  "command": "node",
-  "args": [
-    "./node_modules/vscode-langservers-extracted/bin/vscode-css-language-server",
-    "--stdio"
-  ],
-  "languages": { "css": [".css"], "scss": [".scss"] },
-  "transport": "stdio"
-}
-```
-
-Add generate and postinstall scripts to `package.json`:
-
-```json
-{
-  "scripts": {
-    "generate-plugin": "generate-claude-plugin",
-    "postinstall": "generate-claude-plugin"
+  "notifications": {
+    "tsserver/request": { "logLevel": "DEBUG" }
   }
 }
 ```
 
-Then `pnpm generate-plugin` and point Claude Code at the output.
+That prints the full parameters of every request Volar sends, which is
+noisy in normal use but is what makes a mismatch between what Volar
+sends and what the bridge expects visible.
