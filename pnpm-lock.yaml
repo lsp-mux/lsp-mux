@@ -213,7 +213,7 @@ importers:
         version: 15.4.0
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@types/node@22.16.0)(@vitest/coverage-v8@5.0.1)(vite@7.3.1(@types/node@22.16.0)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0))
+        version: 5.0.1(@types/node@22.16.0)(@vitest/coverage-v8@5.0.1)(vite@7.3.1(@types/node@22.16.0)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.1))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 5.1.1(typescript@5.9.3)(vitest@5.0.1)
@@ -226,7 +226,7 @@ importers:
         version: 0.3.0(@typescript-eslint/eslint-plugin@8.64.0(@typescript-eslint/parser@8.64.0(eslint@10.10.0(jiti@2.7.0))(typescript@5.9.3))(eslint@10.10.0(jiti@2.7.0))(typescript@5.9.3))(@typescript-eslint/utils@8.64.0(eslint@10.10.0(jiti@2.7.0))(typescript@5.9.3))(eslint@10.10.0(jiti@2.7.0))(postcss@8.5.8)(typescript@5.9.3)(vitest@5.0.1)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@types/node@22.16.0)(@vitest/coverage-v8@5.0.1)(vite@7.3.1(@types/node@22.16.0)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0))
+        version: 5.0.1(@types/node@22.16.0)(@vitest/coverage-v8@5.0.1)(vite@7.3.1(@types/node@22.16.0)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.1))
     publishDirectory: dist/source
 
 packages:
