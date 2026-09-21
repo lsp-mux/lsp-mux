@@ -10,8 +10,8 @@ catalogs:
       specifier: 2.31.1
       version: 2.31.1
     '@faker-js/faker':
-      specifier: 10.5.0
-      version: 10.5.0
+      specifier: 10.6.0
+      version: 10.6.0
     '@gtbuchanan/cli':
       specifier: 0.3.0
       version: 0.3.0
@@ -65,7 +65,7 @@ catalogs:
       version: 1.77.0
     picomatch:
       specifier: ^4.0.4
-      version: 4.0.5
+      version: 4.0.7
     turbo:
       specifier: 2.10.13
       version: 2.10.13
@@ -94,7 +94,7 @@ importers:
         version: 2.31.1(@types/node@22.16.0)
       '@faker-js/faker':
         specifier: 'catalog:'
-        version: 10.5.0
+        version: 10.6.0
       '@gtbuchanan/cli':
         specifier: 'catalog:'
         version: 0.3.0(skills@1.5.15)(typescript@5.9.3)
@@ -183,7 +183,7 @@ importers:
         version: link:../registry
       picomatch:
         specifier: 'catalog:'
-        version: 4.0.5
+        version: 4.0.7
       valibot:
         specifier: 'catalog:'
         version: 1.4.2(typescript@5.9.3)
@@ -535,8 +535,8 @@ packages:
     resolution: {integrity: sha512-+CNAzxglkrpNf/kKywqQfk74QjtceuOE7Qm+AF8miRvPF/wmmK5+OJOgVh3AVTT3RP2mH3+FOaxlE5v72owk0A==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
 
-  '@faker-js/faker@10.5.0':
-    resolution: {integrity: sha512-bsxD8WLS5lIj7aaoCx1YJkktqYj5vlBUE6HWzu2Q51ksrGJ0H737ECCKlFU7Yf8Br45z9t99frBp/J7kzbMPAg==}
+  '@faker-js/faker@10.6.0':
+    resolution: {integrity: sha512-3RQHgEtvL1Frl/d1cSreo7qhJ3Gk1OdNUai/CtZ8G+wYeRQnJih3s9xJ9/kgYekPQRdwgh0HXRPqMlzWGwivIQ==}
     engines: {node: ^20.19.0 || ^22.13.0 || ^23.5.0 || >=24.0.0, npm: '>=10'}
 
   '@gtbuchanan/cli@0.3.0':
@@ -629,9 +629,6 @@ packages:
   '@jridgewell/resolve-uri@3.1.2':
     resolution: {integrity: sha512-bRISgCIjP20/tbWSPWMEi54QVPRZExkuD9lJL+UIxUKtwVJA8wW1Trb1jMs1RFXo1CBTNZ/5hpC9QvmKWdopKw==}
     engines: {node: '>=6.0.0'}
-
-  '@jridgewell/sourcemap-codec@1.5.5':
-    resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
 
   '@jridgewell/sourcemap-codec@1.6.0':
     resolution: {integrity: sha512-T7jf+5zgsZHwNJ4lvQ7/aezbyk0nNX+zJVWpmHA7VYsEx7a7qr5Rg5IbtJFqkgze5Y2sruq1RUY8Q837Od7iFw==}
@@ -2470,10 +2467,6 @@ packages:
     resolution: {integrity: sha512-V7+vQEJ06Z+c5tSye8S+nHUfI51xoXIXjHQ99cQtKUkQqqO1kO/KCJUfZXuB47h/YBlDhah2H3hdUGXn8ie0oA==}
     engines: {node: '>=8.6'}
 
-  picomatch@4.0.5:
-    resolution: {integrity: sha512-RvwwcruNjI1ncT5xRakeyS9Lf8lcItv34KD+aif+VH9kduAyfYBipGh12274xtenIPZ119/R9BdTBa8gAwSh0A==}
-    engines: {node: '>=12'}
-
   picomatch@4.0.7:
     resolution: {integrity: sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA==}
     engines: {node: '>=12'}
@@ -3431,7 +3424,7 @@ snapshots:
       '@eslint/core': 1.2.1
       levn: 0.4.1
 
-  '@faker-js/faker@10.5.0': {}
+  '@faker-js/faker@10.6.0': {}
 
   '@gtbuchanan/cli@0.3.0(skills@1.5.15)(typescript@5.9.3)':
     dependencies:
@@ -3549,14 +3542,12 @@ snapshots:
 
   '@jridgewell/resolve-uri@3.1.2': {}
 
-  '@jridgewell/sourcemap-codec@1.5.5': {}
-
   '@jridgewell/sourcemap-codec@1.6.0': {}
 
   '@jridgewell/trace-mapping@0.3.31':
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
-      '@jridgewell/sourcemap-codec': 1.5.5
+      '@jridgewell/sourcemap-codec': 1.6.0
 
   '@lsp-mux/vscode-eslint-lsp@3.0.34': {}
 
@@ -3821,7 +3812,7 @@ snapshots:
       eslint-visitor-keys: 4.2.1
       espree: 10.4.0
       estraverse: 5.3.0
-      picomatch: 4.0.5
+      picomatch: 4.0.7
 
   '@taplo/core@0.2.0': {}
 
@@ -4634,9 +4625,9 @@ snapshots:
     dependencies:
       format: 0.2.2
 
-  fdir@6.5.0(picomatch@4.0.5):
+  fdir@6.5.0(picomatch@4.0.7):
     optionalDependencies:
-      picomatch: 4.0.5
+      picomatch: 4.0.7
 
   file-entry-cache@8.0.0:
     dependencies:
@@ -5399,8 +5390,6 @@ snapshots:
 
   picomatch@2.3.2: {}
 
-  picomatch@4.0.5: {}
-
   picomatch@4.0.7: {}
 
   pify@4.0.1: {}
@@ -5659,8 +5648,8 @@ snapshots:
 
   tinyglobby@0.2.17:
     dependencies:
-      fdir: 6.5.0(picomatch@4.0.5)
-      picomatch: 4.0.5
+      fdir: 6.5.0(picomatch@4.0.7)
+      picomatch: 4.0.7
 
   tinypool@2.1.0: {}
 
@@ -5812,8 +5801,8 @@ snapshots:
   vite@7.3.1(@types/node@22.16.0)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0):
     dependencies:
       esbuild: 0.27.7
-      fdir: 6.5.0(picomatch@4.0.5)
-      picomatch: 4.0.5
+      fdir: 6.5.0(picomatch@4.0.7)
+      picomatch: 4.0.7
       postcss: 8.5.8
       rollup: 4.62.3
       tinyglobby: 0.2.17
