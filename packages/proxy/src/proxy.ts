@@ -294,7 +294,9 @@ export class LspProxy {
 
   // ── Version Offsets ──────────────────────────────────────────────────
 
-  /** Get documents with effective versions (client version + offset) for replay. */
+  /**
+   * Get documents with effective versions (client version + offset) for replay.
+   */
   private getDocumentsWithEffectiveVersions(): readonly import('./types.ts').TrackedDocument[] {
     return docs.toArray(this.documents).map((doc) => {
       const offset = this.versionOffsets.get(doc.uri) ?? 0;
@@ -304,7 +306,9 @@ export class LspProxy {
 
   // ── Helpers ───────────────────────────────────────────────────────────
 
-  /** Safe check that avoids TS narrowing issues across async boundaries. */
+  /**
+   * Safe check that avoids TS narrowing issues across async boundaries.
+   */
   private isStopped(): boolean { return this.state === 'stopped'; }
 
   private ackToServer(serverName: string, requestId: number | string | null): void {

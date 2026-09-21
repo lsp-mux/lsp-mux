@@ -57,10 +57,14 @@ export const createBridgeRouter = (
   servers: ReadonlyMap<string, ManagedServer>,
   log: Logger,
 ): BridgeRouter => {
-  /** Source server → the server its tsserver requests are answered by. */
+  /**
+   * Source server → the server its tsserver requests are answered by.
+   */
   const targets = new Map((bridges ?? []).map(bridge => [bridge.from, bridge.to]));
 
-  /** Run one tsserver command on the target, and return the body it answered. */
+  /**
+   * Run one tsserver command on the target, and return the body it answered.
+   */
   const runCommand = async (to: string, command: string, args: unknown): Promise<unknown> => {
     const target = servers.get(to);
     if (!target) {

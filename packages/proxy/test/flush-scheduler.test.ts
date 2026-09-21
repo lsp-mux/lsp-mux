@@ -3,7 +3,9 @@ import { describe, it, vi } from 'vitest';
 import { createFlushScheduler } from '../src/flush-scheduler.ts';
 import type { FlushSchedulerOptions } from '../src/flush-scheduler.ts';
 
-/** Create a scheduler with default 100ms debounce / 1000ms maxWait. */
+/**
+ * Create a scheduler with default 100ms debounce / 1000ms maxWait.
+ */
 const makeScheduler = (
   onFlush: FlushSchedulerOptions['onFlush'],
   timers: FlushSchedulerOptions['timers'],

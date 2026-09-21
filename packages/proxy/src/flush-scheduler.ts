@@ -2,20 +2,32 @@ import { defaultTimers, noop } from './types.ts';
 import type { Timers } from './types.ts';
 
 export interface FlushSchedulerOptions {
-  /** Delay before flushing after the last notification. */
+  /**
+   * Delay before flushing after the last notification.
+   */
   debounceMs: number;
-  /** Maximum time to wait before forcing a flush, regardless of debounce resets. */
+  /**
+   * Maximum time to wait before forcing a flush, regardless of debounce resets.
+   */
   maxWaitMs: number;
-  /** Called when it's time to flush. Must not be called concurrently. */
+  /**
+   * Called when it's time to flush. Must not be called concurrently.
+   */
   onFlush: () => Promise<void>;
-  /** Timer functions (defaults to globalThis). Inject for testability. */
+  /**
+   * Timer functions (defaults to globalThis). Inject for testability.
+   */
   timers?: Timers | undefined;
 }
 
 export interface FlushScheduler {
-  /** Signal that new data is available for flushing. */
+  /**
+   * Signal that new data is available for flushing.
+   */
   notify: () => void;
-  /** Cancel all pending timers and prevent future flushes. */
+  /**
+   * Cancel all pending timers and prevent future flushes.
+   */
   dispose: () => void;
 }
 

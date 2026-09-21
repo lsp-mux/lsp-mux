@@ -17,7 +17,9 @@ const answering = (result: object): MockProxy<ManagedServer> => {
   return server;
 };
 
-/** A router wired to a source and a target, with both mocks to inspect. */
+/**
+ * A router wired to a source and a target, with both mocks to inspect.
+ */
 const bridged = (target: MockProxy<ManagedServer> = answering({ body: 'ok' })) => {
   const source = mock<ManagedServer>();
   const log = mock<Logger>();
@@ -30,7 +32,9 @@ const bridged = (target: MockProxy<ManagedServer> = answering({ body: 'ok' })) =
   return { router, source, target, log };
 };
 
-/** The params of the single notification sent to a server. */
+/**
+ * The params of the single notification sent to a server.
+ */
 const sentNotification = (server: MockProxy<ManagedServer>): Message | undefined =>
   server.send.mock.calls[0]?.[0];
 

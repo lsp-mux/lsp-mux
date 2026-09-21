@@ -36,7 +36,9 @@ export interface WatcherDelegate {
     changeType: number,
     uri: string,
   ) => ReadonlyMap<string, fw.FileChange[]>;
-  /** Update tracked content, bump version offset, and fan out didChange to matching servers. */
+  /**
+   * Update tracked content, bump version offset, and fan out didChange to matching servers.
+   */
   resyncDocument: (uri: string, clientVersion: number, text: string) => void;
   sendWatchedFilesEvent: (serverName: string, changes: fw.FileChange[]) => void;
 }

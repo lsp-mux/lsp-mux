@@ -13,20 +13,30 @@ import { normalizeFileUri } from './uri.ts';
 // still starting on the first didOpen, giving them time to come up.
 const lazyStartPullDiagnosticsDelayMs = 3000;
 
-/** Proxy internals the diagnostics coordinator needs access to. */
+/**
+ * Proxy internals the diagnostics coordinator needs access to.
+ */
 export interface DiagnosticsDelegate {
-  /** Servers matched to a document URI, in routing order. */
+  /**
+   * Servers matched to a document URI, in routing order.
+   */
   readonly serversForUri: (uri: string | undefined) => readonly string[];
   readonly getServer: (name: string) => ManagedServer | undefined;
   readonly isStopped: () => boolean;
-  /** True when compensating for a client without native pull-diagnostic support. */
+  /**
+   * True when compensating for a client without native pull-diagnostic support.
+   */
   readonly isProactivePull: () => boolean;
-  /** URIs of all currently tracked (open) documents. */
+  /**
+   * URIs of all currently tracked (open) documents.
+   */
   readonly getTrackedUris: () => Iterable<string>;
   readonly writeToClient: (msg: Message) => void;
   readonly respondToClient: (id: number | string | null, result: ResponseMessage['result']) => void;
   readonly ackToServer: (serverName: string, id: number | string | null) => void;
-  /** Track a forwarded server request so the client's response routes back. */
+  /**
+   * Track a forwarded server request so the client's response routes back.
+   */
   readonly trackServerRequest: (id: number | string | null, serverName: string) => void;
 }
 
@@ -36,14 +46,18 @@ export interface DiagnosticsDelegate {
  * pull-diagnostic support.
  */
 export interface DiagnosticsCoordinator {
-  /** Store + republish pushed diagnostics. Returns true if the message was consumed. */
+  /**
+   * Store + republish pushed diagnostics. Returns true if the message was consumed.
+   */
   readonly handlePublish: (serverName: string, msg: Message) => boolean;
   /**
    * workspace/diagnostic/refresh: when compensating, re-pull diagnostics for
    * tracked documents; otherwise forward to the client so it re-pulls.
    */
   readonly handleRefresh: (serverName: string, msg: RequestMessage) => void;
-  /** Fan out textDocument/diagnostic to all matching servers and merge results. */
+  /**
+   * Fan out textDocument/diagnostic to all matching servers and merge results.
+   */
   readonly handleClientPull: (msg: RequestMessage) => Promise<void>;
   /**
    * Proactively pull diagnostics after a document sync when compensating for a
@@ -51,7 +65,9 @@ export interface DiagnosticsCoordinator {
    * after a grace delay so they have time to come up.
    */
   readonly maybePullAfterSync: (msg: NotificationMessage, uri: string | undefined) => void;
-  /** Drop a (re)starting server's diagnostics and republish affected URIs. */
+  /**
+   * Drop a (re)starting server's diagnostics and republish affected URIs.
+   */
   readonly clearServer: (serverName: string) => void;
 }
 

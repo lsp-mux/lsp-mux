@@ -1,4 +1,6 @@
-/** @module-tag slow */
+/**
+ * @module-tag slow
+ */
 import { faker } from '@faker-js/faker';
 import * as v from 'valibot';
 import { describe } from 'vitest';

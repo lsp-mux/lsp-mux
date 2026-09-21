@@ -1,4 +1,6 @@
-/** @module-tag slow */
+/**
+ * @module-tag slow
+ */
 import { faker } from '@faker-js/faker';
 import { describe, vi } from 'vitest';
 import type { Message, StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';

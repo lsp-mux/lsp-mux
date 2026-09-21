@@ -4,7 +4,9 @@ import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js
 import { Message as Msg, createNotification, createRequest } from '../../src/types.ts';
 import { fakeUri } from './fake.ts';
 
-/** Collect messages from a reader until a predicate matches. */
+/**
+ * Collect messages from a reader until a predicate matches.
+ */
 export const waitForMessage = (
   reader: StreamMessageReader,
   isMatch: (msg: Message) => boolean,
@@ -26,7 +28,9 @@ export const waitForMessage = (
     });
   });
 
-/** Collect N messages matching a predicate. */
+/**
+ * Collect N messages matching a predicate.
+ */
 export const collectMessages = (
   reader: StreamMessageReader,
   isMatch: (msg: Message) => boolean,
@@ -57,13 +61,17 @@ export const collectMessages = (
     });
   });
 
-/** The proxy's client-side JSON-RPC stream pair. */
+/**
+ * The proxy's client-side JSON-RPC stream pair.
+ */
 export interface Client {
   writer: StreamMessageWriter;
   reader: StreamMessageReader;
 }
 
-/** Send a request and wait for the matching response. */
+/**
+ * Send a request and wait for the matching response.
+ */
 export const request = (
   { writer, reader }: Client,
   id: number,
@@ -87,7 +95,9 @@ export const request = (
     void writer.write(createRequest(id, method, params));
   });
 
-/** Send a notification (fire and forget). */
+/**
+ * Send a notification (fire and forget).
+ */
 export const notify = async (
   writer: StreamMessageWriter,
   method: string,
@@ -113,7 +123,9 @@ export const openDocument = (
     },
   });
 
-/** Perform the full initialize handshake. */
+/**
+ * Perform the full initialize handshake.
+ */
 export const initializeProxy = async (
   client: Client,
   /* eslint-disable-next-line unicorn/no-null --

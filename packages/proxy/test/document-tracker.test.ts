@@ -14,7 +14,9 @@ const openDoc = (docUri: string, text: string, version = 1) =>
     textDocument: { uri: docUri, languageId: 'typescript', version, text },
   });
 
-/** Get first document or fail — avoids `noUncheckedIndexedAccess` noise in tests. */
+/**
+ * Get first document or fail — avoids `noUncheckedIndexedAccess` noise in tests.
+ */
 const first = (docs: DocumentMap): TrackedDocument => {
   const doc = toArray(docs)[0];
   if (!doc) throw new Error('Expected document');

@@ -17,27 +17,41 @@ import { normalizeFileUri } from './uri.ts';
 
 export type ProxyState = 'idle' | 'running' | 'stopped';
 
-/** Proxy internals the client-message handler needs access to. */
+/**
+ * Proxy internals the client-message handler needs access to.
+ */
 export interface ClientMessageDelegate {
-  /** Track a document sync notification in the proxy's document state. */
+  /**
+   * Track a document sync notification in the proxy's document state.
+   */
   readonly applyDocumentSync: (method: string, params: NotificationMessage['params']) => void;
-  /** Shut the whole proxy down (client sent exit while running). */
+  /**
+   * Shut the whole proxy down (client sent exit while running).
+   */
   readonly dispose: () => void;
-  /** Stop reading client input (client sent exit after shutdown). */
+  /**
+   * Stop reading client input (client sent exit after shutdown).
+   */
   readonly disposeReader: () => void;
   readonly getState: () => ProxyState;
-  /** Begin the initialize handshake for all servers. */
+  /**
+   * Begin the initialize handshake for all servers.
+   */
   readonly initializeServers: (
     id: number | string | null,
     params: RequestMessage['params'],
   ) => void;
   readonly sendErrorToClient: (id: number | string | null, code: number, message: string) => void;
-  /** Coordinate shutdown across all servers and respond to the client. */
+  /**
+   * Coordinate shutdown across all servers and respond to the client.
+   */
   readonly shutdownServers: (id: number | string | null) => void;
 }
 
 export interface ClientMessageHandler {
-  /** Dispatch a message received from the client. */
+  /**
+   * Dispatch a message received from the client.
+   */
   readonly handleMessage: (msg: Message) => void;
 }
 
@@ -45,13 +59,19 @@ export interface CreateClientMessageHandlerOptions {
   delegate: ClientMessageDelegate;
   diagnostics: DiagnosticsCoordinator;
   log: Logger;
-  /** Server owning each pending client request (shared, used for cancel routing). */
+  /**
+   * Server owning each pending client request (shared, used for cancel routing).
+   */
   requestRouting: Map<number | string | null, string>;
   router: Router;
-  /** Server that originated each server-to-client request (shared). */
+  /**
+   * Server that originated each server-to-client request (shared).
+   */
   serverRequestRouting: Map<number | string | null, string>;
   servers: ReadonlyMap<string, ManagedServer>;
-  /** Per-document resync version offsets (shared with the proxy's watcher). */
+  /**
+   * Per-document resync version offsets (shared with the proxy's watcher).
+   */
   versionOffsets: Map<string, number>;
 }
 
@@ -75,14 +95,18 @@ export const createClientMessageHandler = ({
     }
   };
 
-  /** Broadcast a message to every server that isn't idle. */
+  /**
+   * Broadcast a message to every server that isn't idle.
+   */
   const broadcastToActive = (msg: Message): void => {
     for (const server of servers.values()) {
       if (server.state !== 'idle') server.send(msg);
     }
   };
 
-  /** Route a client response back to the server that issued the request. */
+  /**
+   * Route a client response back to the server that issued the request.
+   */
   const routeClientResponse = (msg: ResponseMessage): void => {
     const targetServer = serverRequestRouting.get(msg.id);
     serverRequestRouting.delete(msg.id);
@@ -109,7 +133,9 @@ export const createClientMessageHandler = ({
     broadcastToActive(msg);
   };
 
-  /** Apply this document's resync version offset to a sync notification, if any. */
+  /**
+   * Apply this document's resync version offset to a sync notification, if any.
+   */
   const applyVersionOffset = (msg: NotificationMessage, uri: string | undefined): Message => {
     const offset = uri ? versionOffsets.get(uri) : undefined;
     return offset ? rewriteDocSyncVersion(msg, offset) : msg;
@@ -159,7 +185,9 @@ export const createClientMessageHandler = ({
     broadcastToActive(msg);
   };
 
-  /** Route a generic client request to the primary server for its document. */
+  /**
+   * Route a generic client request to the primary server for its document.
+   */
   const routeRequestToPrimary = (msg: RequestMessage): void => {
     const uri = extractUri(msg);
     const primaryName = router.primaryForUri(uri);

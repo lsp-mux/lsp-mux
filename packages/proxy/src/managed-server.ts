@@ -23,13 +23,21 @@ const maxBufferSize = 1000;
 export type ServerState = 'idle' | 'starting' | 'running' | 'restarting' | 'stopped';
 
 export interface ManagedServerCallbacks {
-  /** Server produced a message (response or notification) for the proxy. */
+  /**
+   * Server produced a message (response or notification) for the proxy.
+   */
   readonly onServerMessage: (msg: Message) => void;
-  /** Server crashed — these client request IDs need error responses. */
+  /**
+   * Server crashed — these client request IDs need error responses.
+   */
   readonly onPendingErrors: (ids: ReadonlySet<number | string | null>, message: string) => void;
-  /** Server state changed. */
+  /**
+   * Server state changed.
+   */
   readonly onStateChange: (state: ServerState) => void;
-  /** Get current document state for replay after restart. */
+  /**
+   * Get current document state for replay after restart.
+   */
   readonly getDocuments: () => readonly TrackedDocument[];
 }
 
@@ -37,24 +45,38 @@ export interface ManagedServer {
   readonly name: string;
   readonly state: ServerState;
 
-  /** Store init params for deferred (lazy) initialization. */
+  /**
+   * Store init params for deferred (lazy) initialization.
+   */
   setInitParams: (params: RequestMessage['params']) => void;
-  /** Spawn server and send initialize. Resolves with the raw response. */
+  /**
+   * Spawn server and send initialize. Resolves with the raw response.
+   */
   initialize: (params: RequestMessage['params']) => Promise<ResponseMessage>;
-  /** Mark the proxy-level handshake as complete. Enables lazy start on idle servers. */
+  /**
+   * Mark the proxy-level handshake as complete. Enables lazy start on idle servers.
+   */
   sendInitialized: () => void;
   /**
    * Route a message to this server. Triggers lazy start if idle; buffers if
    * starting/restarting.
    */
   send: (msg: Message) => boolean;
-  /** Try to cancel a buffered request by ID. Returns true if found and removed. */
+  /**
+   * Try to cancel a buffered request by ID. Returns true if found and removed.
+   */
   cancelBuffered: (id: number | string) => boolean;
-  /** Send a proxy-internal request and return the response. Only works when running. */
+  /**
+   * Send a proxy-internal request and return the response. Only works when running.
+   */
   sendRequest: (method: string, params: RequestMessage['params']) => Promise<ResponseMessage>;
-  /** Send shutdown request. Resolves with the response. */
+  /**
+   * Send shutdown request. Resolves with the response.
+   */
   shutdown: () => Promise<ResponseMessage>;
-  /** Clean up all resources. */
+  /**
+   * Clean up all resources.
+   */
   dispose: () => void;
 }
 
@@ -253,7 +275,9 @@ export const createManagedServer = ({
     }
   };
 
-  /** Drain buffered requests and notify proxy so it can send error responses. */
+  /**
+   * Drain buffered requests and notify proxy so it can send error responses.
+   */
   const errorBufferedRequests = (message: string): void => {
     /*
      * Not every stop arrives through handleServerExit: a server that answers

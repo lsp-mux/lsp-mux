@@ -48,7 +48,10 @@ interface OpenDocument {
 }
 
 const openDocuments = new Map<string, OpenDocument>();
-/* Client request awaiting the tsserver/response for the bridged request it triggered. */
+/*
+ * Client request awaiting the tsserver/response for the bridged request it
+ * triggered.
+ */
 const pendingTsserver = new Map<number, number | string | null>();
 const watcherEvents: unknown[] = [];
 const configNotifications: unknown[] = [];
@@ -65,7 +68,9 @@ const state: {
 
 const SendTsserverRequestSchema = v.object({ command: v.string(), args: v.unknown() });
 
-/* The real wire shape: the tuple arrives wrapped in the params array. */
+/*
+ * The real wire shape: the tuple arrives wrapped in the params array.
+ */
 const TsserverResponseTupleSchema = v.tuple([v.number(), v.unknown()]);
 
 const TsserverResponseSchema = v.pipe(
@@ -151,7 +156,9 @@ const requestHandlers: Record<string, (msg: RequestMessage) => void> = {
     pendingTsserver.set(id, msg.id);
     sendNotification('tsserver/request', [[id, command, args]]);
   },
-  /* Stands in for vtsls, whose typescript.tsserverRequest answers with a body. */
+  /*
+   * Stands in for vtsls, whose typescript.tsserverRequest answers with a body.
+   */
   'workspace/executeCommand': (msg) => {
     if (isExecuteCommandError) {
       const failure: ResponseMessage = {

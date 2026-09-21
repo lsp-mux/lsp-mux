@@ -19,7 +19,9 @@ export interface Router {
    *  Returns first of allServers if URI is undefined or extension is unknown.
    */
   primaryForUri: (uri: string | undefined) => string | undefined;
-  /** All configured server names, in config order. */
+  /**
+   * All configured server names, in config order.
+   */
   readonly allServers: readonly string[];
 }
 
@@ -41,7 +43,9 @@ const buildExtToLang = (servers: readonly ServerEntry[]): ReadonlyMap<string, st
   return map;
 };
 
-/** Build languageId → server names (in config order). */
+/**
+ * Build languageId → server names (in config order).
+ */
 const buildLangToServers = (
   servers: readonly ServerEntry[],
 ): ReadonlyMap<string, readonly string[]> => {
@@ -56,7 +60,9 @@ const buildLangToServers = (
   return map;
 };
 
-/** Extract the file extension (e.g. `.ts`) from a URI string, or undefined if none. */
+/**
+ * Extract the file extension (e.g. `.ts`) from a URI string, or undefined if none.
+ */
 const extractExtension = (uri: string): string | undefined => {
   try {
     const pathname = new URL(uri).pathname;
@@ -68,7 +74,9 @@ const extractExtension = (uri: string): string | undefined => {
   }
 };
 
-/** Resolve server names for a URI via extension → languageId → servers lookup. */
+/**
+ * Resolve server names for a URI via extension → languageId → servers lookup.
+ */
 const resolveServers = (
   uri: string | undefined,
   extToLang: ReadonlyMap<string, string>,
@@ -85,7 +93,9 @@ const resolveServers = (
 
 // --- Public API ---
 
-/** Create a router from server entries (in config order). */
+/**
+ * Create a router from server entries (in config order).
+ */
 export const createRouter = (servers: readonly ServerEntry[]): Router => {
   const allServers = servers.map(server => server.name);
   const extToLang = buildExtToLang(servers);

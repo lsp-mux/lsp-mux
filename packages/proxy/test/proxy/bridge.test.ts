@@ -1,4 +1,6 @@
-/** @module-tag slow */
+/**
+ * @module-tag slow
+ */
 import { describe, vi } from 'vitest';
 import type { Message } from 'vscode-jsonrpc';
 import { Message as Msg, createRequest } from '../../src/types.ts';

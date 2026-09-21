@@ -18,11 +18,17 @@ const backoffMultiplier = 2;
 const jitterRatio = 0.5;
 
 export interface RestartScheduler {
-  /** Schedule a callback with exponential backoff. Returns false if max retries reached. */
+  /**
+   * Schedule a callback with exponential backoff. Returns false if max retries reached.
+   */
   schedule: (callback: () => void) => boolean;
-  /** Reset attempt counter (call after successful restart). */
+  /**
+   * Reset attempt counter (call after successful restart).
+   */
   reset: () => void;
-  /** Cancel any pending timer. */
+  /**
+   * Cancel any pending timer.
+   */
   cancel: () => void;
   readonly attempt: number;
   readonly maxRetries: number;

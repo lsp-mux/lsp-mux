@@ -1,4 +1,6 @@
-/** @module-tag slow */
+/**
+ * @module-tag slow
+ */
 import * as v from 'valibot';
 import { describe } from 'vitest';
 import type { Message } from 'vscode-jsonrpc';

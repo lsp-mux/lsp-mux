@@ -6,14 +6,20 @@ const defaultTimeoutMs = 30_000;
 
 const idPrefix = '__proxy:';
 
-/** True for request IDs the proxy minted for itself rather than the client. */
+/**
+ * True for request IDs the proxy minted for itself rather than the client.
+ */
 export const isInternalRequestId = (id: number | string | null): boolean =>
   typeof id === 'string' && id.startsWith(idPrefix);
 
-/** Whether a delivery attempt reached the server. */
+/**
+ * Whether a delivery attempt reached the server.
+ */
 export type DeliveryOutcome = 'delivered' | 'undeliverable';
 
-/** Hand a request to a server, reporting whether it got there. */
+/**
+ * Hand a request to a server, reporting whether it got there.
+ */
 export type DeliverRequest = (msg: RequestMessage) => DeliveryOutcome;
 
 /**
@@ -22,7 +28,9 @@ export type DeliverRequest = (msg: RequestMessage) => DeliveryOutcome;
  * they never collide with client-originated IDs.
  */
 export interface ProxyRequestChannel {
-  /** Send an internal request; resolves with the response or a timeout error. */
+  /**
+   * Send an internal request; resolves with the response or a timeout error.
+   */
   readonly send: (
     target: ChildServer,
     method: string,
@@ -40,9 +48,13 @@ export interface ProxyRequestChannel {
     params: RequestMessage['params'],
     timeoutMs?: number,
   ) => Promise<ResponseMessage>;
-  /** Resolve a pending internal request. Returns true if the message was consumed. */
+  /**
+   * Resolve a pending internal request. Returns true if the message was consumed.
+   */
   readonly handleResponse: (msg: Message) => boolean;
-  /** Fail all in-flight internal requests with an error response. */
+  /**
+   * Fail all in-flight internal requests with an error response.
+   */
   readonly rejectAll: (message: string) => void;
 }
 

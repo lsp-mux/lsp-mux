@@ -50,13 +50,17 @@ export const defaultTimers: Timers = {
 
 // --- Utilities ---
 
-/** Shared no-op function for catch handlers, callbacks, etc. */
+/**
+ * Shared no-op function for catch handlers, callbacks, etc.
+ */
 // eslint-disable-next-line @typescript-eslint/no-empty-function -- intentional
 export const noop = (): void => {};
 
 // --- Constants ---
 
-/** Notifications that mutate document state — tracked by the proxy, not buffered during restart. */
+/**
+ * Notifications that mutate document state — tracked by the proxy, not buffered during restart.
+ */
 export const documentSyncMethods = new Set([
   'textDocument/didOpen',
   'textDocument/didChange',

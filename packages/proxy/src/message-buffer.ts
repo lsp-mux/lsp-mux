@@ -2,11 +2,17 @@ import type { Message } from './types.ts';
 import { Message as Msg } from './types.ts';
 
 export interface MessageBuffer {
-  /** Offer a message to the buffer. Returns false if the buffer is full. */
+  /**
+   * Offer a message to the buffer. Returns false if the buffer is full.
+   */
   offer: (msg: Message) => boolean;
-  /** Remove a buffered request by ID. Returns true if found. */
+  /**
+   * Remove a buffered request by ID. Returns true if found.
+   */
   cancel: (targetId: number | string) => boolean;
-  /** Drain and return all buffered messages. */
+  /**
+   * Drain and return all buffered messages.
+   */
   flush: () => readonly Message[];
   readonly length: number;
 }

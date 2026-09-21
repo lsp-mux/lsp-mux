@@ -7,7 +7,9 @@ export type PerUriStore = ReadonlyMap<string, readonly Diagnostic[]>;
 // Outer map: uri → per-server diagnostics
 export type DiagnosticsStore = ReadonlyMap<string, PerUriStore>;
 
-/** Empty store. */
+/**
+ * Empty store.
+ */
 export const empty = (): DiagnosticsStore => new Map();
 
 /**
@@ -38,7 +40,9 @@ export const update = (
   return next;
 };
 
-/** Merge all servers' diagnostics for a URI into a single flat array (union). */
+/**
+ * Merge all servers' diagnostics for a URI into a single flat array (union).
+ */
 export const merge = (store: DiagnosticsStore, uri: string): readonly Diagnostic[] => {
   const perUri = store.get(uri);
   if (!perUri) return [];

@@ -1,4 +1,6 @@
-/** @module-tag slow */
+/**
+ * @module-tag slow
+ */
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, vi } from 'vitest';
@@ -20,7 +22,9 @@ import {
   watcherWaitOptions,
 } from './harness.ts';
 
-/** Poll until the proxy's file watcher is active and dispatching events. */
+/**
+ * Poll until the proxy's file watcher is active and dispatching events.
+ */
 const waitForWatcherActive = (
   expect: ExpectStatic,
   { dir, nextSeq }: Workspace,
@@ -36,11 +40,15 @@ const waitForWatcherActive = (
     });
   }, watcherWaitOptions);
 
-/** Asymmetric matcher for a single watcher change event referencing `uri`. */
+/**
+ * Asymmetric matcher for a single watcher change event referencing `uri`.
+ */
 const changeContaining = (expect: ExpectStatic, uri: string): unknown =>
   expect.objectContaining({ uri: expect.stringContaining(uri) as unknown }) as unknown;
 
-/** Asymmetric matcher for a `$/watcherEvents` result carrying changes for `uris`. */
+/**
+ * Asymmetric matcher for a `$/watcherEvents` result carrying changes for `uris`.
+ */
 const watcherEventContaining = (expect: ExpectStatic, ...uris: string[]): unknown => {
   const changes = uris.map(uri => changeContaining(expect, uri));
   const event = expect.objectContaining({

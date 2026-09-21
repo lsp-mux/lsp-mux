@@ -4,7 +4,9 @@ import path from 'node:path';
 import { describe, it } from 'vitest';
 import { validateNpmPackage } from '../src/npm-validate.ts';
 
-/** Create an isolated temp dir. Disposable so `await using` removes it. */
+/**
+ * Create an isolated temp dir. Disposable so `await using` removes it.
+ */
 const createTempDir = async (name: string) => {
   const dir = path.join(
     import.meta.dirname, '..', 'dist', 'test-fixtures', randomUUID().slice(0, 8), name,

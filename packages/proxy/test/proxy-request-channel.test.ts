@@ -6,7 +6,9 @@ import {
 } from '../src/proxy-request-channel.ts';
 import type { RequestMessage, ResponseMessage } from '../src/types.ts';
 
-/** Delivery that records what it was handed and reports success. */
+/**
+ * Delivery that records what it was handed and reports success.
+ */
 const collectingDelivery = () => {
   const delivered: RequestMessage[] = [];
   return {
@@ -20,7 +22,9 @@ const collectingDelivery = () => {
 
 const refusingDelivery = () => 'undeliverable' as const;
 
-/** The request handed to delivery, or a clear failure if none was. */
+/**
+ * The request handed to delivery, or a clear failure if none was.
+ */
 const onlyDelivered = (delivered: readonly RequestMessage[]): RequestMessage => {
   const [sent] = delivered;
   if (!sent) throw new Error('nothing was delivered');

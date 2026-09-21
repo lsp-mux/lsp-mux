@@ -1,4 +1,6 @@
-/** @module-tag slow */
+/**
+ * @module-tag slow
+ */
 import { writeFile } from 'node:fs/promises';
 import { describe, vi } from 'vitest';
 import { initializeProxy, notify, openDocument, request } from '../helpers/test-client.ts';

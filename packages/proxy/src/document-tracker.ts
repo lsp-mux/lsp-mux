@@ -112,7 +112,9 @@ export const toArray = (docs: DocumentMap): readonly TrackedDocument[] => docs.v
 
 // --- Pure helpers ---
 
-/** Earliest of two indexOf results, treating -1 (not found) as absent. */
+/**
+ * Earliest of two indexOf results, treating -1 (not found) as absent.
+ */
 const firstFound = (left: number, right: number): number => {
   if (left === -1) return right;
   if (right === -1) return left;

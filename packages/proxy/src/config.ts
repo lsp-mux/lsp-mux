@@ -9,7 +9,9 @@ import * as v from 'valibot';
 import { ProxyConfigSchema, ServerConfigSchema } from './config-schema.ts';
 import type { ProxyConfig, ServerConfig } from './config-schema.ts';
 
-/** Re-parses settings after path resolution, which widens their type to unknown. */
+/**
+ * Re-parses settings after path resolution, which widens their type to unknown.
+ */
 const SettingsRecordSchema = v.record(v.string(), v.unknown());
 
 const configFile = '.lsp-proxy.json';

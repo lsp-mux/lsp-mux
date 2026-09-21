@@ -28,7 +28,9 @@ export const WORKSPACE = path.join(import.meta.dirname, '..', 'fake-workspace');
 export const toUri = (relativePath: string) =>
   normalizeFileUri(pathToFileURL(path.join(WORKSPACE, relativePath)).href);
 
-/** Build a tracked-document fixture for the given workspace-relative file. */
+/**
+ * Build a tracked-document fixture for the given workspace-relative file.
+ */
 export const makeDoc = (name: string, content: string, version = 1) => ({
   uri: toUri(name),
   languageId: 'typescript',

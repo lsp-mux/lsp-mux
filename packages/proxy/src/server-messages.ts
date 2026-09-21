@@ -24,24 +24,34 @@ import type {
   ServerConfig,
 } from './types.ts';
 
-/** Proxy internals the server-message handler needs access to. */
+/**
+ * Proxy internals the server-message handler needs access to.
+ */
 export interface ServerMessageDelegate {
   readonly ackToServer: (serverName: string, id: number | string | null) => void;
   readonly getWatchRegistrations: () => fw.WatchRegistrations;
   readonly getWorkspaceRoot: () => string | undefined;
-  /** True when compensating for a client without native file watching. */
+  /**
+   * True when compensating for a client without native file watching.
+   */
   readonly isLocalFileWatching: () => boolean;
   readonly sendToServer: (serverName: string, msg: Message) => void;
   readonly setWatchRegistrations: (registrations: fw.WatchRegistrations) => void;
-  /** Track a forwarded server request so the client's response routes back. */
+  /**
+   * Track a forwarded server request so the client's response routes back.
+   */
   readonly trackServerRequest: (id: number | string | null, serverName: string) => void;
-  /** Drop routing state for a client request once its response arrives. */
+  /**
+   * Drop routing state for a client request once its response arrives.
+   */
   readonly untrackClientRequest: (id: number | string) => void;
   readonly writeToClient: (msg: Message) => void;
 }
 
 export interface ServerMessageHandler {
-  /** Dispatch a message produced by a child server. */
+  /**
+   * Dispatch a message produced by a child server.
+   */
   readonly handleMessage: (serverName: string, msg: Message) => void;
 }
 
@@ -212,7 +222,9 @@ export const createServerMessageHandler = ({
     delegate.sendToServer(serverName, response);
   };
 
-  /** Clean up routing state and forward a server message to the client. */
+  /**
+   * Clean up routing state and forward a server message to the client.
+   */
   const forwardServerMessage = (serverName: string, msg: Message): void => {
     if (Msg.isResponse(msg) && msg.id !== null) {
       delegate.untrackClientRequest(msg.id);
