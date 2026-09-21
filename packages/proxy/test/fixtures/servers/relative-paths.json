@@ -7,5 +7,19 @@
   "languages": { "typescript": [
       ".ts"
     ] },
+  "settings": {
+    "maxMemory": 3072,
+    "nodePath": null,
+    "tsserver": {
+      "globalPlugins": [
+        {
+          "location": "./node_modules/some-plugin",
+          "name": "some-plugin"
+        }
+      ]
+    },
+    "useESLintClass": true,
+    "validate": "on"
+  },
   "transport": "stdio"
 }
