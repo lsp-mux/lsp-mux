@@ -1,7 +1,8 @@
+import type { NotificationMessage, RequestMessage } from 'vscode-jsonrpc';
+
 // Message is both an interface and a namespace (with isRequest/isResponse/isNotification guards)
 export { Message } from 'vscode-jsonrpc';
 export type { RequestMessage, ResponseMessage, NotificationMessage } from 'vscode-jsonrpc';
-import type { NotificationMessage, RequestMessage } from 'vscode-jsonrpc';
 
 // --- Server & proxy configuration ---
 
