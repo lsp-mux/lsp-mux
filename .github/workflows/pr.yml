@@ -21,6 +21,12 @@ jobs:
     name: Pre-Commit
     uses: gtbuchanan/tooling/.github/workflows/pre-commit.yml@main
     with:
+      # `registry/src/index.ts` imports `./entries.generated.ts`, which is
+      # git-ignored, so in a fresh checkout that import resolves to the
+      # `error` type and eslint's type-aware rules fire on code that is
+      # fine. Turbo's own task graph orders this; hk lints the changed
+      # files directly and would otherwise read the tree before codegen.
+      pnpm-commands: exec turbo run generate
       # The hk eslint step shells out to `pnpm exec eslint`, so hk needs
       # the project's deps installed.
       use-pnpm: true
