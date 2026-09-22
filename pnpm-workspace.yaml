@@ -3,7 +3,7 @@ allowBuilds:
   unrs-resolver: false
 
 catalog:
-  '@changesets/cli': 2.31.1
+  '@changesets/cli': 3.0.3
   '@faker-js/faker': 10.6.0
   '@gtbuchanan/cli': 0.3.0
   '@gtbuchanan/eslint-config': 0.5.2
