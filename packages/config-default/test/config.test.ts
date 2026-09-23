@@ -59,6 +59,20 @@ describe('lsp-proxy-config-default', () => {
     expect(vtsls.languages['typescript']).toContain('.ts');
   });
 
+  it('routes .vue to both linters', async ({ expect }) => {
+    const eslint = await loadServerConfig('eslint', configDir);
+    const oxlint = await loadServerConfig('oxlint', configDir);
+
+    /*
+     * Both linters read the script block of a single-file component, so a
+     * .vue file that reaches neither is silently unlinted — the failure this
+     * guards. What each one reports past that is the user's own linter
+     * config, and the README says what it takes.
+     */
+    expect(eslint.languages['vue']).toStrictEqual(['.vue']);
+    expect(oxlint.languages['vue']).toStrictEqual(['.vue']);
+  });
+
   it('loads the Vue plugin into tsserver from a path that exists', async ({ expect }) => {
     const vtsls = await loadServerConfig('vtsls', configDir);
     const { vtsls: settings } = v.parse(VtslsSettingsSchema, vtsls.settings);

@@ -20,6 +20,9 @@
     ],
     "typescriptreact": [
       ".tsx"
+    ],
+    "vue": [
+      ".vue"
     ]
   },
   "npm": "oxlint",

@@ -15,7 +15,7 @@ install step below, which generates that editor's plugin files.
 - **vtsls** — TypeScript / JavaScript (`.ts`, `.tsx`, `.js`, `.jsx`,
   `.mts`, `.mjs`, `.cts`, `.cjs`), and the TypeScript project behind the
   `.vue` files
-- **eslint** — ESLint diagnostics for TypeScript and JavaScript
+- **eslint** — ESLint diagnostics for TypeScript, JavaScript and `.vue`
 - **oxlint** — oxlint diagnostics for the same file types, running
   alongside ESLint rather than instead of it
 
@@ -47,10 +47,21 @@ Three things about that setup are easy to get wrong:
    and `@vue/language-server` are released together and this package pins
    both. A mismatched pair fails as commands that do not exist.
 
-Neither linter sees `.vue` files: both are configured for TypeScript and
-JavaScript only. oxlint can lint single-file components with its
-`--vue-plugin` flag, and ESLint needs `vue-eslint-parser`; neither is
-wired up here yet.
+## Linting Vue single-file components
+
+Both linters receive `.vue` files.
+
+oxlint reads the script block under its standard rules with no setup. Its
+Vue rules need `"plugins": ["vue"]` in your `.oxlintrc.json`. The
+`--vue-plugin` CLI flag has no effect on the language server, which takes
+its plugin list from the config file alone.
+
+ESLint reports nothing for a `.vue` file until your flat config matches
+one, which takes
+[`vue-eslint-parser`](https://github.com/vuejs/vue-eslint-parser) and
+usually [`eslint-plugin-vue`](https://eslint.vuejs.org). A file no config
+object matches is silent rather than an error, so a project without them
+sees no new diagnostics.
 
 ## Standalone installation
 
