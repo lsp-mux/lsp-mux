@@ -52,6 +52,29 @@ describe('LspProxy lifecycle', () => {
 
       expect(hover).toMatchObject({ result: { echo: 'textDocument/hover' } });
     });
+
+    it('logs how long the handshake took', async ({ createProxy, logLines, expect }) => {
+      const uri = fakeUri();
+      const { writer, reader } = createProxy();
+
+      await initializeProxy({ writer, reader });
+
+      await notify(writer, 'textDocument/didOpen', {
+        textDocument: {
+          uri,
+          languageId: 'typescript',
+          version: 1,
+          text: faker.lorem.sentence(),
+        },
+      });
+
+      await request({ writer, reader }, 11, 'textDocument/hover', {
+        textDocument: { uri },
+        position: { line: 0, character: 0 },
+      });
+
+      expect(logLines.join('')).toMatch(/mock: lazy start initialize answered in \d+ms/v);
+    });
   });
 
   it('returns ServerNotInitialized for requests before initialize', async ({

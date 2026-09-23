@@ -90,14 +90,20 @@ export const it = test.extend<{
   createProxy: (
     opts?: TestProxyOptions,
   ) => ReturnType<typeof createTestProxy> & { started: Promise<void> };
+  /**
+   * What the proxy logged, as written. Printed to stderr when a test fails.
+   */
+  logLines: string[];
   workspace: Workspace;
 }>({
-  createProxy: async ({}, use) => {
+  logLines: async ({}, use) => {
+    await use([]);
+  },
+  createProxy: async ({ logLines }, use) => {
     const instances: LspProxy[] = [];
-    const logBuffer: string[] = [];
     const sink = new Writable({
       write(chunk, _enc, cb) {
-        logBuffer.push(String(chunk));
+        logLines.push(String(chunk));
         cb();
       },
     });
@@ -111,7 +117,7 @@ export const it = test.extend<{
         return { ...ctx, started };
       });
     } catch (error) {
-      for (const line of logBuffer) process.stderr.write(line);
+      for (const line of logLines) process.stderr.write(line);
       throw error;
     } finally {
       for (const instance of instances) instance.dispose();

@@ -234,20 +234,41 @@ export const createManagedServer = ({
     try {
       const child = spawnServer();
 
+      const startedAt = performance.now();
       const initResponse = await channel.send(child, 'initialize', initParams);
+      const elapsedMs = Math.round(performance.now() - startedAt);
 
       if (isSuperseded(child)) {
+        /*
+         * Still worth recording, and at the quieter level because the start
+         * itself is uninteresting: a handshake slow enough to be overtaken is
+         * the case this measurement exists for, so dropping it would leave a
+         * record made only of the starts that finished quickly.
+         */
+        log.debug(`${name}: ${label} initialize answered in ${String(elapsedMs)}ms, superseded`);
         retryIfStillExpected();
         return;
       }
 
       if (initResponse.error) {
-        log.error(`${name}: ${label} initialize failed:`, initResponse.error.message);
+        log.error(
+          `${name}: ${label} initialize failed after ${String(elapsedMs)}ms:`,
+          initResponse.error.message,
+        );
         child.dispose();
         server = undefined;
         scheduleRetry(expectedState);
         return;
       }
+
+      /*
+       * The handshake is the part of a start that can outrun its timeout, and
+       * the one nothing else here measures: a spawn is cheap, and the replay
+       * that follows is proportional to open documents rather than to how
+       * busy the machine is. Logged on its own so the budget it is held to
+       * can be judged against what real starts cost.
+       */
+      log.info(`${name}: ${label} initialize answered in ${String(elapsedMs)}ms`);
 
       sendPostInitNotifications(child, config);
       isEverInitialized = true;
