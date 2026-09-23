@@ -27,7 +27,10 @@ docs see [README.md](./README.md).
 - **Request ID namespacing** — proxy rewrites IDs to avoid collisions
   between servers, maps responses back to the original client ID.
   Requests the proxy raises itself carry a `__proxy:` prefix and are
-  settled by the request channel, never reported to the client.
+  settled by the request channel, never reported to the client. The proxy
+  owns that prefix rather than trusting clients to leave it alone: a
+  client request carrying one is answered `InvalidRequest`, and a
+  `$/cancelRequest` naming one is dropped.
 - **Notification bridging** — a `bridges` entry answers one server's
   protocol notifications from another instead of passing them to a client
   that cannot serve them. See Volar 3 Forwarding below.

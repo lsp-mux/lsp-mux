@@ -74,7 +74,7 @@ export interface Client {
  */
 export const request = (
   { writer, reader }: Client,
-  id: number,
+  id: number | string,
   method: string,
   params?: object,
 ): Promise<ResponseMessage> =>

@@ -71,6 +71,7 @@ export const documentSyncMethods = new Set([
 export const lspErrorCodes = {
   ServerNotInitialized: -32_002,
   RequestCancelled: -32_800,
+  InvalidRequest: -32_600,
   InternalError: -32_603,
 } as const;
 
