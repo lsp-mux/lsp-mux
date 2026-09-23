@@ -6,11 +6,12 @@ deep merging, and npm package validation.
 
 ## Pre-defined servers
 
-| Name     | npm package                  | Description             |
-| -------- | ---------------------------- | ----------------------- |
-| `vtsls`  | `@vtsls/language-server`     | TypeScript / JavaScript |
-| `eslint` | `@lsp-mux/vscode-eslint-lsp` | ESLint diagnostics      |
-| `oxlint` | `oxlint`                     | Oxlint diagnostics      |
+| Name     | npm package                  | Description                |
+| -------- | ---------------------------- | -------------------------- |
+| `eslint` | `@lsp-mux/vscode-eslint-lsp` | ESLint diagnostics         |
+| `oxlint` | `oxlint`                     | Oxlint diagnostics         |
+| `vtsls`  | `@vtsls/language-server`     | TypeScript / JavaScript    |
+| `vue`    | `@vue/language-server`       | Vue single-file components |
 
 Configs live in `entries/<name>.json`. Each entry contains the full server
 config (`command`, `args`, `languages`, `transport`, `settings`,
