@@ -1,4 +1,5 @@
 import { faker } from '@faker-js/faker';
+import { createClock } from '@sinonjs/fake-timers';
 import { describe, it } from 'vitest';
 import {
   createProxyRequestChannel,
@@ -21,6 +22,14 @@ const collectingDelivery = () => {
 };
 
 const refusingDelivery = () => 'undeliverable' as const;
+
+/**
+ * Whether a promise is still unsettled, decided one microtask turn from now.
+ */
+const isPending = async (promise: Promise<unknown>): Promise<boolean> => {
+  const stillWaiting = Symbol('pending');
+  return await Promise.race([promise, Promise.resolve(stillWaiting)]) === stillWaiting;
+};
 
 /**
  * The request handed to delivery, or a clear failure if none was.
@@ -90,6 +99,36 @@ describe('ProxyRequestChannel', () => {
     const res = await channel.sendVia(deliver, method, undefined, 10);
 
     expect(res.error?.message).toBe(`Request ${method} timed out after 10ms`);
+  });
+
+  it('gives initialize longer than a request against a running server', async ({ expect }) => {
+    /* Written out rather than imported: the budget a cold multi-server start
+       gets is the thing under test, not a value to re-derive. */
+    const runningTimeoutMs = 30_000;
+    const initializeTimeoutMs = 120_000;
+
+    const clock = createClock();
+    const channel = createProxyRequestChannel('alpha', clock);
+    const { deliver } = collectingDelivery();
+
+    // Delivered but never answered, so only the timeout can settle them.
+    const pull = channel.sendVia(deliver, 'textDocument/diagnostic', undefined);
+    const init = channel.sendVia(deliver, 'initialize', undefined);
+
+    await clock.tickAsync(runningTimeoutMs);
+    const pullResult = await pull;
+
+    expect(pullResult.error?.message).toBe(
+      `Request textDocument/diagnostic timed out after ${String(runningTimeoutMs)}ms`,
+    );
+    await expect(isPending(init)).resolves.toBe(true);
+
+    await clock.tickAsync(initializeTimeoutMs - runningTimeoutMs);
+    const initResult = await init;
+
+    expect(initResult.error?.message).toBe(
+      `Request initialize timed out after ${String(initializeTimeoutMs)}ms`,
+    );
   });
 
   it('leaves a response belonging to another channel alone', ({ expect }) => {
