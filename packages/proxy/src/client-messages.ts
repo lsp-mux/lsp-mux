@@ -9,6 +9,7 @@ import { rewriteDocSyncUri, rewriteDocSyncVersion } from './doc-sync.ts';
 import type { Logger } from './logger.ts';
 import type { ManagedServer } from './managed-server.ts';
 import { CancelParamsSchema } from './protocol-schemas.ts';
+import { isInternalRequestId } from './proxy-request-channel.ts';
 import type { Router } from './router.ts';
 import { extractUri } from './router.ts';
 import { Message as Msg, documentSyncMethods, lspErrorCodes } from './types.ts';
@@ -119,6 +120,11 @@ export const createClientMessageHandler = ({
     const result = v.safeParse(CancelParamsSchema, msg.params);
     if (result.success) {
       const { id } = result.output;
+      // Cancelling a reserved ID would cancel a request the client never made.
+      if (isInternalRequestId(id)) {
+        log.warn(`Ignoring cancellation of reserved request ID ${String(id)}`);
+        return;
+      }
       let isCancelled = false;
       for (const server of servers.values()) {
         if (server.cancelBuffered(id)) isCancelled = true;
@@ -254,6 +260,23 @@ export const createClientMessageHandler = ({
   return {
     handleMessage(msg) {
       logClientMessage(msg);
+
+      /*
+       * The `__proxy:` ID namespace belongs to the proxy's own request
+       * channel, which settles any response wearing that shape rather than
+       * forwarding it. A client request carrying one routes to a server and
+       * is then answered into the void, so the boundary enforces the
+       * namespace rather than trusting clients to stay out of it.
+       */
+      if (Msg.isRequest(msg) && isInternalRequestId(msg.id)) {
+        log.warn(`Rejecting client request with reserved ID ${String(msg.id)}`);
+        delegate.sendErrorToClient(
+          msg.id,
+          lspErrorCodes.InvalidRequest,
+          'Request ID is reserved for proxy-internal use',
+        );
+        return;
+      }
 
       if (Msg.isNotification(msg) && documentSyncMethods.has(msg.method)) {
         delegate.applyDocumentSync(msg.method, msg.params);

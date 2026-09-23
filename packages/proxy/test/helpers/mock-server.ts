@@ -53,6 +53,7 @@ const openDocuments = new Map<string, OpenDocument>();
  * triggered.
  */
 const pendingTsserver = new Map<number, number | string | null>();
+const cancellations: unknown[] = [];
 const watcherEvents: unknown[] = [];
 const configNotifications: unknown[] = [];
 const receivedResponses: unknown[] = [];
@@ -125,6 +126,9 @@ const requestHandlers: Record<string, (msg: RequestMessage) => void> = {
   },
   '$/documents': (msg) => {
     respond(msg.id, openDocuments.values().toArray());
+  },
+  '$/cancellations': (msg) => {
+    respond(msg.id, cancellations);
   },
   '$/watcherEvents': (msg) => {
     respond(msg.id, watcherEvents);
@@ -261,6 +265,9 @@ const notificationHandlers: Record<string, (msg: NotificationMessage) => void> =
     if (requestId === undefined) return;
     pendingTsserver.delete(id);
     respond(requestId, { id, body });
+  },
+  '$/cancelRequest': (msg) => {
+    cancellations.push(msg.params);
   },
   'workspace/didChangeConfiguration': (msg) => {
     if (isTrackConfig) configNotifications.push(msg.params);
