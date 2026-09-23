@@ -32,7 +32,10 @@ docs see [README.md](./README.md).
   protocol notifications from another instead of passing them to a client
   that cannot serve them. See Volar 3 Forwarding below.
 - **Lifecycle management** — exponential backoff restart with max retries;
-  transparent to the client
+  transparent to the client. `initialize` waits far longer than any other
+  proxy-internal request: a cold start loads a TypeScript project while the
+  other servers are starting alongside it, and a timeout there spends a
+  restart attempt making the machine busier still
 - **Document state tracking** — proxy tracks `didOpen`/`didChange`/`didClose`
   and replays current state to servers that restart mid-session
 - **URI normalization** — file URIs from clients and servers are
