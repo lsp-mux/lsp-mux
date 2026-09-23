@@ -1,8 +1,22 @@
 import type { ChildServer } from './child-server.ts';
-import { Message as Msg, createRequest, lspErrorCodes } from './types.ts';
-import type { Message, RequestMessage, ResponseMessage } from './types.ts';
+import { Message as Msg, createRequest, defaultTimers, lspErrorCodes } from './types.ts';
+import type { Message, RequestMessage, ResponseMessage, Timers } from './types.ts';
 
 const defaultTimeoutMs = 30_000;
+
+/*
+ * The handshake is what makes a server run rather than a request against one
+ * already running, and for a TypeScript or Vue server it loads a project
+ * first. Several servers start together on the first didOpen, so they compete
+ * for the machine exactly when each costs the most. Giving up there costs more
+ * than waiting: the proxy reads a timeout as a failed start, spawns another
+ * server onto the same busy machine, and can exhaust the restart budget before
+ * any of them answers.
+ */
+const initializeTimeoutMs = 120_000;
+
+const timeoutFor = (method: string): number =>
+  method === 'initialize' ? initializeTimeoutMs : defaultTimeoutMs;
 
 const idPrefix = '__proxy:';
 
@@ -64,7 +78,10 @@ const errorResponse = (id: string, message: string): ResponseMessage => ({
   error: { code: lspErrorCodes.InternalError, message },
 });
 
-export const createProxyRequestChannel = (name: string): ProxyRequestChannel => {
+export const createProxyRequestChannel = (
+  name: string,
+  timers: Timers = defaultTimers,
+): ProxyRequestChannel => {
   let seq = 0;
   const callbacks = new Map<string, (res: ResponseMessage) => void>();
   const ownPrefix = `${idPrefix}${name}:`;
@@ -73,22 +90,22 @@ export const createProxyRequestChannel = (name: string): ProxyRequestChannel => 
     deliver: DeliverRequest,
     method: string,
     params: RequestMessage['params'],
-    timeoutMs = defaultTimeoutMs,
+    timeoutMs = timeoutFor(method),
   ): Promise<ResponseMessage> => {
     const id = `${ownPrefix}${String(seq++)}`;
     return new Promise<ResponseMessage>((resolve) => {
-      const timer = setTimeout(() => {
+      const timer = timers.setTimeout(() => {
         callbacks.delete(id);
         resolve(errorResponse(id, `Request ${method} timed out after ${String(timeoutMs)}ms`));
       }, timeoutMs);
 
       callbacks.set(id, (res) => {
-        clearTimeout(timer);
+        timers.clearTimeout(timer);
         resolve(res);
       });
 
       if (deliver(createRequest(id, method, params)) === 'undeliverable') {
-        clearTimeout(timer);
+        timers.clearTimeout(timer);
         callbacks.delete(id);
         resolve(errorResponse(id, 'Server not running'));
       }
