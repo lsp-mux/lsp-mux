@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  deepMerge, lookupRegistryEntry,
+  deepMerge, lookupRegistryEntry, resolveNodeModulesPath,
   serverConfigFromEntry, validateNpmPackage,
 } from 'lsp-proxy-registry';
 import * as v from 'valibot';
@@ -47,8 +47,17 @@ const tryLoadJsonFile = async (filePath: string): Promise<Record<string, unknown
 const isRelativePath = (filePath: string): boolean =>
   filePath.startsWith('./') || filePath.startsWith('../');
 
+/*
+ * A `./node_modules/...` path names a package the installer placed, not a file
+ * the config owns, so it resolves wherever that package actually landed —
+ * beside the config dir under pnpm, at the project root under npm and yarn.
+ * Falling back to the plain resolve keeps the missing-package error pointing
+ * at the config dir, which is where the install command in it applies.
+ */
 const resolveRelative = (filePath: string, baseDir: string): string =>
-  isRelativePath(filePath) ? path.resolve(baseDir, filePath) : filePath;
+  isRelativePath(filePath)
+    ? resolveNodeModulesPath(filePath, baseDir) ?? path.resolve(baseDir, filePath)
+    : filePath;
 
 /*
  * Settings reach a server verbatim, and some of them are paths: vtsls locates
