@@ -1,30 +1,27 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import * as v from 'valibot';
-import type {
-  Message, NotificationMessage, RequestMessage, ResponseMessage,
-} from 'vscode-jsonrpc';
-import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
-
-const CodeSchema = v.union([v.string(), v.number()]);
-
-const DiagnosticSchema = v.object({
-  code: v.optional(CodeSchema),
-  message: v.string(),
-  source: v.optional(v.string()),
-});
-
-const PublishDiagnosticsSchema = v.object({
-  diagnostics: v.array(DiagnosticSchema),
-  uri: v.string(),
-});
-
-export type Diagnostic = v.InferOutput<typeof DiagnosticSchema>;
-type PublishDiagnosticsParams = v.InferOutput<typeof PublishDiagnosticsSchema>;
+import {
+  type Diagnostic,
+  DidOpenTextDocumentNotification,
+  ExitNotification,
+  InitializeRequest,
+  InitializedNotification,
+  LogMessageNotification,
+  PublishDiagnosticsNotification,
+  RegistrationRequest,
+  ShowMessageNotification,
+  ShutdownRequest,
+  UnregistrationRequest,
+  createProtocolConnection,
+} from 'vscode-languageserver-protocol/node.js';
 
 const lineBreak = /\r?\n/v;
+const maxStderrLines = 30;
 
-const asRecord = (message: Message): Record<string, unknown> => ({ ...message });
+/**
+ * Answer a registration request with the empty result the protocol expects.
+ */
+const acceptRequest = (): undefined => undefined;
 
 /*
  * A server may spell a document's URI differently from the client that opened
@@ -42,28 +39,6 @@ const isSameDocument = (left: string, right: string): boolean => {
   } catch {
     return left === right;
   }
-};
-
-const logMethods = new Set(['window/logMessage', 'window/showMessage']);
-
-/**
- * Anything a server says about itself, kept so a timeout can report what the
- * servers were doing rather than only that nothing arrived.
- */
-const serverNote = (record: Record<string, unknown>): string | undefined => {
-  const method = record['method'];
-  if (typeof method !== 'string') return undefined;
-  if (method === 'eslint/status') return `eslint/status ${JSON.stringify(record['params'])}`;
-  if (!logMethods.has(method)) return undefined;
-  const parsed = v.safeParse(v.object({ message: v.string() }), record['params']);
-  return parsed.success ? parsed.output.message : undefined;
-};
-
-const publishedParams = (message: Message): PublishDiagnosticsParams | undefined => {
-  const record = asRecord(message);
-  if (record['method'] !== 'textDocument/publishDiagnostics') return undefined;
-  const parsed = v.safeParse(PublishDiagnosticsSchema, record['params']);
-  return parsed.success ? parsed.output : undefined;
 };
 
 export interface ProxyClient {
@@ -84,6 +59,11 @@ export interface ProxyClient {
 /**
  * Drive a proxy over stdio far enough to open a document and collect what the
  * servers behind it report.
+ *
+ * The connection comes from `vscode-languageserver-protocol`, which is what
+ * the proxy's own clients speak: it carries request correlation, the typed
+ * method constants, and rejection of anything still in flight when the child
+ * dies, none of which a hand-written client gets right for free.
  */
 export const startProxy = async (
   command: string,
@@ -97,63 +77,38 @@ export const startProxy = async (
   });
   if (!child.stdout || !child.stdin) throw new Error('proxy was spawned without stdio pipes');
 
-  const reader = new StreamMessageReader(child.stdout);
-  const writer = new StreamMessageWriter(child.stdin);
-  const published: PublishDiagnosticsParams[] = [];
-  const listeners = new Set<() => void>();
-  const logged: string[] = [];
   const stderr: string[] = [];
   child.stderr?.setEncoding('utf8').on('data', (chunk: string) => {
-    const lines = chunk.split(lineBreak).filter(line => line.trim() !== '');
-    stderr.push(...lines);
+    stderr.push(...chunk.split(lineBreak).filter(line => line.trim() !== ''));
   });
-  const pending = new Map<number, (message: Record<string, unknown>) => void>();
 
-  reader.listen((message) => {
-    const record = asRecord(message);
-    const id = record['id'];
+  const connection = createProtocolConnection(child.stdout, child.stdin);
+  const published: { readonly diagnostics: readonly Diagnostic[]; readonly uri: string }[] = [];
+  const listeners = new Set<() => void>();
+  const logged: string[] = [];
 
-    if (typeof id === 'number' && record['method'] === undefined) {
-      pending.get(id)?.(record);
-      pending.delete(id);
-      return;
-    }
-
-    /*
-     * A server request the proxy passes through — capability registration,
-     * mostly. Answering keeps the server from blocking on a client that never
-     * replies; the content does not matter to what is asserted here.
-     */
-    if (typeof id === 'number') {
-      /* eslint-disable-next-line unicorn/no-null --
-         JSON-RPC requires a present result; undefined would omit the key. */
-      const ack: ResponseMessage = { id, jsonrpc: '2.0', result: null };
-      void writer.write(ack);
-      return;
-    }
-
-    const note = serverNote(record);
-    if (note !== undefined) {
-      logged.push(note);
-      return;
-    }
-
-    const params = publishedParams(message);
-    if (params === undefined) return;
+  connection.onNotification(PublishDiagnosticsNotification.type, (params) => {
     published.push(params);
     for (const notify of listeners) notify();
   });
-
-  let nextId = 1;
-  const request = async (method: string, params: object): Promise<Record<string, unknown>> => {
-    const id = nextId++;
-    const response = new Promise<Record<string, unknown>>((resolve) => {
-      pending.set(id, resolve);
+  for (const type of [LogMessageNotification.type, ShowMessageNotification.type]) {
+    connection.onNotification(type, ({ message }) => {
+      logged.push(message);
     });
-    const message: RequestMessage = { id, jsonrpc: '2.0', method, params };
-    await writer.write(message);
-    return response;
-  };
+  }
+  connection.onNotification('eslint/status', (params: unknown) => {
+    logged.push(`eslint/status ${JSON.stringify(params)}`);
+  });
+
+  /*
+   * The requests the proxy passes through rather than answering itself.
+   * Accepting them keeps a server from blocking on a client that never
+   * replies; what is registered does not change what is asserted here.
+   */
+  connection.onRequest(RegistrationRequest.type, acceptRequest);
+  connection.onRequest(UnregistrationRequest.type, acceptRequest);
+
+  connection.listen();
 
   const rootUri = pathToFileURL(workspaceRoot).href;
 
@@ -162,28 +117,19 @@ export const startProxy = async (
    * proxy starts its child servers while answering it, and a didOpen that
    * arrives first reaches no server at all.
    */
-  await request('initialize', {
-    capabilities: {
-      textDocument: { publishDiagnostics: {} },
-      workspace: { configuration: true, workspaceFolders: true },
-    },
+  await connection.sendRequest(InitializeRequest.type, {
+    capabilities: { textDocument: { publishDiagnostics: {} }, workspace: { configuration: true } },
     processId: process.pid,
     rootUri,
     workspaceFolders: [{ name: 'e2e', uri: rootUri }],
   });
-  const initialized: NotificationMessage = {
-    jsonrpc: '2.0', method: 'initialized', params: {},
-  };
-  await writer.write(initialized);
+  await connection.sendNotification(InitializedNotification.type, {});
 
   return {
     async openDocument(uri, languageId, text) {
-      const notification: NotificationMessage = {
-        jsonrpc: '2.0',
-        method: 'textDocument/didOpen',
-        params: { textDocument: { languageId, text, uri, version: 1 } },
-      };
-      await writer.write(notification);
+      await connection.sendNotification(DidOpenTextDocumentNotification.type, {
+        textDocument: { languageId, text, uri, version: 1 },
+      });
     },
     waitForDiagnostic: (uri, isMatch, timeoutMs = 90_000) =>
       new Promise((resolve, reject) => {
@@ -212,7 +158,7 @@ export const startProxy = async (
             `Timed out waiting for a diagnostic on ${uri}.`,
             `Published: ${seen.join(' | ') || '(nothing)'}`,
             `Server messages: ${logged.slice(-20).join(' | ') || '(none)'}`,
-            `Proxy stderr: ${stderr.slice(-30).join(' | ') || '(none)'}`,
+            `Proxy stderr: ${stderr.slice(-maxStderrLines).join(' | ') || '(none)'}`,
           ].join('\n')));
         }, timeoutMs);
 
@@ -220,15 +166,20 @@ export const startProxy = async (
         check();
       }),
     async [Symbol.asyncDispose]() {
-      const shutdown: RequestMessage = { id: nextId++, jsonrpc: '2.0', method: 'shutdown' };
+      /*
+       * Shut down over the protocol rather than killing outright, so the proxy
+       * gets to stop the language servers it started. The catch covers a proxy
+       * that already died — the kill below is what settles it either way.
+       */
       try {
-        await writer.write(shutdown);
+        await connection.sendRequest(ShutdownRequest.type, undefined);
+        await connection.sendNotification(ExitNotification.type);
       } catch {
         /*
-         * The proxy may already be gone; the kill below is what matters.
+         * Already gone; the kill below settles it either way.
          */
       }
-      reader.dispose();
+      connection.dispose();
       child.kill();
     },
   };

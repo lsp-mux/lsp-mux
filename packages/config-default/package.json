@@ -38,7 +38,7 @@
     "lsp-proxy": "workspace:*",
     "valibot": "catalog:",
     "vitest": "catalog:",
-    "vscode-jsonrpc": "catalog:",
+    "vscode-languageserver-protocol": "catalog:",
     "vue-eslint-parser": "catalog:"
   },
   "engines": {
