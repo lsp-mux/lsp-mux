@@ -15,7 +15,7 @@
     "generate-plugin": "generate-claude-plugin",
     "lint:eslint": "gtb task lint:eslint",
     "pack:npm": "gtb task pack:npm",
-    "test:e2e": "vitest run --config vitest.config.e2e.ts",
+    "test:vitest:e2e": "gtb task test:vitest:e2e",
     "test:vitest:fast": "gtb task test:vitest:fast",
     "test:vitest:slow": "gtb task test:vitest:slow",
     "typecheck:ts": "gtb task typecheck:ts"
