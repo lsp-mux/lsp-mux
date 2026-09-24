@@ -16,7 +16,14 @@ import { Message as Msg, documentSyncMethods, lspErrorCodes } from './types.ts';
 import type { Message, NotificationMessage, RequestMessage, ResponseMessage } from './types.ts';
 import { normalizeFileUri } from './uri.ts';
 
-export type ProxyState = 'idle' | 'running' | 'stopped';
+/**
+ * `stopped` is a client `shutdown` answered while the servers are still
+ * running; `disposed` is after the teardown that stops them, which the
+ * client's `exit` or a closed connection triggers. Keep them apart: one state
+ * for both makes the teardown read as already done from the moment `shutdown`
+ * lands, and it never runs.
+ */
+export type ProxyState = 'idle' | 'running' | 'stopped' | 'disposed';
 
 /**
  * Proxy internals the client-message handler needs access to.
@@ -27,13 +34,9 @@ export interface ClientMessageDelegate {
    */
   readonly applyDocumentSync: (method: string, params: NotificationMessage['params']) => void;
   /**
-   * Shut the whole proxy down (client sent exit while running).
+   * Shut the whole proxy down (client sent exit).
    */
   readonly dispose: () => void;
-  /**
-   * Stop reading client input (client sent exit after shutdown).
-   */
-  readonly disposeReader: () => void;
   readonly getState: () => ProxyState;
   /**
    * Begin the initialize handshake for all servers.
@@ -167,11 +170,20 @@ export const createClientMessageHandler = ({
     diagnostics.maybePullAfterSync(msg, uri);
   };
 
+  /**
+   * Reached from the running state and, once a `shutdown` has moved the proxy
+   * to the stopped one, from there too: `shutdown` only asks a server to
+   * prepare to exit, so either path still has servers to stop.
+   */
+  const handleExit = (msg: NotificationMessage): void => {
+    broadcastToActive(msg);
+    delegate.dispose();
+  };
+
   const handleRunningNotification = (msg: NotificationMessage): void => {
     switch (msg.method) {
       case 'exit': {
-        broadcastToActive(msg);
-        delegate.dispose();
+        handleExit(msg);
         return;
       }
       case 'initialized': {
@@ -249,7 +261,7 @@ export const createClientMessageHandler = ({
 
   const handleStoppedMessage = (msg: Message): void => {
     if (Msg.isNotification(msg) && msg.method === 'exit') {
-      delegate.disposeReader();
+      handleExit(msg);
       return;
     }
     if (Msg.isRequest(msg)) {
@@ -291,7 +303,8 @@ export const createClientMessageHandler = ({
           handleRunningMessage(msg);
           return;
         }
-        case 'stopped': {
+        case 'stopped':
+        case 'disposed': {
           handleStoppedMessage(msg);
           return;
         }

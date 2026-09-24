@@ -147,7 +147,6 @@ export class LspProxy {
           this.documents = docs.apply(this.documents, method, params);
         },
         dispose: () => { this.dispose(); },
-        disposeReader: () => { this.clientReader.dispose(); },
         getState: () => this.state,
         initializeServers: (id, params) => {
           this.initParams = params;
@@ -309,7 +308,7 @@ export class LspProxy {
   /**
    * Safe check that avoids TS narrowing issues across async boundaries.
    */
-  private isStopped(): boolean { return this.state === 'stopped'; }
+  private isStopped(): boolean { return this.state === 'stopped' || this.state === 'disposed'; }
 
   private ackToServer(serverName: string, requestId: number | string | null): void {
     /* eslint-disable-next-line unicorn/no-null --
@@ -363,8 +362,8 @@ export class LspProxy {
   }
 
   dispose(): void {
-    if (this.state === 'stopped') return;
-    this.state = 'stopped';
+    if (this.state === 'disposed') return;
+    this.state = 'disposed';
     this.watcher?.dispose();
     this.watcher = undefined;
     for (const server of this.servers.values()) server.dispose();
