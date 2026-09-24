@@ -135,8 +135,10 @@ export interface ProjectFixture {
  * the source tree is the whole point: it exercises the published file list,
  * the dependency versions and the postinstall hook.
  */
-export const createProjectFixture = (files: Readonly<Record<string, string>>): ProjectFixture => {
-  const projectDir = mkdtempSync(path.join(tmpdir(), 'lsp-proxy-e2e-'));
+const setUpProject = (
+  projectDir: string,
+  files: Readonly<Record<string, string>>,
+): Omit<ProjectFixture, typeof Symbol.dispose> => {
   const workspaceRoot = path.join(projectDir, 'workspace');
   mkdirSync(workspaceRoot, { recursive: true });
 
@@ -164,12 +166,26 @@ export const createProjectFixture = (files: Readonly<Record<string, string>>): P
    */
   const { 'lsp-proxy': entry } = v.parse(GeneratedPluginSchema, generated);
 
-  return {
-    configDir,
-    launch: { args: entry.args, command: entry.command },
-    workspaceRoot,
-    [Symbol.dispose]() {
-      rmSync(projectDir, { force: true, recursive: true });
-    },
+  return { configDir, launch: { args: entry.args, command: entry.command }, workspaceRoot };
+};
+
+export const createProjectFixture = (files: Readonly<Record<string, string>>): ProjectFixture => {
+  const projectDir = mkdtempSync(path.join(tmpdir(), 'lsp-proxy-e2e-'));
+  const remove = (): void => {
+    rmSync(projectDir, { force: true, recursive: true });
   };
+
+  /*
+   * Only a fixture that was built hands back a disposer, so anything thrown
+   * on the way there leaves the directory with nobody holding it — and a
+   * failed install, a failed postinstall hook and a drifted .lsp.json are the
+   * results this suite exists to report, each leaving a full node_modules
+   * behind.
+   */
+  try {
+    return { ...setUpProject(projectDir, files), [Symbol.dispose]: remove };
+  } catch (error) {
+    remove();
+    throw error;
+  }
 };
