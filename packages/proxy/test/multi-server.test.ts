@@ -170,9 +170,13 @@ describe('Multi-server proxy', () => {
 
     await bothDiags;
 
-    await writer.write(createRequest(100, '$/crash', {}));
-
-    const msgs = await collectMessages(
+    /*
+     * Collect before the crash, not after: a reader with no listener attached
+     * drops what arrives rather than buffering it, so a crash answered inside
+     * the gap between the two calls is lost and the collector waits out its
+     * whole timeout. The wider the machine's load, the wider that gap.
+     */
+    const crashResults = collectMessages(
       reader,
       msg =>
         isResponse(msg, 100) ||
@@ -181,6 +185,10 @@ describe('Multi-server proxy', () => {
           getDiagnostics(msg)[0]?.source === 'beta'),
       2,
     );
+
+    await writer.write(createRequest(100, '$/crash', {}));
+
+    const msgs = await crashResults;
 
     expect(msgs.find(msg => isResponse(msg, 100))).toMatchObject({
       error: expect.objectContaining({}) as unknown,
