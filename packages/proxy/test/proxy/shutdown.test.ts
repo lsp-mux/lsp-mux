@@ -11,7 +11,7 @@ import {
   openDocument,
   request,
 } from '../helpers/test-client.ts';
-import { it } from './harness.ts';
+import { type ServerConfig, it, mockServerConfig } from './harness.ts';
 
 /**
  * Bring the proxy up with one server spawned and answering, the only state a
@@ -26,6 +26,12 @@ const startWithRunningServer = async (client: Client): Promise<void> => {
     position: { line: 0, character: 0 },
   });
 };
+
+/**
+ * How many times the proxy has run its teardown, which it logs once per run.
+ */
+const countTeardowns = (logLines: readonly string[]): number =>
+  logLines.filter(line => line.includes('Proxy shut down')).length;
 
 /**
  * Wait for the child process to be gone. The proxy's log is what reports it:
@@ -78,5 +84,41 @@ describe('LspProxy shutdown', () => {
     await waitForServerExit(expect, logLines);
 
     await expect(started).resolves.toBeUndefined();
+  });
+
+  /*
+   * A server that exits rather than answering leaves `shutdownAllServers`
+   * awaiting while the stop it reports tears the proxy down, so the
+   * continuation runs against a proxy that is already disposed.
+   */
+  it('stays disposed when a server stops mid-shutdown', async ({
+    createProxy,
+    logLines,
+    expect,
+  }) => {
+    const config: ServerConfig = {
+      ...mockServerConfig,
+      args: [...mockServerConfig.args, '--exit-on-shutdown'],
+    };
+    const { proxy, writer, reader, started } = createProxy({ config });
+
+    await startWithRunningServer({ writer, reader });
+
+    const shutdownRes = await request({ writer, reader }, 99, 'shutdown');
+
+    // The client is owed its answer even though the teardown got there first.
+    /* eslint-disable-next-line unicorn/no-null -- LSP protocol uses null on the wire. */
+    expect(shutdownRes).toMatchObject({ result: null });
+
+    await expect(started).resolves.toBeUndefined();
+
+    /*
+     * The only way left to ask: the teardown disposed the client reader, so
+     * nothing sent from here is read. A second call is a no-op while the
+     * proxy is still disposed, and repeats the teardown once it is not.
+     */
+    proxy.dispose();
+
+    expect(countTeardowns(logLines)).toBe(1);
   });
 });

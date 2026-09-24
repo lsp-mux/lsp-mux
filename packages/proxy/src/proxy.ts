@@ -201,7 +201,12 @@ export class LspProxy {
     /* eslint-disable-next-line unicorn/no-null --
        The LSP shutdown response requires an explicit null result. */
     this.respondToClient(clientRequestId, null);
-    this.state = 'stopped';
+    /*
+     * A teardown that landed while a server was answering has already done
+     * everything this method was arranging, so `disposed` stands: stepping
+     * back to `stopped` would let the next teardown run a second time.
+     */
+    if (this.state !== 'disposed') this.state = 'stopped';
   }
 
   // ── Server → Client ──────────────────────────────────────────────────

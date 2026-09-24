@@ -36,6 +36,7 @@ const isPullDiagnostics = process.argv.includes('--pull-diagnostics');
 const isInitializeError = process.argv.includes('--initialize-error');
 const isTsserverClient = process.argv.includes('--tsserver-client');
 const isExecuteCommandError = process.argv.includes('--execute-command-error');
+const isExitOnShutdown = process.argv.includes('--exit-on-shutdown');
 
 const reader = new StreamMessageReader(process.stdin);
 const writer = new StreamMessageWriter(process.stdout);
@@ -120,6 +121,12 @@ const requestHandlers: Record<string, (msg: RequestMessage) => void> = {
     respond(msg.id, state.initializeParams as object);
   },
   'shutdown': (msg) => {
+    if (isExitOnShutdown) {
+      /* eslint-disable-next-line unicorn/no-process-exit --
+         Leaving `shutdown` unanswered and exiting instead, so the proxy is
+         still awaiting the response when the stop it reports tears it down. */
+      process.exit(0);
+    }
     /* eslint-disable-next-line unicorn/no-null --
        The JSON-RPC shutdown response result is null. */
     respond(msg.id, null);
