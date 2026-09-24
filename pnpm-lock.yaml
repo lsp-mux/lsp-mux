@@ -171,8 +171,8 @@ catalogs:
       specifier: 10.6.0
       version: 10.6.0
     '@gtbuchanan/cli':
-      specifier: 0.3.0
-      version: 0.3.0
+      specifier: 1.0.0
+      version: 1.0.0
     '@gtbuchanan/eslint-config':
       specifier: 0.5.2
       version: 0.5.2
@@ -261,7 +261,7 @@ importers:
         version: 10.6.0
       '@gtbuchanan/cli':
         specifier: 'catalog:'
-        version: 0.3.0(skills@1.5.15)(typescript@5.9.3)
+        version: 1.0.0(skills@1.5.15)(typescript@5.9.3)
       '@gtbuchanan/eslint-config':
         specifier: 'catalog:'
         version: 0.5.2(@typescript-eslint/eslint-plugin@8.64.0(@typescript-eslint/parser@8.64.0(eslint@10.11.0(jiti@2.7.0))(typescript@5.9.3))(eslint@10.11.0(jiti@2.7.0))(typescript@5.9.3))(@typescript-eslint/utils@8.70.0(eslint@10.11.0(jiti@2.7.0))(typescript@5.9.3))(eslint@10.11.0(jiti@2.7.0))(postcss@8.5.8)(typescript@5.9.3)(vitest@5.0.1)
@@ -805,8 +805,8 @@ packages:
     resolution: {integrity: sha512-3RQHgEtvL1Frl/d1cSreo7qhJ3Gk1OdNUai/CtZ8G+wYeRQnJih3s9xJ9/kgYekPQRdwgh0HXRPqMlzWGwivIQ==}
     engines: {node: ^20.19.0 || ^22.13.0 || ^23.5.0 || >=24.0.0, npm: '>=10'}
 
-  '@gtbuchanan/cli@0.3.0':
-    resolution: {integrity: sha512-CPZL0dJ7f330FhIxMVwmQUXn69xHwzUxPxemuOHPUTE86IoDAf1pp36FCoPy/5/xTE4Jre9eOCVxlOWaigfM1Q==}
+  '@gtbuchanan/cli@1.0.0':
+    resolution: {integrity: sha512-YT88NKwTjW3MW77LP/JOvnk1cf16eBNsS1JfatuhZEFHBVa9I3Vk8GTCxhIKI/RUX4RZKWguVsJvPIj+gNloRQ==}
     engines: {node: '>=24.0.0'}
     hasBin: true
     peerDependencies:
@@ -3892,7 +3892,7 @@ snapshots:
 
   '@faker-js/faker@10.6.0': {}
 
-  '@gtbuchanan/cli@0.3.0(skills@1.5.15)(typescript@5.9.3)':
+  '@gtbuchanan/cli@1.0.0(skills@1.5.15)(typescript@5.9.3)':
     dependencies:
       citty: 0.2.2
       cross-spawn: 7.0.6
