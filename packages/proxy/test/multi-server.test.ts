@@ -54,6 +54,17 @@ const getDiagnostics = (msg: Message | undefined) => {
 const isResponse = (msg: Message, id: number): boolean =>
   Msg.isResponse(msg) && msg.id === id;
 
+/*
+ * A publish carrying both servers' diagnostics, which is the state to wait on
+ * rather than a count of publishes. Each server publishes on didOpen and the
+ * proxy pulls from each as well, so the merged notifications arrive in no
+ * fixed number or order, and the first two can both predate beta's.
+ */
+const hasBothSources = (msg: Message, uri: string): boolean => {
+  const sources = new Set(getDiagnostics(msg).map(diag => diag.source));
+  return isDiagnosticForUri(msg, uri) && sources.has('alpha') && sources.has('beta');
+};
+
 describe('Multi-server proxy', () => {
   it('initializes all servers and merges capabilities', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy({ configs: twoServerConfigs() });
@@ -99,8 +110,8 @@ describe('Multi-server proxy', () => {
 
     const diagPromise = collectMessages(
       reader,
-      msg => isDiagnosticForUri(msg, multiUri),
-      2,
+      msg => hasBothSources(msg, multiUri),
+      1,
     );
 
     await openDocument(writer, { uri: multiUri, text: faker.lorem.sentence() });
@@ -151,8 +162,8 @@ describe('Multi-server proxy', () => {
 
     const bothDiags = collectMessages(
       reader,
-      msg => isDiagnosticForUri(msg, crashUri),
-      2,
+      msg => hasBothSources(msg, crashUri),
+      1,
     );
 
     await openDocument(writer, { uri: crashUri, text: faker.lorem.word() });
