@@ -25,6 +25,7 @@ import { createServerMessageHandler } from './server-messages.ts';
 import type { ServerMessageHandler } from './server-messages.ts';
 import { createNotification, lspErrorCodes } from './types.ts';
 import type { Message, RequestMessage, ResponseMessage, ServerConfig } from './types.ts';
+import * as versions from './version-offsets.ts';
 import { WorkspaceWatcher } from './workspace-watcher.ts';
 
 export interface ProxyOptions {
@@ -105,7 +106,7 @@ export class LspProxy {
           onStateChange: (serverState) => {
             this.handleServerStateChange(name, serverState);
           },
-          getDocuments: () => this.getDocumentsWithEffectiveVersions(),
+          getDocuments: () => versions.applyToDocuments(this.documents, this.versionOffsets),
         },
         log: this.log,
         restartPolicy: options?.restartPolicy,
@@ -271,17 +272,15 @@ export class LspProxy {
         matchEvent: (relativePath, changeType, uri) =>
           fw.matchEvent(this.watchRegistrations, relativePath, changeType, uri),
         resyncDocument: (uri, clientVersion, text) => {
-          const offset = (this.versionOffsets.get(uri) ?? 0) + 1;
+          const { documents, notification, offset } = versions.resync({
+            clientVersion,
+            documents: this.documents,
+            offsets: this.versionOffsets,
+            text,
+            uri,
+          });
+          this.documents = documents;
           this.versionOffsets.set(uri, offset);
-          const serverVersion = clientVersion + offset;
-          this.documents = docs.trackChange(this.documents, {
-            textDocument: { uri, version: clientVersion },
-            contentChanges: [{ text }],
-          });
-          const notification = createNotification('textDocument/didChange', {
-            textDocument: { uri, version: serverVersion },
-            contentChanges: [{ text }],
-          });
           for (const name of this.router.serversForUri(uri)) {
             this.servers.get(name)?.send(notification);
           }
@@ -294,18 +293,6 @@ export class LspProxy {
       },
     );
     await this.watcher.start();
-  }
-
-  // ── Version Offsets ──────────────────────────────────────────────────
-
-  /**
-   * Get documents with effective versions (client version + offset) for replay.
-   */
-  private getDocumentsWithEffectiveVersions(): readonly import('./types.ts').TrackedDocument[] {
-    return docs.toArray(this.documents).map((doc) => {
-      const offset = this.versionOffsets.get(doc.uri) ?? 0;
-      return offset > 0 ? { ...doc, version: doc.version + offset } : doc;
-    });
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────
