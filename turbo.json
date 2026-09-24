@@ -139,6 +139,20 @@
         "dist/source/package.json"
       ]
     },
+    "test:e2e": {
+      "dependsOn": [
+        "^pack:npm",
+        "pack:npm"
+      ],
+      "env": [
+        "CI"
+      ],
+      "inputs": [
+        "e2e/**",
+        "vitest.config.e2e.*"
+      ],
+      "outputs": []
+    },
     "test:slow": {
       "dependsOn": [
         "test:vitest:slow"

@@ -15,6 +15,7 @@
     "generate-plugin": "generate-claude-plugin",
     "lint:eslint": "gtb task lint:eslint",
     "pack:npm": "gtb task pack:npm",
+    "test:e2e": "vitest run --config vitest.config.e2e.ts",
     "test:vitest:fast": "gtb task test:vitest:fast",
     "test:vitest:slow": "gtb task test:vitest:slow",
     "typecheck:ts": "gtb task typecheck:ts"
@@ -30,9 +31,15 @@
   "devDependencies": {
     "@gtbuchanan/eslint-config": "catalog:",
     "@gtbuchanan/vitest-config": "catalog:",
+    "@types/cross-spawn": "catalog:",
+    "cross-spawn": "catalog:",
+    "eslint": "catalog:",
+    "eslint-plugin-vue": "catalog:",
     "lsp-proxy": "workspace:*",
     "valibot": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "vscode-jsonrpc": "catalog:",
+    "vue-eslint-parser": "catalog:"
   },
   "engines": {
     "node": ">=24.0.0"
