@@ -350,13 +350,17 @@ describe('LspProxy lifecycle', () => {
 
     await initializeProxy({ writer, reader });
 
-    // Server sends window/showMessageRequest on initialized — wait for it
-    await openDocument(writer);
-
-    const serverReq = await waitForMessage(
+    // Server sends window/showMessageRequest on initialized — listen before
+    // the didOpen that starts it, since a reader with no listener attached
+    // drops what arrives rather than buffering it
+    const serverReqPromise = waitForMessage(
       reader,
       msg => Msg.isRequest(msg) && msg.method === 'window/showMessageRequest',
     );
+
+    await openDocument(writer);
+
+    const serverReq = await serverReqPromise;
 
     // Client responds
     if (Msg.isRequest(serverReq)) {
