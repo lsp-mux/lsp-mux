@@ -1,5 +1,6 @@
 import { faker } from '@faker-js/faker';
-import type { Message, ResponseMessage } from 'vscode-jsonrpc';
+import * as v from 'valibot';
+import type { Message, NotificationMessage, ResponseMessage } from 'vscode-jsonrpc';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
 import { Message as Msg, createNotification, createRequest } from '../../src/types.ts';
 import { fakeUri } from './fake.ts';
@@ -28,6 +29,36 @@ export const waitForMessage = (
     });
   });
 
+const DiagnosticSourceSchema = v.object({ source: v.optional(v.string()) });
+
+const PublishedSourcesSchema = v.object({
+  diagnostics: v.array(DiagnosticSourceSchema),
+});
+
+/**
+ * The sources a publish carries, which is what distinguishes one publish from
+ * the next when reading back why a collector gave up.
+ */
+const describeSources = (params: NotificationMessage['params']): string => {
+  const parsed = v.safeParse(PublishedSourcesSchema, params);
+  if (!parsed.success) return 'unparsed';
+  return parsed.output.diagnostics.map(diag => diag.source ?? 'unnamed').join('+');
+};
+
+/**
+ * One-line identification of a message, for timeout diagnostics.
+ */
+const describeMessage = (msg: Message): string => {
+  if (Msg.isRequest(msg)) return `request ${msg.method} (${String(msg.id)})`;
+  if (Msg.isNotification(msg)) {
+    return msg.method === 'textDocument/publishDiagnostics'
+      ? `publishDiagnostics [${describeSources(msg.params)}]`
+      : `notification ${msg.method}`;
+  }
+  if (Msg.isResponse(msg)) return `response (${String(msg.id)})`;
+  return 'unknown';
+};
+
 /**
  * Collect N messages matching a predicate.
  */
@@ -39,15 +70,18 @@ export const collectMessages = (
 ): Promise<Message[]> =>
   new Promise((resolve, reject) => {
     const collected: Message[] = [];
+    const seen: string[] = [];
     const timer = setTimeout(
       () => {
         reject(new Error(
-          `Timeout: collected ${String(collected.length)}/${String(count)} messages`,
+          `Timeout: collected ${String(collected.length)}/${String(count)} messages. ` +
+          `Reader saw: ${seen.join(', ')}`,
         ));
       },
       timeoutMs,
     );
     const disposable = reader.listen((msg) => {
+      seen.push(describeMessage(msg));
       if (!isMatch(msg)) {
         return;
       }
