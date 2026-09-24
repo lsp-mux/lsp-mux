@@ -164,11 +164,11 @@ describe('Pull diagnostics', () => {
 
     const uri = fakeUri();
 
-    await openDocument(writer, { uri });
-
+    // Collect before the didOpen that provokes the publish: a reader with no
+    // listener attached drops what arrives rather than buffering it.
     // Wait for merged diagnostics containing both servers' pull results
     // plus the push diagnostics from didOpen
-    const msgs = await collectMessages(
+    const merged = collectMessages(
       reader,
       (msg) => {
         if (!isDiagnosticForUri(msg, uri)) return false;
@@ -178,6 +178,10 @@ describe('Pull diagnostics', () => {
       },
       1,
     );
+
+    await openDocument(writer, { uri });
+
+    const msgs = await merged;
 
     const diags = getDiagnostics(msgs[0]);
 
