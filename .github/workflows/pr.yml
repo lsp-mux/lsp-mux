@@ -11,8 +11,9 @@ jobs:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     uses: gtbuchanan/tooling/.github/workflows/ci.yml@main
     with:
-      # No e2e tests yet; the proxy integration suite is the slow bucket.
-      run-e2e: false
+      # config-default installs its tarballs and drives the real servers; the
+      # proxy integration suite is the slow bucket.
+      run-e2e: true
       run-slow-tests: true
   dependencies:
     name: Dependencies
