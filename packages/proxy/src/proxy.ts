@@ -147,7 +147,6 @@ export class LspProxy {
           this.documents = docs.apply(this.documents, method, params);
         },
         dispose: () => { this.dispose(); },
-        disposeReader: () => { this.clientReader.dispose(); },
         getState: () => this.state,
         initializeServers: (id, params) => {
           this.initParams = params;
@@ -202,7 +201,12 @@ export class LspProxy {
     /* eslint-disable-next-line unicorn/no-null --
        The LSP shutdown response requires an explicit null result. */
     this.respondToClient(clientRequestId, null);
-    this.state = 'stopped';
+    /*
+     * A teardown that landed while a server was answering has already done
+     * everything this method was arranging, so `disposed` stands: stepping
+     * back to `stopped` would let the next teardown run a second time.
+     */
+    if (this.state !== 'disposed') this.state = 'stopped';
   }
 
   // ── Server → Client ──────────────────────────────────────────────────
@@ -309,7 +313,7 @@ export class LspProxy {
   /**
    * Safe check that avoids TS narrowing issues across async boundaries.
    */
-  private isStopped(): boolean { return this.state === 'stopped'; }
+  private isStopped(): boolean { return this.state === 'stopped' || this.state === 'disposed'; }
 
   private ackToServer(serverName: string, requestId: number | string | null): void {
     /* eslint-disable-next-line unicorn/no-null --
@@ -363,8 +367,8 @@ export class LspProxy {
   }
 
   dispose(): void {
-    if (this.state === 'stopped') return;
-    this.state = 'stopped';
+    if (this.state === 'disposed') return;
+    this.state = 'disposed';
     this.watcher?.dispose();
     this.watcher = undefined;
     for (const server of this.servers.values()) server.dispose();
