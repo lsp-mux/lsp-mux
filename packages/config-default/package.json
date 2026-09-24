@@ -9,7 +9,7 @@
     "servers"
   ],
   "scripts": {
-    "compile:ts": "cpy .lsp-proxy.json \"servers/**\" dist/source/ --parents",
+    "compile:ts": "cpy .lsp-proxy.json dist/source/ && cpy \"servers/**\" dist/source/servers/",
     "coverage:codecov:upload": "gtb task coverage:codecov:upload",
     "coverage:vitest:merge": "gtb task coverage:vitest:merge",
     "generate-plugin": "generate-claude-plugin",
