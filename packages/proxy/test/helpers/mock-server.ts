@@ -3,7 +3,7 @@
  * Reads JSON-RPC from stdin, responds to initialize, echoes everything else.
  * Tracks open documents so tests can verify replay after restart.
  * Publishes diagnostics on didOpen with source set to server name.
- * Exits on "exit" notification or SIGTERM.
+ * Exits on "exit" notification (unless --ignore-exit) or SIGTERM.
  *
  * Usage: node --import tsx mock-server.ts [--name=<serverName>]
  */
@@ -37,6 +37,7 @@ const isInitializeError = process.argv.includes('--initialize-error');
 const isTsserverClient = process.argv.includes('--tsserver-client');
 const isExecuteCommandError = process.argv.includes('--execute-command-error');
 const isExitOnShutdown = process.argv.includes('--exit-on-shutdown');
+const isIgnoreExit = process.argv.includes('--ignore-exit');
 
 const reader = new StreamMessageReader(process.stdin);
 const writer = new StreamMessageWriter(process.stdout);
@@ -210,6 +211,8 @@ const handleRequest = (msg: RequestMessage): void => {
 
 const notificationHandlers: Record<string, (msg: NotificationMessage) => void> = {
   'exit': () => {
+    // Stands in for a server too wedged to act on `exit`, so only a kill ends it.
+    if (isIgnoreExit) return;
     /* eslint-disable-next-line unicorn/no-process-exit --
        LSP `exit` means terminate now; the reader keeps the loop alive, so
        process.exitCode wouldn't terminate the subprocess. */

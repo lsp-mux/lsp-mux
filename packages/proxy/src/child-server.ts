@@ -4,6 +4,32 @@ import type { Logger } from './logger.ts';
 import { noop } from './types.ts';
 import type { Message, ServerConfig } from './types.ts';
 
+/**
+ * How long a child gets to act on the `exit` it was sent before the proxy
+ * kills it. Long enough for a server to stop what it started — vtsls runs
+ * tsserver as its own child, and killing vtsls orphans it — and short
+ * enough that a wedged server cannot hold the proxy's own exit open.
+ *
+ * It sits here rather than beside the request timeouts in
+ * `proxy-request-channel.ts`: nothing answers an `exit`, so this budgets a
+ * process going away rather than a reply coming back.
+ */
+export const defaultExitGracePeriodMs = 5000;
+
+/**
+ * Resolve when the process exits, or when the grace period runs out.
+ */
+const waitForExit = (proc: ChildProcess, gracePeriodMs: number): Promise<void> =>
+  new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      resolve();
+    }, gracePeriodMs);
+    proc.once('exit', () => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
+
 export interface ChildServerEvents {
   readonly onMessage: (msg: Message) => void;
   readonly onExit: (code: number | null, signal: string | null) => void;
@@ -21,6 +47,12 @@ export class ChildServer {
   private writer: StreamMessageWriter | undefined;
   private disposed = false;
   private exited = false;
+  /**
+   * The most recent write, which `stop` waits on so the last message sent —
+   * the `exit` — is on the pipe before the grace period starts. The writer
+   * serializes writes, so the latest one covers those before it.
+   */
+  private pendingWrite: Promise<void> = Promise.resolve();
 
   constructor(
     readonly name: string,
@@ -84,8 +116,22 @@ export class ChildServer {
          Fire-and-forget write to the child's stdin; not awaited so the
          caller isn't blocked on flush. Ignore failures — the stream may
          already be destroyed. */
-      this.writer.write(msg).catch(noop);
+      this.pendingWrite = this.writer.write(msg).catch(noop);
     }
+  }
+
+  /**
+   * Let the process leave on its own before taking it down: flush what was
+   * written to it, wait out the grace period, then dispose — which kills
+   * whatever is still alive.
+   */
+  async stop(gracePeriodMs: number): Promise<void> {
+    const proc = this.proc;
+    if (!this.disposed && proc?.exitCode === null) {
+      await this.pendingWrite;
+      await waitForExit(proc, gracePeriodMs);
+    }
+    this.dispose();
   }
 
   dispose(): void {
