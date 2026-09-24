@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { copyFile, mkdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import {
   listRegistryEntries,
@@ -8,6 +10,35 @@ import * as v from 'valibot';
 import { describe, it } from 'vitest';
 import { ProxyConfigSchema, ServerConfigSchema } from '../src/config-schema.ts';
 import { loadServerConfig } from '../src/config.ts';
+
+/**
+ * Build the layout npm and yarn produce: a config package installed under the
+ * project's `node_modules` with its own dependencies hoisted beside it.
+ * Written at test time because `node_modules` is git-ignored.
+ */
+const createHoistedTree = async () => {
+  const root = path.join(
+    import.meta.dirname, '..', 'dist', 'test-fixtures', randomUUID().slice(0, 8),
+  );
+  const configDir = path.join(root, 'node_modules', 'config-pkg');
+  const entryPoint = path.join(root, 'node_modules', 'some-server', 'index.js');
+
+  await mkdir(path.join(configDir, 'servers'), { recursive: true });
+  await mkdir(path.dirname(entryPoint), { recursive: true });
+  await writeFile(entryPoint, '');
+  await copyFile(
+    path.join(import.meta.dirname, 'fixtures', 'servers', 'relative-paths.json'),
+    path.join(configDir, 'servers', 'relative-paths.json'),
+  );
+
+  return {
+    configDir,
+    entryPoint,
+    async [Symbol.asyncDispose]() {
+      await rm(root, { recursive: true, force: true });
+    },
+  };
+};
 
 describe('ProxyConfigSchema', () => {
   it('includes default watcher excludes when none specified', ({ expect }) => {
@@ -236,6 +267,20 @@ describe('loadServerConfig', () => {
     expect(plugin?.location).toBe(path.join(configDir, 'node_modules', 'some-plugin'));
     expect(plugin?.name).toBe('some-plugin');
     expect(parsed.validate).toBe('on');
+  });
+
+  it('resolves a server entry point hoisted above the config dir', async ({ expect }) => {
+    await using tree = await createHoistedTree();
+    const { args } = await loadServerConfig('relative-paths', tree.configDir);
+
+    /*
+     * npm and yarn hoist a config package's dependencies to the project root,
+     * so the config package has no node_modules of its own and the entry point
+     * sits two levels up. Resolving against the config dir alone names a path
+     * nothing is at, which reaches the user as a spawn failure rather than the
+     * missing-package error whose install command would have helped.
+     */
+    expect(args[0]).toBe(tree.entryPoint);
   });
 
   it('leaves settings that are not relative paths alone', async ({ expect }) => {

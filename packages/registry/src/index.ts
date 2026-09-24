@@ -1,6 +1,7 @@
 import { entries } from './entries.generated.ts';
 
 export { deepMerge } from './deep-merge.ts';
+export { resolveNodeModulesPath } from './node-modules.ts';
 export { validateNpmPackage } from './npm-validate.ts';
 
 export interface RegistryEntry {

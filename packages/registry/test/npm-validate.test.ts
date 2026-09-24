@@ -28,6 +28,22 @@ describe('validateNpmPackage', () => {
     await expect(validateNpmPackage('fake-pkg', tmp.dir, 'test')).resolves.toBeUndefined();
   });
 
+  it('resolves when the package is hoisted to an ancestor node_modules', async ({ expect }) => {
+    await using tmp = await createTempDir('hoisted');
+    const configDir = path.join(tmp.dir, 'node_modules', 'some-config-pkg');
+    await mkdir(configDir, { recursive: true });
+    await mkdir(path.join(tmp.dir, 'node_modules', 'fake-pkg'), { recursive: true });
+
+    /*
+     * npm and yarn hoist a package's dependencies to the project root, so the
+     * config package has no node_modules of its own and the dependency sits
+     * beside it. Only pnpm's symlinked workspace layout puts it underneath,
+     * which is why checking a single literal path passes in this repo and
+     * fails for anyone installing the published package.
+     */
+    await expect(validateNpmPackage('fake-pkg', configDir, 'test')).resolves.toBeUndefined();
+  });
+
   it('throws with actionable message when package is missing', async ({ expect }) => {
     await using tmp = await createTempDir('missing');
 
