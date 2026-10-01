@@ -5,7 +5,7 @@ allowBuilds:
 catalog:
   '@changesets/cli': 3.0.3
   '@faker-js/faker': 10.6.0
-  '@gtbuchanan/cli': 0.3.0
+  '@gtbuchanan/cli': 0.7.1
   '@gtbuchanan/eslint-config': 0.5.2
   '@gtbuchanan/tsconfig': 0.1.1
   '@gtbuchanan/vitest-config': 0.3.0
