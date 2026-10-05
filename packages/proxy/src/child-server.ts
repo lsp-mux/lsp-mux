@@ -17,6 +17,29 @@ import type { Message, ServerConfig } from './types.ts';
 export const defaultExitGracePeriodMs = 5000;
 
 /**
+ * How long the `exit` gets to reach the pipe before the grace period starts.
+ * Bytes either go onto a pipe quickly or not at all: a child that has stopped
+ * reading its stdin leaves the write pending for good, and awaiting that alone
+ * would hold the whole teardown open behind one wedged server.
+ */
+const writeFlushTimeoutMs = 1000;
+
+/**
+ * Resolve when the write settles or when its budget runs out, whichever comes
+ * first.
+ */
+const flushWithin = async (pendingWrite: Promise<void>, timeoutMs: number): Promise<void> => {
+  let timer: NodeJS.Timeout | undefined;
+  await Promise.race([
+    pendingWrite,
+    new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, timeoutMs);
+    }),
+  ]);
+  clearTimeout(timer);
+};
+
+/**
  * Resolve when the process exits, or when the grace period runs out.
  */
 const waitForExit = (proc: ChildProcess, gracePeriodMs: number): Promise<void> =>
@@ -128,7 +151,7 @@ export class ChildServer {
   async stop(gracePeriodMs: number): Promise<void> {
     const proc = this.proc;
     if (!this.disposed && proc?.exitCode === null) {
-      await this.pendingWrite;
+      await flushWithin(this.pendingWrite, writeFlushTimeoutMs);
       await waitForExit(proc, gracePeriodMs);
     }
     this.dispose();
