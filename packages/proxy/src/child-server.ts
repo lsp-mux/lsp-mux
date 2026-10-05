@@ -44,6 +44,15 @@ const flushWithin = async (pendingWrite: Promise<void>, timeoutMs: number): Prom
  */
 const waitForExit = (proc: ChildProcess, gracePeriodMs: number): Promise<void> =>
   new Promise((resolve) => {
+    /*
+     * Already gone, and its exit event fired before there was a listener here
+     * to catch it: a child that dies while the write is still flushing would
+     * otherwise be waited out in full, for an event that has been and gone.
+     */
+    if (proc.exitCode !== null || proc.signalCode !== null) {
+      resolve();
+      return;
+    }
     const timer = setTimeout(() => {
       resolve();
     }, gracePeriodMs);
