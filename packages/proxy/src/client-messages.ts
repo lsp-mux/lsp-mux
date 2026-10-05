@@ -174,16 +174,20 @@ export const createClientMessageHandler = ({
    * Reached from the running state and, once a `shutdown` has moved the proxy
    * to the stopped one, from there too: `shutdown` only asks a server to
    * prepare to exit, so either path still has servers to stop.
+   *
+   * The client's notification is not forwarded. The teardown sends each
+   * server an `exit` of its own and waits for it, which is also what stops
+   * them on the paths where no client notification arrives at all: a closed
+   * connection, or the last server stopping.
    */
-  const handleExit = (msg: NotificationMessage): void => {
-    broadcastToActive(msg);
+  const handleExit = (): void => {
     delegate.dispose();
   };
 
   const handleRunningNotification = (msg: NotificationMessage): void => {
     switch (msg.method) {
       case 'exit': {
-        handleExit(msg);
+        handleExit();
         return;
       }
       case 'initialized': {
@@ -261,7 +265,7 @@ export const createClientMessageHandler = ({
 
   const handleStoppedMessage = (msg: Message): void => {
     if (Msg.isNotification(msg) && msg.method === 'exit') {
-      handleExit(msg);
+      handleExit();
       return;
     }
     if (Msg.isRequest(msg)) {

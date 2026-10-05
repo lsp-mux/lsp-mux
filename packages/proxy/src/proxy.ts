@@ -23,6 +23,7 @@ import type { Router } from './router.ts';
 import { createRouter } from './router.ts';
 import { createServerMessageHandler } from './server-messages.ts';
 import type { ServerMessageHandler } from './server-messages.ts';
+import { stopAllServers } from './teardown.ts';
 import { createNotification, lspErrorCodes } from './types.ts';
 import type { Message, RequestMessage, ResponseMessage, ServerConfig } from './types.ts';
 import * as versions from './version-offsets.ts';
@@ -30,6 +31,7 @@ import { WorkspaceWatcher } from './workspace-watcher.ts';
 
 export interface ProxyOptions {
   bridges?: readonly BridgeConfig[];
+  exitGracePeriodMs?: number;
   input?: NodeJS.ReadableStream;
   logger?: Logger | undefined;
   output?: NodeJS.WritableStream;
@@ -332,6 +334,12 @@ export class LspProxy {
     });
   }
 
+  private async stopServers(): Promise<void> {
+    await stopAllServers(this.servers.values(), this.proxyOptions?.exitGracePeriodMs);
+    this.log.info('Proxy shut down');
+    this.resolveDone?.();
+  }
+
   // ── Lifecycle / Public API ───────────────────────────────────────────
 
   get isWatcherDegraded(): boolean { return this.watcher?.isDegraded ?? false; }
@@ -353,15 +361,22 @@ export class LspProxy {
     });
   }
 
+  /**
+   * Start the teardown. Giving each server time to act on the `exit` it is
+   * sent makes the teardown asynchronous, but none of the four callers that
+   * reach this has to await it: the client's `exit`, a closed connection, the
+   * last server stopping, and `Symbol.dispose` all stay synchronous, and
+   * `start()` resolves once the servers are gone. `bin/main.ts` already waits
+   * on that before exiting the process.
+   */
   dispose(): void {
     if (this.state === 'disposed') return;
     this.state = 'disposed';
     this.watcher?.dispose();
     this.watcher = undefined;
-    for (const server of this.servers.values()) server.dispose();
+    // Closed first: nothing new should arrive while the servers are stopping.
     this.clientReader.dispose();
-    this.log.info('Proxy shut down');
-    this.resolveDone?.();
+    void this.stopServers();
   }
 
   [Symbol.dispose](): void {

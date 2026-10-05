@@ -75,9 +75,9 @@ export interface ManagedServer {
    */
   shutdown: () => Promise<ResponseMessage>;
   /**
-   * Clean up all resources.
+   * Send `exit`, give the server `gracePeriodMs` to act on it, then kill it.
    */
-  dispose: () => void;
+  stop: (gracePeriodMs: number) => Promise<void>;
 }
 
 export interface CreateManagedServerOptions {
@@ -438,10 +438,21 @@ export const createManagedServer = ({
       return response;
     },
 
-    dispose() {
+    async stop(gracePeriodMs) {
       if (state === 'stopped') return;
+      /*
+       * Set before the await so the child's own exit event reads as expected
+       * rather than as a crash to restart from.
+       */
       state = 'stopped';
-      cancelRestart();
+      scheduler.cancel();
+      channel.rejectAll('Server stopped');
+      const child = server;
+      server = undefined;
+      if (!child) return;
+      // Sent here rather than forwarded, so every teardown path sends one.
+      child.write(createNotification('exit'));
+      await child.stop(gracePeriodMs);
     },
   };
 

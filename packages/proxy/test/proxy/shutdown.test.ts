@@ -34,8 +34,16 @@ const countTeardowns = (logLines: readonly string[]): number =>
   logLines.filter(line => line.includes('Proxy shut down')).length;
 
 /**
- * Wait for the child process to be gone. The proxy's log is what reports it:
- * the test holds no handle on a server the proxy spawned itself.
+ * How the child left, as the proxy recorded it. The proxy's log is what
+ * reports it: the test holds no handle on a server the proxy spawned itself.
+ * A signal means the proxy killed it; code 0 means it acted on the `exit`
+ * notification and stopped itself.
+ */
+const exitRecord = (logLines: readonly string[]): string | undefined =>
+  /mock exited \(.*?\)/v.exec(logLines.join(''))?.[0];
+
+/**
+ * Wait for the child process to be gone.
  */
 const waitForServerExit = (expect: ExpectStatic, logLines: readonly string[]) =>
   vi.waitFor(
@@ -65,6 +73,9 @@ describe('LspProxy shutdown', () => {
     await waitForServerExit(expect, logLines);
 
     await expect(started).resolves.toBeUndefined();
+
+    // The kill that used to outrun the notification would read as SIGTERM.
+    expect(exitRecord(logLines)).toBe('mock exited (code=0, signal=null)');
   });
 
   it('stops the servers when the client disconnects after shutdown', async ({
@@ -84,6 +95,36 @@ describe('LspProxy shutdown', () => {
     await waitForServerExit(expect, logLines);
 
     await expect(started).resolves.toBeUndefined();
+
+    // No `exit` arrived to forward, so the teardown sends one of its own.
+    expect(exitRecord(logLines)).toBe('mock exited (code=0, signal=null)');
+  });
+
+  it('kills a server that ignores the forwarded exit', async ({
+    createProxy,
+    logLines,
+    expect,
+  }) => {
+    const config: ServerConfig = {
+      ...mockServerConfig,
+      args: [...mockServerConfig.args, '--ignore-exit'],
+    };
+    const { writer, reader, started } = createProxy({ config, exitGracePeriodMs: 200 });
+
+    await startWithRunningServer({ writer, reader });
+
+    await request({ writer, reader }, 99, 'shutdown');
+    await notify(writer, 'exit');
+
+    /*
+     * The grace period is the teardown's to wait out, so `started` resolving
+     * is the kill being sent. Reaping it is the process table's own pace.
+     */
+    await expect(started).resolves.toBeUndefined();
+
+    await waitForServerExit(expect, logLines);
+
+    expect(exitRecord(logLines)).toBe('mock exited (code=null, signal=SIGTERM)');
   });
 
   /*

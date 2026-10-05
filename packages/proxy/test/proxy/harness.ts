@@ -37,6 +37,7 @@ export const watcherWaitOptions = { timeout: 15_000, interval: 100 };
 interface TestProxyOptions {
   bridges?: readonly BridgeConfig[];
   config?: ServerConfig;
+  exitGracePeriodMs?: number;
   configs?: ReadonlyMap<string, ServerConfig>;
   logger?: Logger;
   restartPolicy?: Partial<{ maxRetries: number; baseDelayMs: number; maxDelayMs: number }>;
