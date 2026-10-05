@@ -1,5 +1,6 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
+import { settleWithin, waitForExit } from './bounded-wait.ts';
 import type { Logger } from './logger.ts';
 import { noop } from './types.ts';
 import type { Message, ServerConfig } from './types.ts';
@@ -23,44 +24,6 @@ export const defaultExitGracePeriodMs = 5000;
  * would hold the whole teardown open behind one wedged server.
  */
 const writeFlushTimeoutMs = 1000;
-
-/**
- * Resolve when the write settles or when its budget runs out, whichever comes
- * first.
- */
-const flushWithin = async (pendingWrite: Promise<void>, timeoutMs: number): Promise<void> => {
-  let timer: NodeJS.Timeout | undefined;
-  await Promise.race([
-    pendingWrite,
-    new Promise<void>((resolve) => {
-      timer = setTimeout(resolve, timeoutMs);
-    }),
-  ]);
-  clearTimeout(timer);
-};
-
-/**
- * Resolve when the process exits, or when the grace period runs out.
- */
-const waitForExit = (proc: ChildProcess, gracePeriodMs: number): Promise<void> =>
-  new Promise((resolve) => {
-    /*
-     * Already gone, and its exit event fired before there was a listener here
-     * to catch it: a child that dies while the write is still flushing would
-     * otherwise be waited out in full, for an event that has been and gone.
-     */
-    if (proc.exitCode !== null || proc.signalCode !== null) {
-      resolve();
-      return;
-    }
-    const timer = setTimeout(() => {
-      resolve();
-    }, gracePeriodMs);
-    proc.once('exit', () => {
-      clearTimeout(timer);
-      resolve();
-    });
-  });
 
 export interface ChildServerEvents {
   readonly onMessage: (msg: Message) => void;
@@ -160,7 +123,7 @@ export class ChildServer {
   async stop(gracePeriodMs: number): Promise<void> {
     const proc = this.proc;
     if (!this.disposed && proc?.exitCode === null) {
-      await flushWithin(this.pendingWrite, writeFlushTimeoutMs);
+      await settleWithin(this.pendingWrite, writeFlushTimeoutMs);
       await waitForExit(proc, gracePeriodMs);
     }
     this.dispose();
