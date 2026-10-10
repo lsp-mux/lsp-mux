@@ -16,6 +16,9 @@ const replayedUri = fakeUri();
 const crashAndWait = (writer: StreamMessageWriter, reader: StreamMessageReader, id: number) =>
   request({ writer, reader }, id, '$/crash');
 
+// Comfortably past the 50ms window the refund test configures.
+const refundWaitMs = 400;
+
 describe('LspProxy restart behavior', () => {
   it('restarts after crash and flushes buffered requests', async ({ createProxy, expect }) => {
     const { writer, reader } = createProxy();
@@ -181,6 +184,79 @@ describe('LspProxy restart behavior', () => {
     });
 
     expect(res).toMatchObject({ error: { code: -32_002 } });
+  });
+
+  it('spends the retry budget on a server that keeps crashing after its handshake', async ({
+    createProxy,
+    expect,
+  }) => {
+    const { writer, reader } = createProxy({
+      // Longer than this test can take, so no refund can land between crashes.
+      restartPolicy: { maxRetries: 1, stabilityWindowMs: 600_000 },
+    });
+
+    await initializeProxy({ writer, reader });
+
+    const firstCrash = await crashAndWait(writer, reader, 50);
+
+    expect(firstCrash).toMatchObject({ error: expect.objectContaining({}) as unknown });
+
+    /*
+     * The restart answers a full handshake before this second crash, so a
+     * budget refunded on handshake alone would let the pair loop forever.
+     */
+    const secondCrash = await crashAndWait(writer, reader, 51);
+
+    expect(secondCrash).toMatchObject({ error: expect.objectContaining({}) as unknown });
+
+    const res = await request({ writer, reader }, 52, 'textDocument/hover', {
+      textDocument: { uri: testUri },
+      position: { line: 0, character: 0 },
+    });
+
+    expect(res).toMatchObject({ error: { code: -32_002 } });
+  });
+
+  it('gives a server its budget back once it survives the stability window', async ({
+    createProxy,
+    expect,
+  }) => {
+    const { writer, reader } = createProxy({
+      restartPolicy: { maxRetries: 1, stabilityWindowMs: 50 },
+    });
+
+    await initializeProxy({ writer, reader });
+
+    const firstCrash = await crashAndWait(writer, reader, 60);
+
+    expect(firstCrash).toMatchObject({ error: expect.objectContaining({}) as unknown });
+
+    const hover = await request({ writer, reader }, 61, 'textDocument/hover', {
+      textDocument: { uri: testUri },
+      position: { line: 0, character: 0 },
+    });
+
+    expect(hover).toMatchObject({ result: { echo: 'textDocument/hover' } });
+
+    /*
+     * Outlast the window the restart armed, so the attempt the first crash
+     * spent is refunded. Waiting longer than this only makes the refund
+     * surer, so a slow machine cannot turn the wait into a flake.
+     */
+    await new Promise((resolve) => {
+      setTimeout(resolve, refundWaitMs);
+    });
+
+    const secondCrash = await crashAndWait(writer, reader, 62);
+
+    expect(secondCrash).toMatchObject({ error: expect.objectContaining({}) as unknown });
+
+    const res = await request({ writer, reader }, 63, 'textDocument/hover', {
+      textDocument: { uri: testUri },
+      position: { line: 0, character: 0 },
+    });
+
+    expect(res).toMatchObject({ result: { echo: 'textDocument/hover' } });
   });
 
   it('resolves start() when all servers exhaust retries', async ({ createProxy, expect }) => {

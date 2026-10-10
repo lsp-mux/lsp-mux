@@ -9,6 +9,7 @@ import type { BridgeConfig } from '../../src/config-schema.ts';
 import { createLogger } from '../../src/logger.ts';
 import type { Logger } from '../../src/logger.ts';
 import { LspProxy } from '../../src/proxy.ts';
+import type { RestartPolicy } from '../../src/restart-scheduler.ts';
 import type { ServerConfig } from '../../src/types.ts';
 import { normalizeFileUri } from '../../src/uri.ts';
 
@@ -40,7 +41,7 @@ interface TestProxyOptions {
   exitGracePeriodMs?: number;
   configs?: ReadonlyMap<string, ServerConfig>;
   logger?: Logger;
-  restartPolicy?: Partial<{ maxRetries: number; baseDelayMs: number; maxDelayMs: number }>;
+  restartPolicy?: Partial<RestartPolicy>;
   maxResyncBytes?: number;
   maxPendingEvents?: number;
 }

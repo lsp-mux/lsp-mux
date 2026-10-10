@@ -285,7 +285,7 @@ export const createManagedServer = ({
          constant assignment, not derived from a stale read, so there is no
          interleaving race. */
       state = 'running';
-      scheduler.reset();
+      scheduler.markStarted();
       callbacks.onStateChange(state);
       log.info(`${name}: ${label} completed`);
     } catch (error) {

@@ -7,7 +7,7 @@ import type { Timers } from '../src/types.ts';
 const noop = (): void => { /* no-op */ };
 
 describe('RestartScheduler', () => {
-  const policy = { maxRetries: 3, baseDelayMs: 100, maxDelayMs: 500 };
+  const policy = { maxRetries: 3, baseDelayMs: 100, maxDelayMs: 500, stabilityWindowMs: 10_000 };
 
   it('schedules with exponential backoff', ({ expect }) => {
     const clock = createClock();
@@ -57,7 +57,7 @@ describe('RestartScheduler', () => {
   it('caps delay at maxDelayMs', ({ expect }) => {
     const clock = createClock();
     const sched = createRestartScheduler({
-      policy: { maxRetries: 10, baseDelayMs: 100, maxDelayMs: 300 },
+      policy: { ...policy, maxRetries: 10, maxDelayMs: 300 },
       timers: clock,
     });
     const calls: number[] = [];
@@ -86,7 +86,7 @@ describe('RestartScheduler', () => {
     expect(calls).toStrictEqual([1, 2, 3]);
   });
 
-  it('reset restores attempt counter', ({ expect }) => {
+  it('earns back one spent attempt per stability window survived', ({ expect }) => {
     const clock = createClock();
     const sched = createRestartScheduler({ policy, timers: clock });
 
@@ -94,15 +94,30 @@ describe('RestartScheduler', () => {
     clock.tick(150);
     sched.schedule(() => { /* no-op */ });
     clock.tick(300);
+    sched.markStarted();
+    clock.tick(policy.stabilityWindowMs - 1);
 
     expect(sched.attempt).toBe(2);
 
-    sched.reset();
+    clock.tick(1);
+
+    // A whole budget back at once would let a server flap between windows.
+    expect(sched.attempt).toBe(1);
+
+    clock.tick(policy.stabilityWindowMs);
 
     expect(sched.attempt).toBe(0);
+  });
 
-    // Should schedule from attempt 1 again
+  it('schedules from the first attempt again once refunded', ({ expect }) => {
+    const clock = createClock();
+    const sched = createRestartScheduler({ policy, timers: clock });
     const called = vi.fn<Parameters<RestartScheduler['schedule']>[0]>();
+
+    sched.schedule(noop);
+    clock.tick(150);
+    sched.markStarted();
+    clock.tick(policy.stabilityWindowMs);
 
     expect(sched.schedule(called)).toBe(true);
     expect(sched.attempt).toBe(1);
@@ -110,6 +125,43 @@ describe('RestartScheduler', () => {
     clock.tick(150);
 
     expect(called).toHaveBeenCalledTimes(1);
+  });
+
+  it('withholds the refund from a server that dies inside the stability window', ({ expect }) => {
+    const clock = createClock();
+    const sched = createRestartScheduler({ policy, timers: clock });
+
+    /*
+     * Every cycle completes a start, so a refund granted on the start alone
+     * would reset the budget each time and let this loop run forever.
+     */
+    for (let crash = 0; crash < policy.maxRetries; crash++) {
+      sched.schedule(noop);
+      clock.tick(600);
+      sched.markStarted();
+      clock.tick(policy.stabilityWindowMs / 2);
+    }
+
+    expect(sched.attempt).toBe(policy.maxRetries);
+    expect(sched.schedule(noop)).toBe(false);
+
+    // The refunds the loop scheduled must not land after the cap is reached.
+    clock.tick(policy.stabilityWindowMs * 2);
+
+    expect(sched.attempt).toBe(policy.maxRetries);
+  });
+
+  it('cancel withholds a pending refund', ({ expect }) => {
+    const clock = createClock();
+    const sched = createRestartScheduler({ policy, timers: clock });
+
+    sched.schedule(noop);
+    clock.tick(150);
+    sched.markStarted();
+    sched.cancel();
+    clock.tick(policy.stabilityWindowMs * 2);
+
+    expect(sched.attempt).toBe(1);
   });
 
   it('cancel prevents pending callback', ({ expect }) => {
