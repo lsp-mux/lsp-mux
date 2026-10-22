@@ -3,7 +3,7 @@
  */
 import { faker } from '@faker-js/faker';
 import { describe, vi } from 'vitest';
-import type { Message, StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
+import type { Message, StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node';
 import { isInternalRequestId } from '../../src/proxy-request-channel.ts';
 import { Message as Msg, createRequest } from '../../src/types.ts';
 import { fakeUri } from '../helpers/fake.ts';

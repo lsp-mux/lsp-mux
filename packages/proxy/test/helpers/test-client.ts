@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import * as v from 'valibot';
 import type { Message, NotificationMessage, ResponseMessage } from 'vscode-jsonrpc';
-import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
+import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node';
 import { Message as Msg, createNotification, createRequest } from '../../src/types.ts';
 import { fakeUri } from './fake.ts';
 

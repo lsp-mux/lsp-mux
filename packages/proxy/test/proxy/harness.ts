@@ -4,7 +4,7 @@ import path from 'node:path';
 import { PassThrough, Writable } from 'node:stream';
 import { pathToFileURL } from 'node:url';
 import { test } from 'vitest';
-import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
+import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node';
 import type { BridgeConfig } from '../../src/config-schema.ts';
 import { createLogger } from '../../src/logger.ts';
 import type { Logger } from '../../src/logger.ts';
