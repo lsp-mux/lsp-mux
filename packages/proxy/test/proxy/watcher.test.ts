@@ -5,7 +5,7 @@ import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, vi } from 'vitest';
 import type { ExpectStatic } from 'vitest';
-import type { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
+import type { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node';
 import { Message as Msg } from '../../src/types.ts';
 import {
   initializeProxy,

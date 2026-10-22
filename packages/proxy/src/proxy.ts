@@ -1,7 +1,7 @@
 import { stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import * as v from 'valibot';
-import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
+import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node';
 import { createBridgeRouter } from './bridge.ts';
 import { staticCapabilities } from './capabilities.ts';
 import { analyzeClientCapabilities, injectProxyCapabilities } from './client-capabilities.ts';

@@ -1,5 +1,5 @@
 import { type ChildProcess, spawn } from 'node:child_process';
-import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
+import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node';
 import { settleWithin, waitForExit } from './bounded-wait.ts';
 import type { Logger } from './logger.ts';
 import { noop } from './types.ts';

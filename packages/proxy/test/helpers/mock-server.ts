@@ -9,7 +9,7 @@
  */
 import * as v from 'valibot';
 import type { ResponseMessage } from 'vscode-jsonrpc';
-import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
+import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node';
 import {
   DidChangeParamsSchema,
   DidCloseParamsSchema,
