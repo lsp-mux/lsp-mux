@@ -177,8 +177,8 @@ catalogs:
       specifier: 0.5.2
       version: 0.5.2
     '@gtbuchanan/tsconfig':
-      specifier: 0.1.1
-      version: 0.1.1
+      specifier: 0.2.0
+      version: 0.2.0
     '@gtbuchanan/vitest-config':
       specifier: 0.3.0
       version: 0.3.0
@@ -282,7 +282,7 @@ importers:
         version: 0.5.2(@typescript-eslint/eslint-plugin@8.64.0(@typescript-eslint/parser@8.64.0(eslint@10.13.0(jiti@2.7.0))(typescript@6.0.3))(eslint@10.13.0(jiti@2.7.0))(typescript@6.0.3))(@typescript-eslint/utils@8.70.0(eslint@10.13.0(jiti@2.7.0))(typescript@6.0.3))(eslint@10.13.0(jiti@2.7.0))(postcss@8.5.8)(typescript@6.0.3)(vitest@5.0.1)
       '@gtbuchanan/tsconfig':
         specifier: 'catalog:'
-        version: 0.1.1
+        version: 0.2.0(typescript@6.0.3)
       '@gtbuchanan/vitest-config':
         specifier: 'catalog:'
         version: 0.3.0(vitest@5.0.1)
@@ -882,9 +882,11 @@ packages:
     peerDependencies:
       eslint: ^10.0.0
 
-  '@gtbuchanan/tsconfig@0.1.1':
-    resolution: {integrity: sha512-lWJ2YWpIonVa5Aomon07ikMwsOewHFhH7d+9GZIUNRWJn8qF7wcrBDCAgSWcidp/aJjI7phd0Ar6MFT4pHj1kw==}
+  '@gtbuchanan/tsconfig@0.2.0':
+    resolution: {integrity: sha512-7e4uNsrkLGsKB+U95JIw7h0snrbIM7XZwjOd/MdPlpvpmUKUHk8n6rifS8XF5Bq2Zgx0XGq8cmUW/SBO1vZE1A==}
     engines: {node: '>=24.0.0'}
+    peerDependencies:
+      typescript: '>=6.0.0'
 
   '@gtbuchanan/vitest-config@0.3.0':
     resolution: {integrity: sha512-x84w95YsGam1YCfTB70BPsYdgA9dTgDBwiJwY9U+5NCzZxko/yy7yPvg0r+HX825gYQxjnI+vyz07ezfBQu0ag==}
@@ -4067,7 +4069,9 @@ snapshots:
       eslint: 10.13.0(jiti@2.7.0)
       yaml: 2.9.1
 
-  '@gtbuchanan/tsconfig@0.1.1': {}
+  '@gtbuchanan/tsconfig@0.2.0(typescript@6.0.3)':
+    dependencies:
+      typescript: 6.0.3
 
   '@gtbuchanan/vitest-config@0.3.0(vitest@5.0.1)':
     dependencies:
