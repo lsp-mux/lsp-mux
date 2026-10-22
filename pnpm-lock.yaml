@@ -213,8 +213,8 @@ catalogs:
       specifier: 3.3.11
       version: 3.3.11
     console-fail-test:
-      specifier: 0.6.1
-      version: 0.6.1
+      specifier: 0.10.0
+      version: 0.10.0
     cpy-cli:
       specifier: 7.0.0
       version: 7.0.0
@@ -303,7 +303,7 @@ importers:
         version: 5.0.1(vitest@5.0.1)
       console-fail-test:
         specifier: 'catalog:'
-        version: 0.6.1
+        version: 0.10.0
       cpy-cli:
         specifier: 'catalog:'
         version: 7.0.0
@@ -1975,6 +1975,10 @@ packages:
   comment-parser@1.4.9:
     resolution: {integrity: sha512-+2AvZKjJaNq9GQljm3tr0utwrig5BL+jgJGvz5rDpGKNIp+ojcRXWUwBbh/sGIi1QCprR6PsKFakub+w1v+4hQ==}
     engines: {node: '>= 12.0.0'}
+
+  console-fail-test@0.10.0:
+    resolution: {integrity: sha512-a5EIcR/pka309Dw94NjU+DB35UhEJvmFTTkVYnOg7/vODzD9ILrCvxr94xXyuAeZBZnKuFmuUTRhTyuIWKykgA==}
+    engines: {node: '>=20.19.0'}
 
   console-fail-test@0.6.1:
     resolution: {integrity: sha512-KxgTskG1eCVCKB6f3XuM3lkzuM+0ASGCPVLIJU8r6Lv6lzCCk4FEoYkHJubEnUKzqHAQNVl1lw5UOyufTTILjg==}
@@ -4954,6 +4958,8 @@ snapshots:
   commander@8.3.0: {}
 
   comment-parser@1.4.9: {}
+
+  console-fail-test@0.10.0: {}
 
   console-fail-test@0.6.1: {}
 
