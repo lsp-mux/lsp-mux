@@ -36,7 +36,7 @@ const watchConfigForLogLevel = (configDir: string, log: Logger): Disposable => {
     }, configWatchDebounceMs);
   };
 
-  const tryWatch = (filePath: string): ReturnType<typeof watch> | undefined => {
+  const watchIfExists = (filePath: string): ReturnType<typeof watch> | undefined => {
     try {
       return watch(filePath, reload);
     } catch {
@@ -44,8 +44,8 @@ const watchConfigForLogLevel = (configDir: string, log: Logger): Disposable => {
     }
   };
   const watchers = [
-    tryWatch(path.join(configDir, '.lsp-proxy.json')),
-    tryWatch(path.join(configDir, '.lsp-proxy.local.json')),
+    watchIfExists(path.join(configDir, '.lsp-proxy.json')),
+    watchIfExists(path.join(configDir, '.lsp-proxy.local.json')),
   ];
 
   return {
