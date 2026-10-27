@@ -13,7 +13,7 @@ import {
   ShutdownRequest,
   UnregistrationRequest,
   createProtocolConnection,
-} from 'vscode-languageserver-protocol/node.js';
+} from 'vscode-languageserver-protocol/node';
 
 const lineBreak = /\r?\n/v;
 const maxStderrLines = 30;
