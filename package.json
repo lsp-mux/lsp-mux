@@ -27,7 +27,6 @@
     "@types/picomatch": "catalog:",
     "@types/sinonjs__fake-timers": "catalog:",
     "@vitest/coverage-v8": "catalog:",
-    "console-fail-test": "catalog:",
     "cpy-cli": "catalog:",
     "eslint": "catalog:",
     "jiti": "catalog:",

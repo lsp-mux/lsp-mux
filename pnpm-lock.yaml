@@ -212,9 +212,6 @@ catalogs:
     '@vue/typescript-plugin':
       specifier: 3.3.13
       version: 3.3.13
-    console-fail-test:
-      specifier: 0.6.1
-      version: 0.6.1
     cpy-cli:
       specifier: 7.0.0
       version: 7.0.0
@@ -301,9 +298,6 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.5(vitest@5.0.5)
-      console-fail-test:
-        specifier: 'catalog:'
-        version: 0.6.1
       cpy-cli:
         specifier: 'catalog:'
         version: 7.0.0
