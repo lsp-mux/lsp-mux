@@ -23,7 +23,7 @@ catalog:
   cpy-cli: 7.0.0
   cross-spawn: 7.0.6
   date-fns: 4.4.0
-  eslint: 10.11.0
+  eslint: 10.13.0
   eslint-plugin-vue: 10.11.1
   jiti: 2.7.0
   oxlint: 1.85.0
