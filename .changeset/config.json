@@ -5,6 +5,7 @@
   "changelog": "@changesets/cli/changelog",
   "commit": false,
   "fixed": [],
+  "format": false,
   "ignore": [],
   "linked": [],
   "updateInternalDependencies": "patch"

@@ -1,11 +1,16 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "agentGuidance": false,
   "globalDependencies": [
     "mise.lock",
     "mise.toml"
   ],
   "tasks": {
     "//#lint:eslint": {
+      "dependsOn": [
+        "^generate",
+        "^transit"
+      ],
       "inputs": [
         "$TURBO_DEFAULT$",
         "!packages/*/**"
@@ -15,6 +20,10 @@
       ]
     },
     "//#typecheck:ts": {
+      "dependsOn": [
+        "^generate",
+        "^transit"
+      ],
       "inputs": [
         "tsconfig.base.json",
         "bin/**",
@@ -74,7 +83,8 @@
     "compile:ts": {
       "dependsOn": [
         "^compile:ts",
-        "generate"
+        "generate",
+        "^generate"
       ],
       "inputs": [
         "$TURBO_ROOT$/tsconfig.base.json",
@@ -115,16 +125,21 @@
         "dist/coverage/vitest/merged/**"
       ]
     },
-    "generate": {},
+    "generate": {
+      "dependsOn": [
+        "^generate"
+      ]
+    },
     "lint": {
       "dependsOn": [
-        "lint:eslint",
-        "//#lint:eslint"
+        "//#lint:eslint",
+        "lint:eslint"
       ]
     },
     "lint:eslint": {
       "dependsOn": [
         "generate",
+        "^generate",
         "typecheck:ts",
         "transit"
       ],
@@ -180,6 +195,8 @@
       "dependsOn": [
         "pack",
         "^pack",
+        "generate",
+        "^generate",
         "transit"
       ],
       "env": [
@@ -196,6 +213,8 @@
     "test:vitest:fast": {
       "dependsOn": [
         "^compile",
+        "generate",
+        "^generate",
         "transit"
       ],
       "env": [
@@ -217,6 +236,8 @@
     "test:vitest:slow": {
       "dependsOn": [
         "^compile",
+        "generate",
+        "^generate",
         "transit"
       ],
       "env": [
@@ -242,13 +263,14 @@
     },
     "typecheck": {
       "dependsOn": [
-        "typecheck:ts",
-        "//#typecheck:ts"
+        "//#typecheck:ts",
+        "typecheck:ts"
       ]
     },
     "typecheck:ts": {
       "dependsOn": [
         "generate",
+        "^generate",
         "transit"
       ],
       "inputs": [

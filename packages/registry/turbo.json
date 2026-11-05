@@ -5,6 +5,7 @@
   "tasks": {
     "generate": {
       "dependsOn": [
+        "$TURBO_EXTENDS$",
         "generate:entries"
       ]
     },
