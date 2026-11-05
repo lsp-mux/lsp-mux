@@ -57,8 +57,8 @@ const pinned = (name: string): string => {
 const maxOutputBytes = 10_000_000;
 const maxOutputLines = 40;
 
-const exec = (command: string, args: readonly string[], options: SpawnSyncOptions): void => {
-  const result = spawn.sync(command, [...args], {
+const npm = (args: readonly string[], options: SpawnSyncOptions): void => {
+  const result = spawn.sync('npm', [...args], {
     ...options,
     encoding: 'utf8',
     maxBuffer: maxOutputBytes,
@@ -73,7 +73,7 @@ const exec = (command: string, args: readonly string[], options: SpawnSyncOption
     .join('\n')
     .split(/\r?\n/v);
   throw new Error([
-    `${[command, ...args].join(' ')} exited with ${String(result.status)}`,
+    `${['npm', ...args].join(' ')} exited with ${String(result.status)}`,
     '',
     ...output.slice(-maxOutputLines),
   ].join('\n'));
@@ -102,11 +102,11 @@ const staleMetadataPattern = /^npm (?:error|ERR!) (?:code ETARGET\b|notarget\b)/
  */
 const npmInstall = (cwd: string, specs: readonly string[]): void => {
   try {
-    exec('npm', ['install', ...specs, ...offlineFirst], { cwd });
+    npm(['install', ...specs, ...offlineFirst], { cwd });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (staleMetadataPattern.exec(message) === null) throw error;
-    exec('npm', ['install', ...specs, ...revalidate], { cwd });
+    npm(['install', ...specs, ...revalidate], { cwd });
   }
 };
 
@@ -145,7 +145,7 @@ const setUpProject = (
   /*
    * `--init-type module` so the flat ESLint config the fixture writes loads.
    */
-  exec('npm', ['init', '--yes', '--init-type', 'module'], { cwd: projectDir });
+  npm(['init', '--yes', '--init-type', 'module'], { cwd: projectDir });
   npmInstall(projectDir, [
     ...workspacePackages.map(name => locateTarball(name)),
     ...externalPackages.map(name => pinned(name)),

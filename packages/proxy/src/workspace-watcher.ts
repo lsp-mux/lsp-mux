@@ -234,8 +234,7 @@ export class WorkspaceWatcher {
       root,
       { recursive: true },
       (_event, filename) => {
-        if (!filename) return;
-        if (this.delegate.isStopped()) return;
+        if (!filename || this.delegate.isStopped()) return;
 
         const normalized = filename.replaceAll('\\', '/');
         if (this.isExcluded(normalized)) return;

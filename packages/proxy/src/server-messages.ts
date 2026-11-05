@@ -214,8 +214,9 @@ export const createServerMessageHandler = ({
 
     const result = parsed.output.items.map((item) => {
       const section = item.section;
-      if (section && Object.hasOwn(settings, section)) return settings[section];
-      return { ...settings, workspaceFolder };
+      return section && Object.hasOwn(settings, section)
+        ? settings[section]
+        : { ...settings, workspaceFolder };
     });
 
     const response: ResponseMessage = { jsonrpc: '2.0', id: msg.id, result };

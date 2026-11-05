@@ -8,8 +8,8 @@ import type { ManagedServer } from '../src/managed-server.ts';
 import { createNotification } from '../src/types.ts';
 import type { Message, NotificationMessage } from '../src/types.ts';
 
-const tsserverRequest = (id: number, command: string, args: unknown): NotificationMessage =>
-  createNotification('tsserver/request', [[id, command, args]]);
+const tsserverRequest = (id: number, args: unknown): NotificationMessage =>
+  createNotification('tsserver/request', [[id, '_vue:x', args]]);
 
 const answering = (result: object): MockProxy<ManagedServer> => {
   const server = mock<ManagedServer>();
@@ -42,13 +42,13 @@ describe('createBridgeRouter', () => {
   it('claims a bridged notification so it never reaches the client', ({ expect }) => {
     const { router } = bridged();
 
-    expect(router.handleNotification('vue', tsserverRequest(1, '_vue:x', {}))).toBe(true);
+    expect(router.handleNotification('vue', tsserverRequest(1, {}))).toBe(true);
   });
 
   it('leaves a notification from a server no bridge names alone', ({ expect }) => {
     const { router, target } = bridged();
 
-    expect(router.handleNotification('vtsls', tsserverRequest(1, '_vue:x', {}))).toBe(false);
+    expect(router.handleNotification('vtsls', tsserverRequest(1, {}))).toBe(false);
     expect(target.sendRequest).not.toHaveBeenCalled();
   });
 
@@ -80,7 +80,7 @@ describe('createBridgeRouter', () => {
     const { router, source } = bridged(answering({ notABody: true }));
     const id = faker.number.int({ max: 1000 });
 
-    router.handleNotification('vue', tsserverRequest(id, '_vue:x', {}));
+    router.handleNotification('vue', tsserverRequest(id, {}));
     await vi.waitFor(() => {
       expect(source.send).toHaveBeenCalledTimes(1);
     });

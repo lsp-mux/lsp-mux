@@ -200,14 +200,15 @@ export const matchEvent = (
 
   const matched = new Set<string>();
   for (const reg of state.values()) {
-    // Skip if this server already matched (dedup across registrations)
-    if (matched.has(reg.serverName)) continue;
+    /*
+     * Skip a server that already matched (dedup across registrations). One
+     * matching watcher per registration is sufficient.
+     */
+    if (matched.has(reg.serverName) || !hasMatchingWatcher(reg.watchers, kindBit, relativePath))
+      continue;
 
-    // One matching watcher per registration is sufficient
-    if (hasMatchingWatcher(reg.watchers, kindBit, relativePath)) {
-      result.set(reg.serverName, [{ uri: fileUri, type: changeType }]);
-      matched.add(reg.serverName);
-    }
+    result.set(reg.serverName, [{ uri: fileUri, type: changeType }]);
+    matched.add(reg.serverName);
   }
 
   return result;

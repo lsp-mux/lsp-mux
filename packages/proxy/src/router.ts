@@ -87,8 +87,7 @@ const resolveServers = (
   const ext = extractExtension(uri);
   if (ext === undefined) return allServers;
   const langId = extToLang.get(ext);
-  if (langId === undefined) return allServers;
-  return langToServers.get(langId) ?? allServers;
+  return langId === undefined ? allServers : langToServers.get(langId) ?? allServers;
 };
 
 // --- Public API ---

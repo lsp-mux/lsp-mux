@@ -104,11 +104,10 @@ export const createProxyRequestChannel = (
         resolve(res);
       });
 
-      if (deliver(createRequest(id, method, params)) === 'undeliverable') {
-        timers.clearTimeout(timer);
-        callbacks.delete(id);
-        resolve(errorResponse(id, 'Server not running'));
-      }
+      if (deliver(createRequest(id, method, params)) !== 'undeliverable') return;
+      timers.clearTimeout(timer);
+      callbacks.delete(id);
+      resolve(errorResponse(id, 'Server not running'));
     });
   };
 

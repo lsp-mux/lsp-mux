@@ -76,18 +76,16 @@ export class ChildServer {
     // Guard against both error and exit firing for the same process
     proc.on('error', (err) => {
       this.log.error(`${this.name} spawn error:`, err);
-      if (!this.exited && !this.disposed) {
-        this.exited = true;
-        this.events.onError(err);
-      }
+      if (this.exited || this.disposed) return;
+      this.exited = true;
+      this.events.onError(err);
     });
 
     proc.on('exit', (code, signal) => {
       this.log.warn(`${this.name} exited (code=${String(code)}, signal=${String(signal)})`);
-      if (!this.exited && !this.disposed) {
-        this.exited = true;
-        this.events.onExit(code, signal);
-      }
+      if (this.exited || this.disposed) return;
+      this.exited = true;
+      this.events.onExit(code, signal);
     });
 
     const reader = new StreamMessageReader(proc.stdout);

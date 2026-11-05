@@ -298,12 +298,11 @@ const notificationHandlers: Record<string, (msg: NotificationMessage) => void> =
   'textDocument/didChange': (msg) => {
     const params = v.parse(DidChangeParamsSchema, msg.params);
     const doc = openDocuments.get(params.textDocument.uri);
-    if (doc) {
-      doc.version = params.textDocument.version;
-      // Apply full-content change (TextDocumentSyncKind.Full)
-      const fullChange = params.contentChanges.find(change => change.range === undefined);
-      if (fullChange) doc.text = fullChange.text;
-    }
+    if (!doc) return;
+    doc.version = params.textDocument.version;
+    // Apply full-content change (TextDocumentSyncKind.Full)
+    const fullChange = params.contentChanges.find(change => change.range === undefined);
+    if (fullChange) doc.text = fullChange.text;
   },
   'textDocument/didClose': (msg) => {
     const { textDocument: td } = v.parse(DidCloseParamsSchema, msg.params);

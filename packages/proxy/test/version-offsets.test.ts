@@ -9,15 +9,15 @@ import { fakeUri } from './helpers/fake.ts';
 const uri = fakeUri();
 const otherUri = fakeUri();
 
-const openDoc = (docUri: string, text: string, version = 1): DocumentMap =>
+const openDoc = (text: string, version = 1): DocumentMap =>
   trackOpen(empty(), {
-    textDocument: { uri: docUri, languageId: 'typescript', version, text },
+    textDocument: { uri, languageId: 'typescript', version, text },
   });
 
 const resyncDoc = (offsets: VersionOffsets, text: string) =>
   resync({
     clientVersion: 4,
-    documents: openDoc(uri, 'stale'),
+    documents: openDoc('stale'),
     offsets,
     text,
     uri,
@@ -66,7 +66,7 @@ describe(applyToDocuments, () => {
   it('reports a document carrying no offset at the client version', ({ expect }) => {
     const content = faker.lorem.sentence();
 
-    expect(applyToDocuments(openDoc(uri, content, 3), new Map())).toStrictEqual([
+    expect(applyToDocuments(openDoc(content, 3), new Map())).toStrictEqual([
       { uri, languageId: 'typescript', version: 3, content },
     ]);
   });
@@ -74,7 +74,7 @@ describe(applyToDocuments, () => {
   it('adds the offset a document carries to its version', ({ expect }) => {
     const content = faker.lorem.sentence();
 
-    expect(applyToDocuments(openDoc(uri, content, 3), new Map([[uri, 5]]))).toStrictEqual([
+    expect(applyToDocuments(openDoc(content, 3), new Map([[uri, 5]]))).toStrictEqual([
       { uri, languageId: 'typescript', version: 8, content },
     ]);
   });

@@ -233,10 +233,9 @@ export class LspProxy {
     }
 
     const isAllStopped = this.servers.values().every(server => server.state === 'stopped');
-    if (isAllStopped && this.state === 'running') {
-      this.log.error('All servers stopped — proxy stopping');
-      this.dispose();
-    }
+    if (!isAllStopped || this.state !== 'running') return;
+    this.log.error('All servers stopped — proxy stopping');
+    this.dispose();
   }
 
   // ── Workspace Root ───────────────────────────────────────────────────
