@@ -85,9 +85,12 @@ const revalidate = ['--prefer-online', '--no-audit', '--no-fund'];
 /*
  * npm spells the same condition two ways and has changed the prefix across
  * majors, so match its diagnostic line rather than the word anywhere in the
- * output, where a package name could supply it.
+ * output, where a package name could supply it. A pinned spec that is also a
+ * peer of another spec fails differently: peer resolution reports an
+ * ERESOLVE whose root node was found at version `undefined`.
  */
-const staleMetadataPattern = /^npm (?:error|ERR!) (?:code ETARGET\b|notarget\b)/mv;
+const staleMetadataPattern =
+  /^npm (?:error|ERR!) (?:code ETARGET\b|notarget\b|Found: \S+@undefined$)/mv;
 
 /**
  * Install `specs` into `cwd`, reaching the registry only if the first attempt
