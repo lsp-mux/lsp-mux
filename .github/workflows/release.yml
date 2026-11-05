@@ -4,18 +4,18 @@ jobs:
     name: CD
     needs: ci
     permissions:
-      contents: write # changesets release tags/PR
+      contents: read # checkout; every write goes through the App token
       id-token: write # npm trusted publishing (OIDC)
     # Explicit pass, not `inherit`: inherit only forwards secrets to reusable
     # workflows in the same org/enterprise, and tooling is a different owner.
     secrets:
       APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
-    uses: gtbuchanan/tooling/.github/workflows/cd.yml@main
+    uses: gtbuchanan/tooling/.github/workflows/cd.yml@v1.0.0
   ci:
     name: CI
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-    uses: gtbuchanan/tooling/.github/workflows/ci.yml@main
+    uses: gtbuchanan/tooling/.github/workflows/ci.yml@v1.0.0
     with:
       # No e2e tests yet; the proxy integration suite is the slow bucket.
       run-e2e: false

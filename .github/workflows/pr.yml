@@ -2,14 +2,14 @@
 jobs:
   changeset:
     name: Changeset
-    uses: gtbuchanan/tooling/.github/workflows/changeset-check.yml@main
+    uses: gtbuchanan/tooling/.github/workflows/changeset-check.yml@v1.0.0
   ci:
     name: CI
     # Explicit pass, not `inherit`: inherit only forwards secrets to reusable
     # workflows in the same org/enterprise, and tooling is a different owner.
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-    uses: gtbuchanan/tooling/.github/workflows/ci.yml@main
+    uses: gtbuchanan/tooling/.github/workflows/ci.yml@v1.0.0
     with:
       # config-default installs its tarballs and drives the real servers; the
       # proxy integration suite is the slow bucket.
@@ -17,10 +17,10 @@ jobs:
       run-slow-tests: true
   dependencies:
     name: Dependencies
-    uses: gtbuchanan/tooling/.github/workflows/dependency-review.yml@main
+    uses: gtbuchanan/tooling/.github/workflows/dependency-review.yml@v1.0.0
   pre-commit:
     name: Pre-Commit
-    uses: gtbuchanan/tooling/.github/workflows/pre-commit.yml@main
+    uses: gtbuchanan/tooling/.github/workflows/pre-commit.yml@v1.0.0
     with:
       # `registry/src/index.ts` imports `./entries.generated.ts`, which is
       # git-ignored, so in a fresh checkout that import resolves to the
