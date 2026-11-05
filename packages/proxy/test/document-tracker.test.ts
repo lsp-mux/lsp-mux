@@ -9,9 +9,9 @@ const uri = fakeUri();
 const uriA = fakeUri();
 const uriB = fakeUri();
 
-const openDoc = (docUri: string, text: string, version = 1) =>
+const openDoc = (docUri: string, text: string) =>
   trackOpen(empty(), {
-    textDocument: { uri: docUri, languageId: 'typescript', version, text },
+    textDocument: { uri: docUri, languageId: 'typescript', version: 1, text },
   });
 
 /**

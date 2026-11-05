@@ -34,10 +34,9 @@ const parseJsonFile = async (filePath: string): Promise<unknown> =>
 const tryLoadJsonFile = async (filePath: string): Promise<Record<string, unknown> | undefined> => {
   try {
     const raw: unknown = await parseJsonFile(filePath);
-    if (raw !== null && typeof raw === 'object' && !Array.isArray(raw)) {
-      return raw as Record<string, unknown>;
-    }
-    return undefined;
+    return raw !== null && typeof raw === 'object' && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : undefined;
   } catch (error: unknown) {
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return undefined;
     throw error;

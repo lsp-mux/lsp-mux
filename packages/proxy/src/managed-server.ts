@@ -162,7 +162,7 @@ export const createManagedServer = ({
       log.error(`${name}: crashed before initial handshake — stopping`);
       state = 'stopped';
       scheduler.cancel();
-      errorBufferedRequests('Server stopped');
+      errorBufferedRequests();
       callbacks.onStateChange(state);
       return;
     }
@@ -189,7 +189,7 @@ export const createManagedServer = ({
     if (!isScheduled) {
       log.error(`${name}: max attempts (${String(scheduler.maxRetries)}) reached — stopping`);
       state = 'stopped';
-      errorBufferedRequests('Server stopped');
+      errorBufferedRequests();
       callbacks.onStateChange(state);
       return;
     }
@@ -299,7 +299,8 @@ export const createManagedServer = ({
   /**
    * Drain buffered requests and notify proxy so it can send error responses.
    */
-  const errorBufferedRequests = (message: string): void => {
+  const errorBufferedRequests = (): void => {
+    const message = 'Server stopped';
     /*
      * Not every stop arrives through handleServerExit: a server that answers
      * the handshake with an error is disposed without an exit event, so this
@@ -380,8 +381,7 @@ export const createManagedServer = ({
       const isDocSync = Msg.isNotification(msg) && documentSyncMethods.has(msg.method);
 
       if (state === 'restarting' || state === 'starting') {
-        if (isDocSync) return true;
-        return buffer.offer(msg);
+        return isDocSync || buffer.offer(msg);
       }
 
       // Lazy start: first message to an idle server triggers spawn

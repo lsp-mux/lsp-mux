@@ -53,10 +53,9 @@ export const createFlushScheduler = (options: FlushSchedulerOptions): FlushSched
       timers.clearTimeout(debounceTimer);
       debounceTimer = undefined;
     }
-    if (maxWaitTimer) {
-      timers.clearTimeout(maxWaitTimer);
-      maxWaitTimer = undefined;
-    }
+    if (!maxWaitTimer) return;
+    timers.clearTimeout(maxWaitTimer);
+    maxWaitTimer = undefined;
   };
 
   // doFlush's finally block handles state reset; this catch prevents

@@ -41,8 +41,9 @@ const PublishedSourcesSchema = v.object({
  */
 const describeSources = (params: NotificationMessage['params']): string => {
   const parsed = v.safeParse(PublishedSourcesSchema, params);
-  if (!parsed.success) return 'unparsed';
-  return parsed.output.diagnostics.map(diag => diag.source ?? 'unnamed').join('+');
+  return parsed.success
+    ? parsed.output.diagnostics.map(diag => diag.source ?? 'unnamed').join('+')
+    : 'unparsed';
 };
 
 /**
@@ -87,11 +88,10 @@ export const collectMessages = (
       }
 
       collected.push(msg);
-      if (collected.length >= count) {
-        clearTimeout(timer);
-        disposable.dispose();
-        resolve(collected);
-      }
+      if (collected.length < count) return;
+      clearTimeout(timer);
+      disposable.dispose();
+      resolve(collected);
     });
   });
 

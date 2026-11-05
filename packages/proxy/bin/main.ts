@@ -12,8 +12,7 @@ import type { ServerConfig } from '../src/types.ts';
 const parseArg = (flag: string): string | undefined => {
   const idx = process.argv.indexOf(flag);
   const arg = process.argv[idx + 1];
-  if (idx === -1 || !arg) return undefined;
-  return path.resolve(arg);
+  return idx === -1 || !arg ? undefined : path.resolve(arg);
 };
 
 // Debounce window for coalescing rapid config-file writes before reload.

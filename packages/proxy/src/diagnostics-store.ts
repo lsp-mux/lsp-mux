@@ -45,8 +45,7 @@ export const update = (
  */
 export const merge = (store: DiagnosticsStore, uri: string): readonly Diagnostic[] => {
   const perUri = store.get(uri);
-  if (!perUri) return [];
-  return perUri.values().toArray().flat();
+  return perUri ? perUri.values().toArray().flat() : [];
 };
 
 /**

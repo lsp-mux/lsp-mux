@@ -51,8 +51,10 @@ const getDiagnostics = (msg: Message | undefined) => {
   return result.success ? result.output.params.diagnostics : [];
 };
 
-const isResponse = (msg: Message, id: number): boolean =>
-  Msg.isResponse(msg) && msg.id === id;
+const crashRequestId = 100;
+
+const isCrashResponse = (msg: Message): boolean =>
+  Msg.isResponse(msg) && msg.id === crashRequestId;
 
 /*
  * A publish carrying both servers' diagnostics, which is the state to wait on
@@ -179,18 +181,18 @@ describe('Multi-server proxy', () => {
     const crashResults = collectMessages(
       reader,
       msg =>
-        isResponse(msg, 100) ||
+        isCrashResponse(msg) ||
         (isDiagnosticForUri(msg, crashUri) &&
           getDiagnostics(msg).length === 1 &&
           getDiagnostics(msg)[0]?.source === 'beta'),
       2,
     );
 
-    await writer.write(createRequest(100, '$/crash', {}));
+    await writer.write(createRequest(crashRequestId, '$/crash', {}));
 
     const msgs = await crashResults;
 
-    expect(msgs.find(msg => isResponse(msg, 100))).toMatchObject({
+    expect(msgs.find(isCrashResponse)).toMatchObject({
       error: expect.objectContaining({}) as unknown,
     });
     expect(getDiagnostics(msgs.find(msg => isDiagnosticForUri(msg, crashUri)))).toStrictEqual([
