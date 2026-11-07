@@ -10,12 +10,12 @@ jobs:
     # workflows in the same org/enterprise, and tooling is a different owner.
     secrets:
       APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
-    uses: gtbuchanan/tooling/.github/workflows/cd.yml@v1.0.0
+    uses: gtbuchanan/tooling/.github/workflows/cd.yml@cc8db05d356667bcff53d990ecee5a96a527f03c # v1.0.0
   ci:
     name: CI
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-    uses: gtbuchanan/tooling/.github/workflows/ci.yml@v1.0.0
+    uses: gtbuchanan/tooling/.github/workflows/ci.yml@cc8db05d356667bcff53d990ecee5a96a527f03c # v1.0.0
     with:
       # No e2e tests yet; the proxy integration suite is the slow bucket.
       run-e2e: false
